@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>Project: <span class="accent-red">{{ project.name }}</span></h2>
+    <div class="muted">Account: {{ project.account }} | Area: {{ project.area }} | Env: {{ project.environment }}</div>
+  </div>
+
+  <div class="actions">
+    <a class="btn btn-blue" href="{{ url_for('web.new_testcase', project_id=project.id) }}">New Test Case</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Test Cases</div>
+
+  {% if test_cases|length == 0 %}
+    <div class="empty">No test cases yet. Click “New Test Case” to create one.</div>
+  {% else %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Mode</th>
+        <th>Form</th>
+        <th>Created</th>
+        <th style="width:140px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tc in test_cases %}
+      <tr>
+        <td>{{ tc.name }}</td>
+        <td>{{ tc.mode }}</td>
+        <td>
+          {% if tc.form_id %}
+            Form #{{ tc.form_id }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>{{ tc.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>
+          <form action="{{ url_for('web.delete_testcase', project_id=project.id, testcase_id=tc.id) }}"
+                method="POST" style="display:inline;">
+            <button class="btn btn-outline" type="submit"
+                    onclick="return confirm('Delete this test case?');">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+{% endblock %}

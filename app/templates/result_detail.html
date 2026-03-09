@@ -1,0 +1,79 @@
+{# app/templates/result_detail.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="rd-wrap">
+
+  <div class="rd-header">
+    <div>
+      <h2 class="rd-title">Result Detail</h2>
+      <div class="rd-sub">
+        Run #{{ rr.run_id }} | Test Case #{{ rr.test_case_id }}
+        {% if tc and tc.name %} ({{ tc.name }}){% endif %}
+      </div>
+    </div>
+
+    <div class="rd-actions">
+      <a class="btn btn-ghost"
+         href="{{ url_for('web.project_results', project_id=project.id, run_id=rr.run_id) }}">
+        Back to Run
+      </a>
+
+      {% if report_url %}
+        <a class="btn"
+           href="{{ report_url }}"
+           target="_blank"
+           rel="noopener">
+          Open report
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- FULL WIDTH REPORT -->
+  <div class="rd-full">
+
+    <div class="rd-card">
+      <div class="rd-card-head">
+        <div>
+          <div class="rd-card-title">HTML Report</div>
+
+          {% if rr.report_html_path %}
+            <div class="rd-muted">
+              Source: {{ rr.report_html_path }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="rd-iframe-wrap">
+
+        {% if report_url %}
+
+          <iframe
+            class="rd-iframe"
+            src="{{ report_url }}"
+            loading="lazy">
+          </iframe>
+
+        {% else %}
+
+          <div class="rd-muted" style="padding:12px;">
+            Report was not generated. (report_html_path is empty)
+
+            {% if rr.summary_text %}
+              <div style="margin-top:8px;">
+                <b>Notes:</b> {{ rr.summary_text }}
+              </div>
+            {% endif %}
+          </div>
+
+        {% endif %}
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

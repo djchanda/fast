@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>Project: <span class="accent-red">{{ project.name }}</span></h2>
+    <div class="muted">Account: {{ project.account }} | Area: {{ project.area }} | Env: {{ project.env }}</div>
+  </div>
+
+  <div class="actions">
+    <form action="{{ url_for('web.upload_project_forms', project_id=project.id) }}"
+          method="POST" enctype="multipart/form-data" class="upload-form">
+      <label class="btn btn-blue">
+        Upload Forms
+        <input type="file" name="files" accept=".pdf" multiple hidden>
+      </label>
+      <button class="btn btn-red" type="submit">Upload</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Forms (Maximum {{ max_allowed }})</div>
+  <div class="muted" style="margin-bottom: 10px;">
+    Uploaded: {{ forms|length }} / {{ max_allowed }}
+  </div>
+
+  {% if forms|length == 0 %}
+    <div class="empty">No forms uploaded yet. Upload a PDF to get started.</div>
+  {% else %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Form Name</th>
+          <th>Version</th>
+          <th>Uploaded On</th>
+          <th>Size</th>
+          <th style="width:140px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in forms %}
+        <tr>
+          <td>{{ f.original_filename }}</td>
+          <td>{{ f.version }}</td>
+          <td>{{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ (f.size_bytes / 1024) | round(1) }} KB</td>
+          <td>
+            <form action="{{ url_for('web.delete_project_form', project_id=project.id, form_id=f.id) }}"
+                  method="POST" style="display:inline;">
+              <button class="btn btn-outline" type="submit"
+                      onclick="return confirm('Delete this form?');">
+                Delete
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+
+{% endblock %}

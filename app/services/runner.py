@@ -1,0 +1,504 @@
+from __future__ import annotations
+
+import os
+from typing import Any, Dict, Optional
+
+from flask import current_app
+
+from app.models.form import Form
+from app.models.test_case import TestCase
+
+from engine.extractor import extract_all
+from engine.prompt_builder import build_prompt
+from engine.llm_client import run_validation
+
+from app.reporting.html_report import write_cli_style_report
+
+
+VISUAL_REVIEW_SIMILARITY_THRESHOLD = 0.9985  # 99.85%
+VISUAL_SIGNATURE_SIMILARITY_THRESHOLD = 0.9990  # 99.90%
+
+
+def _forms_dir(project_id: int) -> str:
+    return os.path.join(current_app.instance_path, "uploads", f"project_{project_id}", "forms")
+
+
+def _pdf_abs_path(project_id: int, stored_filename: str) -> str:
+    return os.path.join(_forms_dir(project_id), stored_filename)
+
+
+def _read_pdf_bytes(project_id: int, stored_filename: str) -> bytes:
+    path = _pdf_abs_path(project_id, stored_filename)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"PDF not found on disk: {path}")
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def _count_list(v: Any) -> int:
+    if not v:
+        return 0
+    if isinstance(v, list):
+        return len(v)
+    return 1
+
+
+def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
+    base: Dict[str, Any] = {
+        "mode": mode,
+        "spelling_errors": [],
+        "format_issues": [],
+        "value_mismatches": [],
+        "missing_content": [],
+        "extra_content": [],
+        "layout_anomalies": [],
+        "compliance_issues": [],
+        "visual_mismatches": [],
+        "summary_counts": {},
+        "pages_impacted": [],
+        "top_findings": [],
+        "overall_summary": "",
+        "accuracy_score": 0,
+        "visual_validation": [],
+        "error": "",
+    }
+
+    if not isinstance(result_json, dict):
+        return base
+
+    base.update(result_json)
+
+    for k in [
+        "spelling_errors",
+        "format_issues",
+        "value_mismatches",
+        "missing_content",
+        "extra_content",
+        "layout_anomalies",
+        "compliance_issues",
+        "visual_mismatches",
+        "pages_impacted",
+        "top_findings",
+        "visual_validation",
+    ]:
+        if base.get(k) is None:
+            base[k] = []
+        if k in base and not isinstance(base[k], list):
+            base[k] = [base[k]]
+
+    if not isinstance(base.get("summary_counts"), dict):
+        base["summary_counts"] = {}
+
+    return base
+
+
+def _contains_signature_issue(page_items: list[dict]) -> bool:
+    keywords = ("signature", "president", "secretary", "approval", "signed")
+    blob = " ".join(
+        str(x) for item in page_items for x in item.values() if not isinstance(x, (dict, list))
+    ).lower()
+    return any(k in blob for k in keywords)
+
+
+def _page_has_real_business_issue(page_items: list[dict]) -> bool:
+    strong_buckets = {
+        "value_mismatches",
+        "missing_content",
+        "extra_content",
+        "compliance_issues",
+    }
+
+    for item in page_items:
+        if not isinstance(item, dict):
+            continue
+        bucket = item.get("_bucket")
+        if bucket in strong_buckets:
+            return True
+    return False
+
+
+def _index_existing_items_by_page(result_json: Dict[str, Any]) -> Dict[int, list[dict]]:
+    existing_by_page: Dict[int, list[dict]] = {}
+
+    for bucket in [
+        "value_mismatches",
+        "missing_content",
+        "extra_content",
+        "layout_anomalies",
+        "visual_mismatches",
+        "format_issues",
+        "spelling_errors",
+        "compliance_issues",
+    ]:
+        for it in result_json.get(bucket, []) or []:
+            if isinstance(it, dict):
+                p = it.get("page")
+                try:
+                    p = int(str(p).strip()) if p not in (None, "") else None
+                except Exception:
+                    p = None
+                if p is not None:
+                    cloned = dict(it)
+                    cloned["_bucket"] = bucket
+                    existing_by_page.setdefault(p, []).append(cloned)
+
+    return existing_by_page
+
+
+def _safe_similarity(v: dict) -> float:
+    sim = v.get("similarity")
+    try:
+        return float(sim)
+    except Exception:
+        return 1.0
+
+
+def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Precision-first deterministic reconciliation.
+
+    Rules:
+    - If signature_candidate is true and similarity is below a tighter threshold,
+      add it as missing_content so the page is treated as a real defect.
+    - Do NOT flood visual_mismatches with every warned page.
+    - Only add generic visual mismatch for strong pages with tighter similarity.
+    """
+    visual = result_json.get("visual_validation") or []
+    if not isinstance(visual, list):
+        visual = []
+
+    existing_by_page = _index_existing_items_by_page(result_json)
+    result_json.setdefault("visual_mismatches", [])
+    result_json.setdefault("missing_content", [])
+
+    for v in visual:
+        if not isinstance(v, dict):
+            continue
+
+        p = v.get("page")
+        try:
+            p = int(str(p).strip()) if p not in (None, "") else None
+        except Exception:
+            p = None
+
+        if p is None:
+            continue
+
+        page_items = existing_by_page.get(p, [])
+        already_signature_like = _contains_signature_issue(page_items)
+        has_real_business_issue = _page_has_real_business_issue(page_items)
+        sim = _safe_similarity(v)
+
+        sig_conf = str(v.get("signature_confidence") or "none").lower()
+
+        # Strong deterministic fallback for missing signature
+        if (
+            v.get("signature_candidate")
+            and sig_conf in {"high", "medium"}
+            and sim <= VISUAL_SIGNATURE_SIMILARITY_THRESHOLD
+            and not already_signature_like
+        ):
+            label = v.get("signature_label") or "signature"
+            reason = v.get("signature_reason") or f"Visual diff is near '{label}' in a signature zone."
+
+            result_json["missing_content"].append(
+                {
+                    "page": p,
+                    "severity": "high" if sig_conf == "high" else "medium",
+                    "field_name": f"{str(label).lower()}_signature",
+                    "category": "Signature / approval block",
+                    "description": f"Possible missing or changed signature near {label}.",
+                    "evidence": reason,
+                }
+            )
+            existing_by_page.setdefault(p, []).append(
+                {
+                    "page": p,
+                    "description": reason,
+                    "_bucket": "missing_content",
+                }
+            )
+            continue
+
+
+
+        # Generic visual mismatch only when similarity is tighter and page has no stronger finding
+        if (
+            (v.get("major") or v.get("warn"))
+            and sim <= VISUAL_REVIEW_SIMILARITY_THRESHOLD
+            and not page_items
+            and not has_real_business_issue
+        ):
+            result_json["visual_mismatches"].append(
+                {
+                    "page": p,
+                    "severity": "medium" if v.get("warn") else "high",
+                    "category": "Visual difference",
+                    "description": v.get("note") or "Visual difference detected.",
+                    "evidence": f"similarity={v.get('similarity')}, diff_pixels_pct={v.get('diff_pixels_pct')}",
+                }
+            )
+            existing_by_page.setdefault(p, []).append(
+                {
+                    "page": p,
+                    "description": v.get("note") or "Visual difference detected.",
+                    "_bucket": "visual_mismatches",
+                }
+            )
+        if v.get("signature_candidate") and sig_conf in {"high", "medium"} and not already_signature_like:
+            label = v.get("signature_label") or "signature"
+            reason = v.get("signature_reason") or f"Visual diff is near '{label}' in a signature zone."
+
+            result_json["missing_content"].append(
+                {
+                    "page": p,
+                    "severity": "high",
+                    "field_name": f"{str(label).lower()}_signature",
+                    "category": "Signature / approval block",
+                    "description": f"Signature missing or changed near {label}.",
+                    "evidence": reason,
+                }
+            )
+    return result_json
+
+
+def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    buckets = [
+        "spelling_errors",
+        "format_issues",
+        "value_mismatches",
+        "missing_content",
+        "extra_content",
+        "layout_anomalies",
+        "visual_mismatches",
+    ]
+
+    counts = {k: len(result_json.get(k, []) or []) for k in buckets}
+    counts["total"] = sum(counts.values())
+    result_json["summary_counts"] = counts
+
+    pages = set()
+    for bucket in buckets + ["compliance_issues"]:
+        for it in result_json.get(bucket, []) or []:
+            if isinstance(it, dict):
+                p = it.get("page")
+                try:
+                    if p not in (None, ""):
+                        pages.add(int(str(p).strip()))
+                except Exception:
+                    pass
+
+    result_json["pages_impacted"] = sorted(pages)
+
+    top_findings = []
+    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    merged = []
+    for bucket in buckets:
+        for it in result_json.get(bucket, []) or []:
+            if isinstance(it, dict):
+                merged.append(
+                    {
+                        "severity": str(it.get("severity") or "medium").lower(),
+                        "page": it.get("page", ""),
+                        "category": it.get("category") or bucket.replace("_", " ").title(),
+                        "short": it.get("description") or it.get("field_name") or bucket,
+                    }
+                )
+    merged.sort(key=lambda x: severity_order.get(x["severity"], 9))
+    result_json["top_findings"] = merged[:5]
+
+    if not result_json.get("overall_summary"):
+        total = counts["total"]
+        page_count = len(result_json["pages_impacted"])
+        top = "; ".join(x["short"] for x in result_json["top_findings"][:3]) if result_json["top_findings"] else "none"
+        result_json["overall_summary"] = (
+            f"Found {total} issue(s) across {page_count} page(s). Top findings: {top}."
+        )
+
+    return result_json
+
+
+def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
+    errors = (
+        _count_list(result_json.get("spelling_errors"))
+        + _count_list(result_json.get("format_issues"))
+        + _count_list(result_json.get("value_mismatches"))
+        + _count_list(result_json.get("missing_content"))
+        + _count_list(result_json.get("compliance_issues"))
+        + _count_list(result_json.get("visual_mismatches"))
+    )
+    warnings = (
+        _count_list(result_json.get("extra_content"))
+        + _count_list(result_json.get("layout_anomalies"))
+    )
+
+    visual = result_json.get("visual_validation") or []
+    if isinstance(visual, list):
+        promoted_pages = {
+            int(str(it.get("page")).strip())
+            for it in (result_json.get("visual_mismatches") or []) + (result_json.get("missing_content") or [])
+            if isinstance(it, dict) and it.get("page") not in (None, "")
+        }
+
+        warned_pages = {
+            int(str(v.get("page")).strip())
+            for v in visual
+            if isinstance(v, dict)
+            and v.get("warn")
+            and v.get("page") not in (None, "")
+            and _safe_similarity(v) <= VISUAL_REVIEW_SIMILARITY_THRESHOLD
+        }
+
+        warnings += len([p for p in warned_pages if p not in promoted_pages])
+
+    passed = 1 if errors == 0 else 0
+    return errors, warnings, passed
+
+
+def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> dict:
+    write_fn = write_cli_style_report
+
+    try:
+        if not tc.form_id:
+            result_json = _ensure_schema_defaults({"error": "Test case has no form selected."}, tc.mode or "basic")
+            return {
+                "result_json": result_json,
+                "summary_text": "Overall Assessment: FAIL\nTest case has no form selected.",
+                "errors": 1,
+                "warnings": 0,
+                "passed": 0,
+                "main_form": None,
+                "bench_form": None,
+                "write_report_fn": write_fn,
+            }
+
+        main_form = Form.query.get(tc.form_id)
+        if not main_form:
+            result_json = _ensure_schema_defaults({"error": "Selected form not found in DB."}, tc.mode or "basic")
+            return {
+                "result_json": result_json,
+                "summary_text": "Overall Assessment: FAIL\nSelected form not found in DB.",
+                "errors": 1,
+                "warnings": 0,
+                "passed": 0,
+                "main_form": None,
+                "bench_form": None,
+                "write_report_fn": write_fn,
+            }
+
+        mode = (tc.mode or "basic").strip().lower()
+        rules_text = (tc.prompt_text or "").strip()
+
+        effective_mode = mode
+        if effective_mode == "specific" and not rules_text:
+            effective_mode = "basic"
+
+        bench_form: Optional[Form] = None
+        benchmark_doc = None
+
+        if effective_mode == "benchmark":
+            if not tc.benchmark_form_id:
+                result_json = _ensure_schema_defaults(
+                    {"error": "Benchmark mode requires a benchmark (golden copy) form."},
+                    effective_mode,
+                )
+                return {
+                    "result_json": result_json,
+                    "summary_text": "Overall Assessment: FAIL\nBenchmark mode requires a benchmark (golden copy) form.",
+                    "errors": 1,
+                    "warnings": 0,
+                    "passed": 0,
+                    "main_form": main_form,
+                    "bench_form": None,
+                    "write_report_fn": write_fn,
+                }
+
+            bench_form = Form.query.get(tc.benchmark_form_id)
+            if not bench_form:
+                result_json = _ensure_schema_defaults({"error": "Benchmark form not found in DB."}, effective_mode)
+                return {
+                    "result_json": result_json,
+                    "summary_text": "Overall Assessment: FAIL\nBenchmark form not found in DB.",
+                    "errors": 1,
+                    "warnings": 0,
+                    "passed": 0,
+                    "main_form": main_form,
+                    "bench_form": None,
+                    "write_report_fn": write_fn,
+                }
+
+        current_bytes = _read_pdf_bytes(project_id, main_form.stored_filename)
+        current_doc = extract_all(current_bytes)
+
+        visual = []
+        if effective_mode == "benchmark" and bench_form:
+            bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
+            benchmark_doc = extract_all(bench_bytes)
+
+            try:
+                from engine.visual_diff import VisualDiff
+                vd = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = vd.compare_pdfs_detailed(
+                    original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                    result_id=f"run{run_id}_rr{rr_id}",
+                ) or []
+            except Exception as e:
+                visual = []
+                current_doc.setdefault("meta", {})
+                current_doc["meta"]["visual_diff_error"] = str(e)
+
+            current_doc["visual_diffs"] = visual
+            if benchmark_doc is not None:
+                benchmark_doc["visual_diffs"] = visual
+
+        messages = build_prompt(
+            mode=effective_mode,
+            current_doc=current_doc,
+            benchmark_doc=benchmark_doc,
+            base_prompt=rules_text,
+        )
+
+        llm_out = run_validation(messages)
+        result_json = _ensure_schema_defaults(llm_out, effective_mode)
+
+        result_json["visual_validation"] = visual
+
+        result_json = _reconcile_visual_findings(result_json)
+        result_json = _refresh_summary_fields(result_json)
+
+        overall = (result_json.get("overall_summary") or "").strip()
+        if result_json.get("error"):
+            summary_text = f"Overall Assessment: FAIL\n{result_json.get('error')}"
+        elif overall:
+            verdict = "FAIL" if "fail" in overall.lower() else "PASS"
+            summary_text = f"Overall Assessment: {verdict}\n{overall}"
+        else:
+            summary_text = "Overall Assessment: Completed."
+
+        errors, warnings, passed = _derive_metrics(result_json)
+
+        return {
+            "result_json": result_json,
+            "summary_text": summary_text,
+            "errors": errors,
+            "warnings": warnings,
+            "passed": passed,
+            "main_form": main_form,
+            "bench_form": bench_form,
+            "write_report_fn": write_fn,
+        }
+
+    except Exception as e:
+        mode = (getattr(tc, "mode", None) or "basic")
+        result_json = _ensure_schema_defaults({"error": f"Runner crashed: {str(e)}"}, mode)
+        return {
+            "result_json": result_json,
+            "summary_text": f"Overall Assessment: FAIL\nRunner crashed: {str(e)}",
+            "errors": 1,
+            "warnings": 0,
+            "passed": 0,
+            "main_form": None,
+            "bench_form": None,
+            "write_report_fn": write_fn,
+        }

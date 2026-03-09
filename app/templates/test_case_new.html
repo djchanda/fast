@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>New Test Case</h2>
+    <div class="muted">Project: {{ project.name }}</div>
+  </div>
+
+  <div class="actions">
+    <button form="tc-form" type="submit" class="btn btn-primary">Create Test Case</button>
+    <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Cancel</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Create Test Case</div>
+
+  <form id="tc-form" method="POST" action="{{ url_for('web.create_testcase', project_id=project.id) }}">
+    <div class="tc-grid">
+
+      <!-- LEFT COLUMN -->
+      <div class="tc-left">
+        <div class="form-row">
+          <label class="form-label">Test Case Name</label>
+          <input class="input" type="text" name="name" placeholder="e.g., Validate account number" required>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Mode</label>
+          <select class="input" name="mode" id="modeSelect">
+            <option value="basic">Basic</option>
+            <option value="specific">Specific</option>
+            <option value="benchmark">Benchmark</option>
+          </select>
+          <div class="hint">
+            Basic = built-in checks. Specific = prompt driven. Benchmark = compare with golden copy + prompt.
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Form</label>
+          <select class="input" name="form_id" id="formSelect">
+            <option value="">-- Select --</option>
+            {% for f in forms %}
+              <option value="{{ f.id }}">{{ f.original_filename }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">This is the form under test.</div>
+        </div>
+
+        <div class="form-row" id="benchmarkRow" style="display:none;">
+          <label class="form-label">Benchmark (Golden Copy)</label>
+          <select class="input" name="benchmark_form_id" id="benchmarkSelect">
+            <option value="">-- Select --</option>
+            {% for f in forms %}
+              <option value="{{ f.id }}">{{ f.original_filename }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Pick the golden copy to compare against.</div>
+        </div>
+
+        <div class="tc-note">
+          <div class="tc-note-title">Quick tips</div>
+          <ul>
+            <li>Keep prompts crisp and test-like.</li>
+            <li>One test case = one intent (don’t dump 20 checks into one).</li>
+            <li>For Benchmark, keep the golden copy from the same version.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="tc-right">
+        <div class="prompt-head">
+          <div>
+            <div class="prompt-title">Prompt / Test Steps</div>
+            <div class="muted small">Required for Specific and Benchmark. Optional for Basic.</div>
+          </div>
+
+          <div class="pill" id="promptPill">Not required for Basic</div>
+        </div>
+
+        <textarea class="textarea" name="prompt_text" id="promptText"
+          placeholder="Example:
+1) Verify customer name matches 'Jana Montgome'
+2) Validate signature blocks only up to Account holder #3
+3) Check spelling errors and formatting issues"></textarea>
+
+        <div class="muted small" style="margin-top:10px;">
+          Output will include strict JSON plus a plain English summary.
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    const mode = document.getElementById("modeSelect");
+    const benchmarkRow = document.getElementById("benchmarkRow");
+    const promptPill = document.getElementById("promptPill");
+    const promptText = document.getElementById("promptText");
+
+    function refresh() {
+      const v = (mode.value || "").toLowerCase();
+
+      // benchmark dropdown
+      benchmarkRow.style.display = (v === "benchmark") ? "block" : "none";
+
+      // prompt helper
+      if (v === "basic") {
+        promptPill.textContent = "Not required for Basic";
+        promptText.placeholder = "Not needed for Basic.\n(We'll apply built-in checks.)";
+      } else if (v === "specific") {
+        promptPill.textContent = "Required for Specific";
+        promptText.placeholder = "Paste Specific test steps here...\nKeep them crisp and test-like.";
+      } else {
+        promptPill.textContent = "Required for Benchmark";
+        promptText.placeholder = "Benchmark steps:\n1) Compare against golden copy\n2) Add specific rules here...";
+      }
+    }
+
+    mode.addEventListener("change", refresh);
+    refresh();
+  })();
+</script>
+
+{% endblock %}

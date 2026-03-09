@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h2>Results</h2>
+    <div class="muted">
+      {% if selected_run %}
+        Run #{{ selected_run.id }} | Status: {{ selected_run.status or "—" }}
+      {% else %}
+        Select a run to view results
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div class="card-title">Recent Runs</div>
+
+  <form method="get" action="{{ url_for('web.project_results', project_id=project.id) }}" style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+    <select name="run_id" style="min-width: 260px;">
+      <option value="">-- Select a run --</option>
+      {% for r in runs %}
+        <option value="{{ r.id }}" {% if selected_run and r.id == selected_run.id %}selected{% endif %}>
+          Run #{{ r.id }} - {{ r.created_at }} - {{ r.status or "—" }}
+        </option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-outline" type="submit">Load</button>
+  </form>
+</div>
+
+{% if selected_run %}
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">Run Summary</div>
+    <div class="muted" style="margin-top:6px;">
+      Passed: {{ selected_run.passed or 0 }} |
+      Warnings: {{ selected_run.warnings or 0 }} |
+      Errors: {{ selected_run.errors or 0 }} |
+      Total: {{ selected_run.total or 0 }}
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">Test Results</div>
+
+    {% if results and results|length > 0 %}
+      <table style="width:100%; border-collapse: collapse; margin-top:10px;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid #eee;">Result ID</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid #eee;">Test Case</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid #eee;">Mode</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid #eee;">Status</th>
+            <th style="text-align:left; padding:10px; border-bottom:1px solid #eee;">Report</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rr in results %}
+            <tr>
+              <td style="padding:10px; border-bottom:1px solid #f2f2f2;">{{ rr.id }}</td>
+              <td style="padding:10px; border-bottom:1px solid #f2f2f2;">#{{ rr.test_case_id }}</td>
+              <td style="padding:10px; border-bottom:1px solid #f2f2f2;">{{ rr.mode or "—" }}</td>
+              <td style="padding:10px; border-bottom:1px solid #f2f2f2;">{{ rr.status or "—" }}</td>
+              <td style="padding:10px; border-bottom:1px solid #f2f2f2;">
+                <a class="btn btn-light" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">
+                  View
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="muted" style="margin-top:10px;">No results for this run.</div>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="actions-row">
+  <a class="btn btn-light" href="{{ url_for('web.project_overview', project_id=project.id) }}">← Back to Project</a>
+  <a class="btn btn-light" href="{{ url_for('web.project_execute', project_id=project.id) }}">Run Tests</a>
+</div>
+
+{% endblock %}

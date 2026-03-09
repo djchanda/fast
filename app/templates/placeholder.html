@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="h2">{{ section }}</h2>
+    <div class="muted">Project: {{ project.name }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Coming up in the next milestone</div>
+  <div class="bullets">
+    <div>• This page is wired in the navigation and ready for implementation.</div>
+    <div>• When we implement it, we will keep the current CGI/BMO styling.</div>
+  </div>
+</div>
+{% endblock %}

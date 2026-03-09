@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title or "FAST" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fast.css') }}" />
+</head>
+<body class="{% if request.endpoint == 'web.landing' or not show_sidebar %}landing-body{% endif %}">
+
+
+  <div class="watermark"></div>
+
+  <header class="topbar">
+    <div class="topbar-left">
+        <a href="{{ url_for('web.home') }}" class="brand-link">
+      <img class="logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
+        </a>
+      <div class="brand-title">FAST <span class="brand-sub">AI Assisted Forms Testing</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="partner"></div>
+      <a class="icon-btn" href="{{ url_for('web.contact') }}" title="Contact">✉</a>
+      {% if user %}
+        <a class="link" href="{{ url_for('web.logout') }}">Logout</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="page">
+    {% if show_sidebar %}
+    <aside class="sidebar">
+      {% if project %}
+        <div class="sidebar-section">
+        <a class="nav-item nav-back" href="{{ url_for('web.home') }}">← All Projects</a>
+        </div>
+        <div class="sidebar-title">Current Project</div>
+        <div class="sidebar-project">{{ project.name }}</div>
+        <nav class="nav">
+          <a class="nav-item" href="{{ url_for('web.project_overview', project_id=project.id) }}">Overview</a>
+          <a class="nav-item" href="{{ url_for('web.project_forms', project_id=project.id) }}">Forms</a>
+          <a class="nav-item" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Test Cases</a>
+          <a class="nav-item" href="{{ url_for('web.project_execute', project_id=project.id) }}">Execute</a>
+          <a class="nav-item" href="{{ url_for('web.project_results', project_id=project.id) }}">Results</a>
+        </nav>
+      {% else %}
+        <nav class="nav">
+          <a class="nav-item" href="{{ url_for('web.home') }}">Home</a>
+          <a class="nav-item" href="{{ url_for('web.contact') }}">Contact Us</a>
+        </nav>
+      {% endif %}
+    </aside>
+    {% endif %}
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-wrap">
+            {% for category, msg in messages %}
+              <div class="flash flash-{{ category }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div>© CGI. FAST – AI Assisted Forms Testing.</div>
+    <div class="footer-partner">CGI</div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<style>
+  .progress-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .progress-modal-backdrop.show {
+    display: flex;
+  }
+
+  .progress-modal {
+    width: min(520px, 92vw);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    padding: 24px;
+    position: relative;
+    animation: fadeInUp 0.2s ease-out;
+  }
+
+  .progress-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    color: #64748b;
+    line-height: 1;
+  }
+
+  .progress-close:hover {
+    color: #0f172a;
+  }
+
+  .progress-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #111827;
+  }
+
+  .progress-subtle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 18px;
+  }
+
+  .progress-status {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 10px;
+  }
+
+  .progress-bar-wrap {
+    width: 100%;
+    height: 16px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+    border-radius: 999px;
+    transition: width 0.35s ease;
+  }
+
+  .progress-percent {
+    text-align: right;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 14px;
+  }
+
+  .progress-note {
+    font-size: 13px;
+    color: #6b7280;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .btn[disabled] {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<div class="page-header">
+  <h1>Execute</h1>
+  <div class="subtle">Project: {{ project.name }}</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Select test cases to run</div>
+
+  <form id="execForm" method="POST" action="{{ url_for('web.execute_run', project_id=project.id) }}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:48px;"></th>
+          <th>Name</th>
+          <th>Mode</th>
+          <th>Form</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc in test_cases %}
+        <tr>
+          <td><input type="checkbox" name="testcase_ids" value="{{ tc.id }}"></td>
+          <td>{{ tc.name }}</td>
+          <td>{{ tc.mode|capitalize }}</td>
+          <td>{{ tc.form_id or "-" }}</td>
+          <td>{{ tc.created_at.strftime("%Y-%m-%d %H:%M") if tc.created_at else "" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No test cases yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="actions-row">
+      <button id="executeBtn" class="btn btn-red" type="submit">Execute Selected</button>
+      <a class="btn btn-light" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Back to Test Cases</a>
+    </div>
+  </form>
+</div>
+
+<div id="progressModal" class="progress-modal-backdrop" aria-hidden="true">
+  <div class="progress-modal" role="dialog" aria-modal="true" aria-labelledby="progressTitle">
+    <button type="button" class="progress-close" id="closeProgressModal" aria-label="Close">×</button>
+
+    <div id="progressTitle" class="progress-title">Execution in progress</div>
+    <div class="progress-subtle">FAST is running the selected test cases. Results will be available shortly.</div>
+
+    <div id="progressStatus" class="progress-status">Starting execution...</div>
+
+    <div class="progress-bar-wrap">
+      <div id="progressBar" class="progress-bar-fill"></div>
+    </div>
+
+    <div id="progressPercent" class="progress-percent">0%</div>
+
+    <div class="progress-note">
+      You can close this message. Execution will continue on the server.
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById("execForm");
+  const executeBtn = document.getElementById("executeBtn");
+  const modal = document.getElementById("progressModal");
+  const closeBtn = document.getElementById("closeProgressModal");
+  const progressBar = document.getElementById("progressBar");
+  const progressPercent = document.getElementById("progressPercent");
+  const progressStatus = document.getElementById("progressStatus");
+
+  let visualProgress = 0;
+  let visualTimer = null;
+  let pollTimer = null;
+  let finished = false;
+  let pollFailures = 0;
+  let startedAt = null;
+  const MAX_WAIT_MS = 10 * 60 * 1000; // 10 minutes
+  const MAX_POLL_FAILURES = 5;
+
+  function showModal() {
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function hideModal() {
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function setProgress(value, statusText) {
+    const pct = Math.max(0, Math.min(100, Math.round(value)));
+    visualProgress = pct;
+    progressBar.style.width = pct + "%";
+    progressPercent.textContent = pct + "%";
+    if (statusText) {
+      progressStatus.textContent = statusText;
+    }
+  }
+
+  function stopAllTimers() {
+    if (visualTimer) {
+      clearInterval(visualTimer);
+      visualTimer = null;
+    }
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function markFailed(message) {
+    finished = true;
+    stopAllTimers();
+    setProgress(Math.max(visualProgress, 100), message || "Execution failed.");
+    executeBtn.disabled = false;
+    executeBtn.textContent = "Execute Selected";
+  }
+
+  function markCompleted(message, redirectUrl) {
+    finished = true;
+    stopAllTimers();
+    setProgress(100, message || "Execution completed.");
+
+    setTimeout(() => {
+      hideModal();
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        window.location.reload();
+      }
+    }, 1200);
+  }
+
+  function startVisualProgress() {
+    if (visualTimer) clearInterval(visualTimer);
+
+    visualTimer = setInterval(() => {
+      if (finished) {
+        clearInterval(visualTimer);
+        return;
+      }
+
+      // Never let fake progress hit 100 on its own.
+      if (visualProgress < 20) {
+        setProgress(visualProgress + 4, "Preparing selected test cases...");
+      } else if (visualProgress < 40) {
+        setProgress(visualProgress + 2, "Submitting execution request...");
+      } else if (visualProgress < 70) {
+        setProgress(visualProgress + 1.2, "Execution in progress...");
+      } else if (visualProgress < 88) {
+        setProgress(visualProgress + 0.7, "Generating result artifacts...");
+      } else if (visualProgress < 95) {
+        setProgress(visualProgress + 0.2, "Almost done...");
+      }
+    }, 700);
+  }
+
+  function normalizeStatus(rawStatus) {
+    return String(rawStatus || "").trim().toLowerCase();
+  }
+
+  function isSuccessStatus(status) {
+    return ["completed", "complete", "success", "succeeded", "done", "finished"].includes(status);
+  }
+
+  function isFailureStatus(status) {
+    return ["failed", "error", "aborted", "cancelled"].includes(status);
+  }
+
+  async function fetchJson(url, options) {
+    const res = await fetch(url, options);
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    if (!contentType.includes("application/json")) {
+      throw new Error("Non-JSON response received");
+    }
+
+    return await res.json();
+  }
+
+  function pollRunStatus(projectId, runId, redirectUrl) {
+    if (pollTimer) clearInterval(pollTimer);
+
+    pollTimer = setInterval(async () => {
+      if (finished) return;
+
+      const elapsed = Date.now() - startedAt;
+      if (elapsed > MAX_WAIT_MS) {
+        stopAllTimers();
+        setProgress(
+          Math.max(visualProgress, 95),
+          "Execution is taking longer than expected. You can close this window and check results shortly."
+        );
+        executeBtn.disabled = false;
+        executeBtn.textContent = "Execute Selected";
+        return;
+      }
+
+      try {
+        const data = await fetchJson(`/projects/${projectId}/runs/${runId}/status`, {
+          method: "GET",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json"
+          },
+          cache: "no-store"
+        });
+
+        pollFailures = 0;
+
+        const status = normalizeStatus(data.status);
+        const pctFromBackend = Number(data.progress_percent);
+
+        if (!Number.isNaN(pctFromBackend) && pctFromBackend >= 0) {
+          // Let backend progress help, but don't overwrite 100 unless completed
+          const safePct = isSuccessStatus(status) ? 100 : Math.min(pctFromBackend, 95);
+          if (safePct > visualProgress) {
+            setProgress(safePct, progressStatus.textContent);
+          }
+        }
+
+        if (status === "queued") {
+          setProgress(Math.max(visualProgress, 15), "Queued for execution...");
+          return;
+        }
+
+        if (status === "running" || status === "in_progress" || status === "processing") {
+          if (status === "processing") {
+            setProgress(Math.max(visualProgress, 80), "Processing results...");
+          } else {
+            setProgress(Math.max(visualProgress, 55), "Execution running...");
+          }
+          return;
+        }
+
+        if (isSuccessStatus(status)) {
+          markCompleted("Execution completed.", data.redirect_url || redirectUrl);
+          return;
+        }
+
+        if (isFailureStatus(status)) {
+          markFailed(data.message || "Execution failed.");
+          return;
+        }
+
+        // Unknown status: keep polling, but don’t panic
+        setProgress(Math.max(visualProgress, 50), `Execution in progress...`);
+      } catch (err) {
+        pollFailures += 1;
+        console.error("Status polling error:", err);
+
+        if (pollFailures >= MAX_POLL_FAILURES) {
+          stopAllTimers();
+          setProgress(
+            Math.max(visualProgress, 95),
+            "Status check is temporarily unavailable. You can close this window and refresh results in a moment."
+          );
+          executeBtn.disabled = false;
+          executeBtn.textContent = "Execute Selected";
+        }
+      }
+    }, 2000);
+  }
+
+  closeBtn.addEventListener("click", function () {
+    hideModal();
+  });
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const checked = form.querySelectorAll('input[name="testcase_ids"]:checked');
+    if (!checked.length) {
+      alert("Please select at least one test case to execute.");
+      return;
+    }
+
+    finished = false;
+    pollFailures = 0;
+    startedAt = Date.now();
+
+    executeBtn.disabled = true;
+    executeBtn.textContent = "Executing...";
+
+    showModal();
+    setProgress(5, "Starting execution...");
+    startVisualProgress();
+
+    try {
+      const formData = new FormData(form);
+
+      const data = await fetchJson(form.action, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json"
+        }
+      });
+
+      if (!data.ok) {
+        throw new Error(data.message || "Execution could not be started.");
+      }
+
+      const runId = data.run_id;
+      const projectId = data.project_id || "{{ project.id }}";
+      const redirectUrl = data.redirect_url || null;
+
+      if (!runId) {
+        throw new Error("Run ID was not returned from the server.");
+      }
+
+      setProgress(Math.max(visualProgress, 20), "Execution started...");
+      pollRunStatus(projectId, runId, redirectUrl);
+
+    } catch (err) {
+      console.error("Execution start error:", err);
+      markFailed(err.message || "Unable to start execution.");
+    }
+  });
+
+  window.addEventListener("beforeunload", stopAllTimers);
+})();
+</script>
+
+{% endblock %}

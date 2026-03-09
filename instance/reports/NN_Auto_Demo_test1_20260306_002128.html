@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FAST Report - NN_Auto_Demo_test1</title>
+  <style>
+    :root {
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow:0 2px 10px rgba(17,24,39,.05);
+
+      --ok-bg:#ecfdf3; --ok-b:#b7f0c8; --ok-t:#0f7a3a;
+      --warn-bg:#fff7ed; --warn-b:#fed7aa; --warn-t:#9a3412;
+      --bad-bg:#fff1f2; --bad-b:#fecdd3; --bad-t:#9f1239;
+      --info-bg:#eff6ff; --info-b:#bfdbfe; --info-t:#1d4ed8;
+      --neutral-bg:#f3f4f6; --neutral-b:#d1d5db; --neutral-t:#374151;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: none;
+      padding: 16px 18px 28px;
+    }
+
+    .topbar, .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .topbar {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      padding: 16px;
+      width: 100%;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 20px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: .2px;
+    }
+
+    .chip-ok { background: var(--ok-bg); border-color: var(--ok-b); color: var(--ok-t); }
+    .chip-warn { background: var(--warn-bg); border-color: var(--warn-b); color: var(--warn-t); }
+    .chip-bad { background: var(--bad-bg); border-color: var(--bad-b); color: var(--bad-t); }
+    .chip-info { background: var(--info-bg); border-color: var(--info-b); color: var(--info-t); }
+    .chip-neutral { background: var(--neutral-bg); border-color: var(--neutral-b); color: var(--neutral-t); }
+
+    .grid {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 20px;
+    }
+
+    .kv {
+      display:flex;
+      gap:12px;
+      padding:8px 0;
+      border-bottom:1px dashed #eef0f3;
+    }
+    .kv:last-child { border-bottom:none; }
+
+    .kv-k {
+      width:160px;
+      color:var(--muted);
+      font-size:13px;
+      flex: 0 0 160px;
+    }
+
+    .kv-v {
+      flex:1;
+      font-size:13px;
+      word-break: break-word;
+    }
+
+    .section-title {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin:0 0 10px 0;
+      font-size:15px;
+      font-weight:700;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      margin-top:8px;
+    }
+
+    .fast-table {
+      width: 100%;
+      min-width: 1500px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    .fast-table th,
+    .fast-table td {
+      padding: 10px 12px;
+      border-bottom:1px solid #eef0f3;
+      text-align:left;
+      vertical-align:top;
+      font-size:13px;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .fast-table th {
+      background:#f9fafb;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      color:#374151;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .fast-table th:nth-child(1), .fast-table td:nth-child(1) { width: 70px; }
+    .fast-table th:nth-child(2), .fast-table td:nth-child(2) { width: 110px; }
+    .fast-table th:nth-child(3), .fast-table td:nth-child(3) { width: 110px; }
+    .fast-table th:nth-child(4), .fast-table td:nth-child(4) { width: 220px; }
+    .fast-table th:nth-child(5), .fast-table td:nth-child(5) { width: 340px; }
+    .fast-table th:nth-child(6), .fast-table td:nth-child(6) { width: 420px; }
+    .fast-table th:nth-child(7), .fast-table td:nth-child(7) { width: 110px; }
+    .fast-table th:nth-child(8), .fast-table td:nth-child(8) { width: 100px; }
+
+    .banner {
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid #fed7aa;
+      background:#fff7ed;
+      color:#9a3412;
+      font-size:13px;
+    }
+
+    a {
+      color:#2563eb;
+      text-decoration:none;
+    }
+    a:hover {
+      text-decoration:underline;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    @media (max-width: 1100px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .kv-k {
+        width:135px;
+        flex-basis: 135px;
+      }
+      .fast-table {
+        min-width: 1200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="topbar">
+      <div>
+        <h1>FAST Validation Report</h1>
+        <div class="muted">Test: <b>NN_Auto_Demo_test1</b> &nbsp;|&nbsp; Mode: <b>benchmark</b></div>
+        <div class="muted">Run #32 / Result #32</div>
+      </div>
+      <div><span class='chip chip-bad'>FAIL</span></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Execution Summary</div>
+      <div>The comparison reveals a complete change in the account holder&#39;s identity (NEVILL LONG to CHATUR SINGH), contact information, and all associated account and debit card numbers. The document execution date has been updated from November 2025 to February 2026. Additionally, bank plan fee start dates have been adjusted, and the preparing bank representative has changed from ALAN ALEXANDER to SANDRA GREGOIRE. Visual differences are most prominent on pages 1 and 8, reflecting these material business changes.</div>
+
+      
+
+      <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
+        <span class='chip chip-bad'>Mismatches: 9</span>
+        <span class='chip chip-ok'>Review pages: 0</span>
+        <span class='chip chip-ok'>Matched pages: 0</span>
+        <span class='chip chip-neutral'>Matched page ranges: None</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">HTML Report</div>
+      <div class="grid">
+        <div>
+          <div class="kv">
+            <div class="kv-k">Main Form</div>
+            <div class="kv-v">90104_Current release.pdf &nbsp;|&nbsp; <a href='http://127.0.0.1:5000/projects/4/forms/9/view' target='_blank' rel='noopener'>Open PDF</a></div>
+          </div>
+          <div class="kv">
+            <div class="kv-k">Benchmark Form</div>
+            <div class="kv-v">90104_previous_release.pdf &nbsp;|&nbsp; <a href='http://127.0.0.1:5000/projects/4/forms/10/view' target='_blank' rel='noopener'>Open PDF</a></div>
+          </div>
+        </div>
+        <div>
+          <div class="kv">
+            <div class="kv-k">Generated</div>
+            <div class="kv-v">2026-03-06 00:21:28</div>
+          </div>
+          <div class="kv">
+            <div class="kv-k">Report File</div>
+            <div class="kv-v mono">NN_Auto_Demo_test1_20260306_002128.html</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>Page-by-Page Decision</div>
+        <div class="muted">Only mismatched or review pages are shown below.</div>
+      </div>
+
+      
+      <div class="table-wrap">
+        <table class="fast-table">
+          <thead><tr><th>Page</th><th>Status</th><th>Severity</th><th>Category</th><th>Decision</th><th>Evidence</th><th>Similarity</th><th>Snapshot</th></tr></thead>
+          <tbody><tr><td>1</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-bad'>CRITICAL</span></td><td>Value difference</td><td>The primary account holder name has changed.</td><td>The primary account holder name has changed. | The document execution date and footer dates have been updated. | All account numbers and the debit card number in the summary have changed. | Significant visual change in the &#39;About You&#39; and &#39;Summary&#39; blocks due to identity and account changes.</td><td>98.900%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page1.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>2</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Value difference</td><td>Account numbers in the detailed section have changed.</td><td>Account numbers in the detailed section have changed.</td><td>99.300%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page2.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>3</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Value difference</td><td>The start date for the Plus Plan fee has been moved forward.</td><td>The start date for the Plus Plan fee has been moved forward.</td><td>99.300%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page3.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>4</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Value difference</td><td>The start dates for the Premium and Performance plan fees have been backdated.</td><td>The start dates for the Premium and Performance plan fees have been backdated.</td><td>99.300%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page4.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>5</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-bad'>HIGH</span></td><td>Value difference</td><td>The name on the card and the card number have changed.</td><td>The name on the card and the card number have changed.</td><td>99.300%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page5.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>6</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Visual difference</td><td>Minor visual differences detected.</td><td>Minor visual differences detected.</td><td>99.400%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page6.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>7</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Visual difference</td><td>Minor visual differences detected.</td><td>Minor visual differences detected.</td><td>99.500%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page7.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>8</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-bad'>HIGH</span></td><td>Value difference</td><td>The bank representative who prepared the document has changed.</td><td>The bank representative who prepared the document has changed. | The signature block contains a different applicant name and a different capture ID.</td><td>99.300%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page8.png' target='_blank' rel='noopener'>View</a></td></tr><tr><td>9</td><td><span class='chip chip-bad'>MISMATCH</span></td><td><span class='chip chip-warn'>MEDIUM</span></td><td>Visual difference</td><td>Minor visual differences detected.</td><td>Minor visual differences detected.</td><td>99.400%</td><td><a href='http://127.0.0.1:5000/projects/4/visual_diffs/run32_rr32_90104_Current_release_page9.png' target='_blank' rel='noopener'>View</a></td></tr></tbody>
+        </table>
+      </div>
+    
+
+      <div style="margin-top:10px;" class="muted">
+        All other pages matched: None
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

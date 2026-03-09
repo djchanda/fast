@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Execute</h1>
+  <div class="subtle">Project: {{ project.name }}</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Select test cases to run</div>
+
+  <form id="execForm" method="POST" action="{{ url_for('web.execute_run', project_id=project.id) }}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:48px;"></th>
+          <th>Name</th>
+          <th>Mode</th>
+          <th>Form</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc in test_cases %}
+        <tr>
+          <td><input type="checkbox" name="testcase_ids" value="{{ tc.id }}"></td>
+          <td>{{ tc.name }}</td>
+          <td>{{ tc.mode|capitalize }}</td>
+          <td>{{ tc.form_id or "-" }}</td>
+          <td>{{ tc.created_at.strftime("%Y-%m-%d %H:%M") if tc.created_at else "" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No test cases yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="actions-row">
+      <button class="btn btn-red" type="submit">Execute Selected</button>
+      <a class="btn btn-light" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Back to Test Cases</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

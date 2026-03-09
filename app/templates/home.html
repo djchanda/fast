@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+{% block content %}
+
+{% if user %}
+  <div class="topbar-welcome">Welcome, {{ user }}. Build evidence, not slides.</div>
+{% endif %}
+
+
+<div class="dashboard-head">
+  <div>
+    <h2 class="dash-title">Project Dashboard</h2>
+    <p class="dash-subtitle">
+      Create a project, upload forms, design test cases and generate repeatable validation evidence.
+      Start with DEV/UAT, then carry the same rules forward across releases.
+    </p>
+  </div>
+
+
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">
+      <span>Create New Project</span>
+    </div>
+
+    <form method="post" action="{{ url_for('web.create_project') }}" class="form compact">
+      <label class="label">Project Name</label>
+      <input class="input" name="name" placeholder="e.g., Form Validation" />
+
+      <label class="label">Account</label>
+      <input class="input" name="account" placeholder="e.g., Bank Name" />
+
+      <label class="label">Area</label>
+      <select class="input" name="area">
+        <option value="">Select...</option>
+        <option>Branch</option>
+          <option>PNC</option>
+        <option>Wealth</option>
+        <option>Payments</option>
+      </select>
+
+      <label class="label">Environment</label>
+      <select class="input" name="environment">
+        <option value="">Select...</option>
+        <option>DEV</option>
+        <option>QA</option>
+        <option>UAT</option>
+        <option>PROD</option>
+      </select>
+
+      <button class="btn btn-primary btn-wide" type="submit">Create Project</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span>Existing Projects</span>
+      <span class="hint-small">Open to run validations & view history</span>
+    </div>
+
+    {% if projects|length == 0 %}
+      <div class="empty-state">
+        <p class="empty-title">No projects yet</p>
+        <p class="empty-text">
+          Create your first project on the left. Once it’s created, you can upload up to 10 forms and start validating in minutes.
+        </p>
+      </div>
+    {% else %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Project Name</th>
+            <th>Account</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in projects %}
+            <tr>
+              <td>{{ p.name }}</td>
+              <td>{{ p.account or "-" }}</td>
+
+              <!-- Optional: if you can map status -->
+              <td><span class="pill pill-grey">{{ p.status }}</span></td>
+
+              <td class="right">
+                <a class="btn btn-secondary btn-sm" href="{{ url_for('web.project_overview', project_id=p.id) }}">Open</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

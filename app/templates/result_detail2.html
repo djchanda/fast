@@ -1,0 +1,105 @@
+{# app/templates/result_detail.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="rd-wrap">
+
+  <!-- Header -->
+  <div class="rd-header">
+    <div>
+      <h2 class="rd-title">Result Detail</h2>
+      <div class="rd-sub">
+        Run #{{ rr.run_id }} | Test Case #{{ rr.test_case_id }}{% if tc and tc.name %} ({{ tc.name }}){% endif %}
+      </div>
+    </div>
+
+    <div class="rd-actions">
+      <a class="btn btn-ghost" href="{{ url_for('web.project_results', project_id=project.id, run_id=rr.run_id) }}">Back to Run</a>
+      {% if report_url %}
+        <a class="btn" href="{{ report_url }}" target="_blank" rel="noopener">Open report</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="rd-grid">
+    <!-- Left: Report -->
+    <div class="rd-left">
+      <div class="rd-card">
+        <div class="rd-card-head">
+          <div>
+            <div class="rd-card-title">HTML Report</div>
+            {% if rr.report_html_path %}
+              <div class="rd-muted">Source: {{ rr.report_html_path }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="rd-iframe-wrap">
+          {% if report_url %}
+            <iframe class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
+          {% else %}
+            <div class="rd-muted" style="padding:12px;">
+              Report was not generated. (report_html_path is empty)
+              {% if rr.summary_text %}
+                <div style="margin-top:8px;"><b>Notes:</b> {{ rr.summary_text }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Summary -->
+    <div class="rd-right">
+      <div class="rd-card rd-sticky">
+        <div class="rd-card-head">
+          <div class="rd-card-title">Execution Summary</div>
+        </div>
+
+        <div class="rd-summary">
+          <div class="rd-kv">
+            <div class="rd-k">Status</div>
+            <div class="rd-v"><span class="pill">{{ rr.status }}</span></div>
+          </div>
+          <div class="rd-kv">
+            <div class="rd-k">Mode</div>
+            <div class="rd-v"><span class="pill">{{ rr.mode }}</span></div>
+          </div>
+
+          <div class="rd-divider"></div>
+
+          <div class="rd-kv">
+            <div class="rd-k">Errors</div>
+            <div class="rd-v"><span class="pill pill-bad">{{ rr.errors }}</span></div>
+          </div>
+          <div class="rd-kv">
+            <div class="rd-k">Warnings</div>
+            <div class="rd-v"><span class="pill pill-warn">{{ rr.warnings }}</span></div>
+          </div>
+          <div class="rd-kv">
+            <div class="rd-k">Passed</div>
+            <div class="rd-v"><span class="pill pill-ok">{{ rr.passed }}</span></div>
+          </div>
+
+          <div class="rd-divider"></div>
+
+          <div class="rd-kv">
+            <div class="rd-k">Created</div>
+            <div class="rd-v">{{ rr.created_at }}</div>
+          </div>
+
+          {% if rr.summary_text %}
+          <div class="rd-divider"></div>
+          <div>
+            <div class="rd-muted" style="margin-bottom:6px;"><b>Notes</b></div>
+            <div class="rd-note">{{ rr.summary_text }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

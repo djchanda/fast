@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+
+{% block content %}
+
+<div class="contact-hero">
+  <div>
+    <h2 class="contact-title">Talk to the FAST team</h2>
+    <p class="contact-subtitle">
+      FAST helps financial teams validate forms with repeatable evidence — not screenshots and debates.
+      Reach out for onboarding, design review, or a quick proof-of-value.
+    </p>
+
+    <div class="contact-chips">
+      <span class="chip">JSON + Plain English</span>
+      <span class="chip">Built for financial orgs</span>
+    </div>
+  </div>
+
+  <div class="contact-cta">
+    <div class="cta-title">Need a demo or onboarding?</div>
+    <div class="cta-text">We can run a 30-min walkthrough using your real forms (images can come later).</div>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="mailto:dj.chanda@cgi.com?subject=FAST%20Request%20-%20Demo%20/%20Onboarding">Request a Demo</a>
+      <a class="btn btn-outline" href="mailto:dj.chanda@cgi.com?subject=FAST%20Support%20Request">Ask a Question</a>
+    </div>
+    <div class="cta-note">Typical response time: same business day.</div>
+  </div>
+</div>
+
+<div class="contact-section-title">Key contacts</div>
+<div class="muted">Pick the right lane and you’ll get answers faster.</div>
+
+<div class="grid-3 contact-grid modern">
+  <!-- Executive Sponsors -->
+  <div class="card contact-card v2">
+    <div class="contact-banner sponsor">
+      <div class="banner-title">Executive Sponsor</div>
+      <div class="banner-sub">Strategy • Governance • Scale</div>
+    </div>
+
+    <div class="contact-body v2">
+      <img class="avatar v2" src="{{ url_for('static', filename='assets/people/sponsor1.png') }}" alt="Executive Sponsor" />
+      <div class="contact-name">Rakesh Samal</div>
+
+      <div class="contact-lines">
+        <div class="contact-line"><b>Email:</b> rakesh.samal@cgi.com</div>
+        <div class="contact-line"><b>Phone:</b> </div>
+      </div>
+
+      <div class="contact-mini">
+        Best for: rollout approvals, enterprise onboarding, stakeholder alignment.
+      </div>
+    </div>
+  </div>
+
+  <!-- Solution Architect -->
+  <div class="card contact-card v2">
+    <div class="contact-banner architect">
+      <div class="banner-title">Solution Architect</div>
+      <div class="banner-sub">Design • Integration • Patterns</div>
+    </div>
+
+    <div class="contact-body v2">
+      <img class="avatar v2" src="{{ url_for('static', filename='assets/people/solution1.png') }}" alt="Solution Architect" />
+      <div class="contact-name">DJ Chanda</div>
+
+      <div class="contact-lines">
+        <div class="contact-line"><b>Email:</b> dj.chanda@cgi.com</div>
+        <div class="contact-line"><b>Phone:</b> 416-275-0614</div>
+      </div>
+
+      <div class="contact-mini">
+        Best for: architecture review, environments, security alignment, scaling usage.
+      </div>
+    </div>
+  </div>
+
+  <!-- Delivery / Support -->
+
+
+<div class="contact-strip">
+  <div class="strip-item">
+    <div class="strip-title">1) Align on use case</div>
+    <div class="strip-text">What are we validating: compliance fields, signatures, consistency, benchmarks?</div>
+  </div>
+  <div class="strip-item">
+    <div class="strip-title">2) Run a proof</div>
+    <div class="strip-text">Pick 1–2 high-risk forms. FAST generates evidence you can reuse every release.</div>
+  </div>
+  <div class="strip-item">
+    <div class="strip-title">3) Operationalize</div>
+    <div class="strip-text">Standard rules, reporting, and a repeatable workflow for testers and business.</div>
+  </div>
+</div>
+
+{% endblock %}

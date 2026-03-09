@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+{% set show_sidebar = True %}
+
+<div class="page-header">
+  <div>
+    <h2>New Test Case</h2>
+    <div class="muted">Project: {{ project.name }}</div>
+  </div>
+
+  <div class="actions">
+    <button form="tcForm" class="btn btn-red" type="submit">Create Test Case</button>
+    <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Cancel</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Create Test Case</div>
+
+  {% if forms|length == 0 %}
+    <div class="empty">
+      No forms uploaded yet. Please upload a form first in <b>Forms</b>.
+    </div>
+  {% else %}
+  <form id="tcForm" method="POST" action="{{ url_for('web.create_testcase', project_id=project.id) }}">
+
+    <div class="two-col">
+      <!-- LEFT: config -->
+      <div class="col">
+        <div class="form-row">
+          <label>Test Case Name</label>
+          <input class="input" type="text" name="name" placeholder="e.g., Validate account number field" required>
+        </div>
+
+        <div class="form-row">
+          <label>Mode</label>
+          <select class="input" name="mode" id="modeSelect" required>
+            <option value="basic">Basic</option>
+            <option value="specific">Specific</option>
+            <option value="benchmark">Benchmark</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Form</label>
+          <select class="input" name="form_id">
+            <option value="">-- Select --</option>
+            {% for f in forms %}
+            <option value="{{ f.id }}">{{ f.original_filename }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-row" id="benchmarkRow" style="display:none;">
+          <label>Benchmark (Golden Copy)</label>
+          <select class="input" name="benchmark_form_id">
+            <option value="">-- Select --</option>
+            {% for f in forms %}
+            <option value="{{ f.id }}">{{ f.original_filename }}</option>
+            {% endfor %}
+          </select>
+          <div class="hint">Required only for Benchmark mode.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: prompt -->
+      <div class="col">
+        <div class="form-row">
+          <label>Prompt / Test Steps</label>
+          <div class="hint">Required for Specific and Benchmark. Keep it crisp and test-like.</div>
+          <textarea class="input textarea-lg" name="prompt_text" id="promptText"
+                    placeholder="Paste test cases / rules here..."></textarea>
+        </div>
+      </div>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+  const modeSelect = document.getElementById("modeSelect");
+  const benchmarkRow = document.getElementById("benchmarkRow");
+  const promptText = document.getElementById("promptText");
+
+  function toggleFields() {
+    const mode = modeSelect.value;
+
+    // Benchmark dropdown only for benchmark mode
+    benchmarkRow.style.display = (mode === "benchmark") ? "block" : "none";
+
+    // Prompt required only for specific/benchmark
+    const needsPrompt = (mode === "specific" || mode === "benchmark");
+    promptText.disabled = !needsPrompt;
+    promptText.placeholder = needsPrompt
+      ? "Paste test cases / rules here..."
+      : "Not needed for Basic. (We’ll apply built-in checks.)";
+  }
+
+  modeSelect.addEventListener("change", toggleFields);
+  toggleFields();
+</script>
+
+
+{% endblock %}

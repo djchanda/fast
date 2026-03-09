@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set show_sidebar = True %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="h2">Project: <span class="accent">{{ project.name }}</span></h2>
+    <div class="muted">Account: {{ project.account or "-" }} | Area: {{ project.area or "-" }} | Env: {{ project.environment or "-" }}</div>
+  </div>
+  <div class="header-actions">
+    <a class="btn btn-secondary" href="{{ url_for('web.project_forms', project_id=project.id) }}">Upload Forms</a>
+    <a class="btn btn-secondary" href="{{ url_for('web.project_testcases', project_id=project.id) }}">New Test Case</a>
+    <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">Execute</a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+  <div class="card-title">Last Run Summary</div>
+
+  {% if last_summary.run_id %}
+    <div class="muted" style="margin-bottom:10px;">
+      Run #{{ last_summary.run_id }}
+      {% if last_summary.created_at %} • {{ last_summary.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
+      {% if last_summary.triggered_by %} • by {{ last_summary.triggered_by }}{% endif %}
+    </div>
+  {% else %}
+    <div class="muted" style="margin-bottom:10px;">
+      No runs yet. Execute a test case to generate results.
+    </div>
+  {% endif %}
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-num kpi-red">{{ last_summary.errors }}</div>
+      <div class="kpi-label">Errors</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num kpi-amber">{{ last_summary.warnings }}</div>
+      <div class="kpi-label">Warnings</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-num kpi-green">{{ last_summary.passed }}</div>
+      <div class="kpi-label">Passed</div>
+    </div>
+  </div>
+
+  {% if last_summary.run_id %}
+    <div style="margin-top:12px;">
+      <a class="btn btn-light"
+         href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
+        View Run Details
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+  <div class="card">
+    <div class="card-title">Quick Tips</div>
+    <div class="bullets">
+      <div>• Upload forms (max 10) in <b>Forms</b></div>
+      <div>• Create test cases with Basic / Specific / Benchmark</div>
+      <div>• Select multiple test cases in <b>Execute</b> and run together</div>
+    </div>
+  </div>
+
+    <div class="card" style="margin-top:14px;">
+  <div class="card-title">Recent Runs</div>
+
+  {% if recent_runs and recent_runs|length > 0 %}
+  <div class="table-wrap" style="margin-top:10px;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:80px;">Run</th>
+          <th style="width:170px;">When</th>
+          <th style="width:130px;">By</th>
+          <th style="width:80px;">Err</th>
+          <th style="width:90px;">Warn</th>
+          <th style="width:90px;">Pass</th>
+          <th style="width:90px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent_runs %}
+        <tr>
+          <td>#{{ r.id }}</td>
+          <td class="muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
+          <td>{{ r.triggered_by or "—" }}</td>
+          <td>{{ r.errors or 0 }}</td>
+          <td>{{ r.warnings or 0 }}</td>
+          <td>{{ r.passed or 0 }}</td>
+          <td>
+            <a class="btn btn-light" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="muted" style="margin-top:10px;">No runs yet.</div>
+  {% endif %}
+</div>
+
+
+</div>
+{% endblock %}

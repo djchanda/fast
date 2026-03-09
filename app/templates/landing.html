@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% set show_sidebar = False %}
+{% block content %}
+
+<div class="landing-page">
+  <div class="landing-card">
+    <div class="landing-title-row">
+      <div class="landing-fast-3d">FAST</div>
+      <div class="landing-subtitle">AI Assisted Forms Testing</div>
+    </div>
+
+    <div class="landing-grid">
+      <!-- Left: value props -->
+      <div>
+        <ul class="landing-bullets">
+          <li>Basic / Specific / Benchmark validation</li>
+          <li>Strict JSON output + Plain English summary</li>
+          <li>Built for accurate and fast form validation</li>
+        </ul>
+
+        <div class="landing-note">
+          FAST delivers traceable, repeatable form validation across every release.
+        </div>
+      </div>
+
+      <!-- Right: login -->
+      <div class="landing-form">
+        <form method="POST" action="{{ url_for('web.landing') }}">
+          <label class="form-label">Username</label>
+          <input class="input" type="text" name="username" value="demo" />
+
+          <label class="form-label">Password</label>
+          <input class="input" type="password" name="password" value="demo" />
+
+          <button class="btn btn-primary btn-block" type="submit">Login</button>
+
+          <div class="muted">Forgot password? (stub)</div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
