@@ -1,0 +1,1166 @@
+%PDF-1.4
+%‚„œ”
+8 0 obj
+<< /Length 2938 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.106 0.106 0.106 rg 0.0 0.0 612.0 792.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 0.0 784.0 612.0 8.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 0.0 0.0 612.0 8.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 420.0 582.0 180.0 180.0 re f 0 0 0 rg
+0.106 0.106 0.106 rg 424.0 586.0 172.0 172.0 re f 0 0 0 rg
+BT /F2 42.0 Tf 0.890 0.094 0.216 rg 54.0 680.0 Td (cgi.) Tj ET
+BT /F4 11.0 Tf 0.650 0.650 0.650 rg 54.0 659.0 Td (AI Quality Assurance Division) Tj ET
+0.890 0.094 0.216 RG 2.0 w 54.0 642.0 m 558.0 642.0 l S 0 0 0 RG
+BT /F2 52.0 Tf 1.000 1.000 1.000 rg 54.0 572.0 Td (FAST) Tj ET
+BT /F2 22.0 Tf 0.890 0.094 0.216 rg 54.0 538.0 Td (AI-Assisted Forms Testing) Tj ET
+BT /F1 14.0 Tf 0.750 0.750 0.750 rg 54.0 514.0 Td (Technical Product Documentation) Tj ET
+BT /F4 11.0 Tf 0.650 0.650 0.650 rg 54.0 471.0 Td (An intelligent PDF form validation platform combining large) Tj ET
+BT /F4 11.0 Tf 0.650 0.650 0.650 rg 54.0 455.0 Td (language models and computer-vision diffing to automate) Tj ET
+BT /F4 11.0 Tf 0.650 0.650 0.650 rg 54.0 439.0 Td (QA across regulated document workflows.) Tj ET
+0.200 0.200 0.200 rg 54.0 384.0 78.5 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 62.0 389.0 Td (AI-Powered QA) Tj ET
+0.200 0.200 0.200 rg 140.5 384.0 76.0 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 148.5 389.0 Td (PDF Validation) Tj ET
+0.200 0.200 0.200 rg 224.5 384.0 68.5 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 232.5 389.0 Td (Visual Diffing) Tj ET
+0.200 0.200 0.200 rg 301.1 384.0 64.5 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 309.1 389.0 Td (OCR & NLP) Tj ET
+0.200 0.200 0.200 rg 373.6 384.0 101.0 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 381.6 389.0 Td (Automated Reporting) Tj ET
+0.200 0.200 0.200 rg 54.0 358.0 100.5 18.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.890 0.090 0.220 rg 62.0 363.0 Td (AWS Bedrock Ready) Tj ET
+0.890 0.094 0.216 rg 54.0 312.0 120.0 20.0 re f 0 0 0 rg
+BT /F2 9.0 Tf 1.000 1.000 1.000 rg 62.0 319.0 Td (CONFIDENTIAL) Tj ET
+BT /F2 9.0 Tf 0.650 0.650 0.650 rg 54.0 283.0 Td (Classification:) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 144.0 283.0 Td (CGI Proprietary -- Authorized Distribution Only) Tj ET
+BT /F2 9.0 Tf 0.650 0.650 0.650 rg 54.0 267.0 Td (Version:) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 144.0 267.0 Td (1.0) Tj ET
+BT /F2 9.0 Tf 0.650 0.650 0.650 rg 54.0 251.0 Td (Date:) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 144.0 251.0 Td (March 2026) Tj ET
+BT /F2 9.0 Tf 0.650 0.650 0.650 rg 54.0 235.0 Td (Audience:) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 144.0 235.0 Td (Sales, Pre-Sales, Enterprise Clients, Solution Architects) Tj ET
+BT /F2 9.0 Tf 0.650 0.650 0.650 rg 54.0 219.0 Td (Author:) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 144.0 219.0 Td (CGI AI Innovation Lab) Tj ET
+BT /F1 9.0 Tf 0.650 0.650 0.650 rg 54.0 63.0 Td (cgi.com) Tj ET
+BT /F4 9.0 Tf 0.650 0.650 0.650 rg 478.0 63.0 Td (Always Delivering Value) Tj ET
+
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 3170 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.106 0.106 0.106 rg 54.0 702.0 504.0 38.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 68.0 715.0 Td (TABLE OF CONTENTS) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 673.0 Td (1.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 673.0 Td (Executive Summary) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 656.0 Td (Business Problem & Value Proposition) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 641.0 Td (Key Metrics & Target Personas) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 619.0 Td (2.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 619.0 Td (Solution Overview) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 602.0 Td (Purpose & Business Value) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 587.0 Td (Technology Stack) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 565.0 Td (3.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 565.0 Td (Features & Capabilities) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 548.0 Td (Validation Modes \(Basic, Specific, Benchmark\)) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 533.0 Td (Visual Difference Engine) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 518.0 Td (OCR & Intelligent Text Extraction) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 503.0 Td (Reporting & Audit Trail) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 488.0 Td (Project & Form Management) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 466.0 Td (4.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 466.0 Td (Technical Architecture) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 449.0 Td (Component Overview) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 434.0 Td (Test Execution Data Flow) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 419.0 Td (Data Model) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 397.0 Td (5.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 397.0 Td (Current Limitations) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 380.0 Td (Capacity & Scale Constraints) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 365.0 Td (Security & Authentication Gaps) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 350.0 Td (Infrastructure & Persistence) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 335.0 Td (Functional Gaps) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 313.0 Td (6.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 313.0 Td (AWS Bedrock & Container Architecture) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 296.0 Td (Migration Overview) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 281.0 Td (AWS Services & Components) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 266.0 Td (Container Architecture) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 251.0 Td (Bedrock LLM Adapter Code) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 236.0 Td (Infrastructure as Code \(CDK\)) Tj ET
+BT /F1 10.0 Tf 0.350 0.350 0.350 rg 62.0 221.0 Td (Recommended Bedrock Models) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 199.0 Td (7.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 199.0 Td (Product Roadmap) Tj ET
+BT /F2 11.0 Tf 0.890 0.094 0.216 rg 54.0 175.0 Td (8.) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 76.0 175.0 Td (Contact & Engagement) Tj ET
+
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 6390 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 54.0 698.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 710.0 Td (1) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 710.0 Td (Executive Summary) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 676.0 Td (FAST \(AI-Assisted Forms Testing\) is a CGI-developed platform that automates quality assurance for PDF-based) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 661.5 Td (forms and regulated documents. By combining state-of-the-art large language model \(LLM\) analysis with) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 647.0 Td (computer-vision visual diffing and optical character recognition \(OCR\), FAST dramatically reduces the time and) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 632.5 Td (cost of manual form review cycles in high-compliance industries such as government services, financial services,) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 618.0 Td (and healthcare.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 591.0 Td (THE PROBLEM) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 574.5 Td (Form validation in regulated environments is manual, time-intensive, and error-prone. A single PDF form) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 560.0 Td (revision can require hours of side-by-side comparison and stakeholder sign-off, creating bottlenecks and) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 545.5 Td (increasing release risk.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 518.5 Td (THE SOLUTION) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 502.0 Td (FAST automates validation through AI-driven analysis -- identifying mismatches, layout anomalies, missing) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 487.5 Td (content, and compliance issues -- and delivers structured, auditable output with evidence for every finding, on) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 473.0 Td (every page.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 446.0 Td (THE VALUE) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 429.5 Td (Up to 80% reduction in manual QA effort, faster release confidence with AI-grade accuracy, and a full traceable) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 415.0 Td (audit trail of every test run and finding -- ready for compliance review.) Tj ET
+0.940 0.960 0.990 rg 54.0 330.5 504.0 76.0 re f 0 0 0 rg
+0.000 0.440 0.750 rg 54.0 330.5 4.0 76.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.000 0.440 0.750 rg 68.0 386.5 Td (Target Personas) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 372.5 Td (Government agencies, financial institutions, insurance companies, and any organization that maintains) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 358.5 Td (high-volume regulated PDF form libraries and requires rapid, auditable validation on each release cycle. Ideal) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 344.5 Td (for QA teams, compliance officers, and document governance leads.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 298.5 Td (Key Business Metrics) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 293.5 m 558.0 293.5 l S 0 0 0 RG
+0.106 0.106 0.106 rg 54.0 265.5 504.0 22.0 re f 0 0 0 rg
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 58.0 273.5 Td (METRIC) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 198.0 273.5 Td (BEFORE FAST) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 308.0 273.5 Td (AFTER FAST) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 438.0 273.5 Td (IMPROVEMENT) Tj ET
+0.992 0.992 0.992 rg 54.0 242.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 251.5 Td (Manual review time per form) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 251.5 Td (2-4 hours) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 251.5 Td (3-5 minutes) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 251.5 Td (~95% reduction) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 242.5 m 558.0 242.5 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 219.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 228.5 Td (Finding consistency) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 228.5 Td (Analyst-dependent) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 228.5 Td (Deterministic AI) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 228.5 Td (Standardized) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 219.5 m 558.0 219.5 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 196.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 205.5 Td (Audit trail) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 205.5 Td (Manual notes/email) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 205.5 Td (Structured HTML report) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 205.5 Td (Full traceability) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 196.5 m 558.0 196.5 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 173.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 182.5 Td (Scanned PDF support) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 182.5 Td (Manual reading) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 182.5 Td (OCR + AI analysis) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 182.5 Td (Automated) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 173.5 m 558.0 173.5 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 150.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 159.5 Td (Visual change detection) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 159.5 Td (Human eye) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 159.5 Td (Pixel-level diff) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 159.5 Td (Sub-0.1% accuracy) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 150.5 m 558.0 150.5 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 127.5 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 136.5 Td (Signature field tracking) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 136.5 Td (Manual scan) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 308.0 136.5 Td (Spatial detection algo) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 438.0 136.5 Td (Automated) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 127.5 m 558.0 127.5 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 77.5 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 89.5 Td (2) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 89.5 Td (Solution Overview) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 3) Tj ET
+
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 7877 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 718.0 Td (Purpose & Business Value) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 713.0 m 558.0 713.0 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 697.0 Td (FAST targets the intersection of document governance and AI automation. It enables QA teams to define) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 682.5 Td (structured test cases against their PDF form library and execute them on demand, receiving a detailed per-page) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 668.0 Td (decision report within minutes.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 639.0 Td (Business Drivers) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 622.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 622.5 Td (Eliminate manual page-by-page comparison effort across form revision cycles) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 608.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 608.0 Td (Standardize QA findings with structured severity levels \(Critical / High / Medium / Low\)) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 593.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 593.5 Td (Accelerate form release cycles from days to minutes with on-demand execution) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 579.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 579.0 Td (Maintain full audit trail for compliance and regulatory review requirements) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 564.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 564.5 Td (Support both digital and scanned \(legacy\) PDF forms through intelligent OCR fallback) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 550.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 550.0 Td (Enable non-technical stakeholders to create validation test cases without writing code) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 521.0 Td (Key Differentiators) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 504.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 504.5 Td (Multi-modal AI: simultaneous text + visual analysis in a single validation pass) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 490.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 490.0 Td (Signature field detection with confidence scoring and spatial zone validation) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 475.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 475.5 Td (Three-panel visual diff snapshots \(expected | actual | diff overlay\) per changed page) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 461.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 461.0 Td (Flexible prompt-based validation rules -- natural language, no code required) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 446.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 446.5 Td (Standalone HTML reports embeddable in stakeholder portals or archived for compliance) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 432.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 432.0 Td (Clear AWS Bedrock migration path for enterprise-scale, multi-tenant deployment) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 397.5 Td (Technology Stack) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 392.5 m 558.0 392.5 l S 0 0 0 RG
+0.106 0.106 0.106 rg 54.0 364.5 504.0 22.0 re f 0 0 0 rg
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 58.0 373.0 Td (LAYER) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 166.0 373.0 Td (TECHNOLOGY) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 284.0 373.0 Td (PURPOSE) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 472.0 373.0 Td (STATUS) Tj ET
+0.992 0.992 0.992 rg 54.0 329.5 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 351.0 Td (Web Framework) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 351.0 Td (Python 3 / Flask) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 351.0 Td (HTTP routing, session management, Jinja2) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 338.5 Td (templating) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 351.0 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 329.5 m 558.0 329.5 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 307.0 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 316.0 Td (Database) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 316.0 Td (SQLite + SQLAlchemy ORM) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 316.0 Td (Projects, forms, test cases, run history, results) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 316.0 Td (MVP / Scale-Up) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 307.0 m 558.0 307.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 272.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 293.5 Td (AI / LLM) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 293.5 Td (Google Gemini 2.5 Flash) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 293.5 Td (Document understanding, validation, structured) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 281.0 Td (JSON output) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 293.5 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 272.0 m 558.0 272.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 249.5 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 258.5 Td (PDF Processing) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 258.5 Td (pdfplumber, pypdf) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 258.5 Td (Text extraction, AcroForm field reading) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 258.5 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 249.5 m 558.0 249.5 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 227.0 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 236.0 Td (OCR) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 236.0 Td (Tesseract + pytesseract) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 236.0 Td (Scanned/legacy PDF text extraction at 300 DPI) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 236.0 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 227.0 m 558.0 227.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 192.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 213.5 Td (Visual Diffing) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 213.5 Td (Pillow \(PIL\), pdf2image,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 201.0 Td (Poppler) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 213.5 Td (Pixel-level page comparison, diff overlay) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 201.0 Td (generation) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 213.5 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 192.0 m 558.0 192.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 169.5 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 178.5 Td (Frontend) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 178.5 Td (Jinja2 HTML / Custom CSS) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 178.5 Td (Web UI, report viewer, form management) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 178.5 Td (Production) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 169.5 m 558.0 169.5 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 147.0 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 156.0 Td (Containers) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 166.0 156.0 Td (Docker / AWS ECS Fargate) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 284.0 156.0 Td (Portable deployment, horizontal scaling) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 472.0 156.0 Td (Roadmap) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 147.0 m 558.0 147.0 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 97.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 109.0 Td (3) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 109.0 Td (Features & Capabilities) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 4) Tj ET
+
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 6634 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 718.0 Td (3.1  Validation Modes) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 713.0 m 558.0 713.0 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 697.0 Td (FAST supports three distinct test modes, each addressing a different QA scenario. All modes produce structured) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 682.5 Td (JSON output categorized into eight finding types with page number, severity, field name, and evidence text.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 653.5 Td (Basic Mode -- General AI Validation) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 637.0 Td (The LLM performs an autonomous review of the entire form with no custom configuration. It checks for spelling) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 622.5 Td (errors, formatting anomalies, missing required fields, layout inconsistencies, and compliance-readiness. Ideal for) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 608.0 Td (routine QA of new form versions.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 581.0 Td (Specific Mode -- Rule-Based Validation) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 564.5 Td (User-defined plain-English validation rules. QA analysts write instructions such as "Verify field X matches policy) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 550.0 Td (Y" or "Confirm all required signatures are present" and FAST applies them precisely via structured LLM) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 535.5 Td (prompting. No coding required.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 508.5 Td (Benchmark Mode -- Golden-Copy Comparison) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 492.0 Td (A reference \(approved\) PDF is compared against a test form using both AI text analysis and pixel-level visual) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 477.5 Td (diffing. Produces page-by-page similarity scores and detailed change evidence. Ideal for regression testing after) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 463.0 Td (form revisions.) Tj ET
+0.940 0.960 0.990 rg 54.0 376.5 504.0 76.0 re f 0 0 0 rg
+0.000 0.440 0.750 rg 54.0 376.5 4.0 76.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.000 0.440 0.750 rg 68.0 432.5 Td (Structured AI Output Schema) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 418.5 Td (All modes produce categorized findings: spelling_errors, format_issues, value_mismatches, missing_content,) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 404.5 Td (extra_content, layout_anomalies, visual_mismatches, compliance_issues -- each with page, severity,) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 390.5 Td (field_name, and evidence. Temperature set to 0.0 for maximum determinism.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 344.5 Td (3.2  Visual Difference Engine) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 339.5 m 558.0 339.5 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 323.5 Td (The visual diff engine converts both PDFs to high-resolution images \(200 DPI\), performs pixel-level comparison) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 309.0 Td (using ImageChops.difference\(\), and generates a three-panel composite snapshot \(expected | actual | diff overlay\)) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 294.5 Td (for every changed page.) Tj ET
+0.106 0.106 0.106 rg 54.0 262.0 504.0 22.0 re f 0 0 0 rg
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 58.0 270.0 Td (FINDING TYPE) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 198.0 270.0 Td (PIXEL DIFF THRESHOLD) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 334.0 270.0 Td (CLASSIFICATION) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 444.0 270.0 Td (REPORT STATUS) Tj ET
+0.992 0.992 0.992 rg 54.0 239.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 248.0 Td (No material change) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 248.0 Td (< 0.10% pixels different) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 334.0 248.0 Td (Match) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 444.0 248.0 Td (OK \(Green\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 239.0 m 558.0 239.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 216.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 225.0 Td (Minor visual difference) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 225.0 Td (0.10% to 1.99%) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 334.0 225.0 Td (Warning) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 444.0 225.0 Td (WARN \(Orange\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 216.0 m 558.0 216.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 193.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 202.0 Td (Significant content change) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 202.0 Td (>= 2.0%) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 334.0 202.0 Td (Major) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 444.0 202.0 Td (BAD \(Red\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 193.0 m 558.0 193.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 170.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 179.0 Td (Signature field change) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 198.0 179.0 Td (Spatial proximity + keyword) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 334.0 179.0 Td (Signature Candidate) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 444.0 179.0 Td (REVIEW \(Blue\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 170.0 m 558.0 170.0 l S 0 0 0 RG
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 143.5 Td (Signature Detection Algorithm) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 127.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 127.0 Td (Keyword scan per page: PRESIDENT, SECRETARY, SIGNATURE) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 112.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 112.5 Td (Spatial zone validation: change must appear in the lower 45% of the page) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 98.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 98.0 Td (Bounding box proximity: within 120px horizontal and 70px vertical of keyword anchor) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 83.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 83.5 Td (Compactness check: diff area must be < 3.0% of page to eliminate false positives) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 69.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 69.0 Td (Minimum diff threshold: >= 0.01% pixels to filter rendering noise) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 5) Tj ET
+
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 6065 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 730.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 730.0 Td (Confidence levels: HIGH \(PRESIDENT/SECRETARY + <= 1.0% diff\), MEDIUM \(generic SIGNATURE\)) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 703.5 Td (3.3  OCR & Intelligent Text Extraction) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 698.5 m 558.0 698.5 l S 0 0 0 RG
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 670.0 Td (Digital PDFs) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 653.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 653.5 Td (Embedded text extraction via pdfplumber with per-page segmentation) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 639.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 639.0 Td (AcroForm field enumeration returning field name and current value) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 624.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 624.5 Td (Automatic detection of scanned vs. digital content on a per-page basis) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 610.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 610.0 Td (Full extracted text and per-page text arrays included in LLM prompt context) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 583.0 Td (Scanned / Legacy PDFs) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 566.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 566.5 Td (OCR fallback via Tesseract at 300 DPI for any page detected as image-only) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 552.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 552.0 Td (pdf2image Poppler pipeline for high-fidelity PDF-to-image conversion) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 537.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 537.5 Td (OCR extraction metadata \(DPI, used_ocr flag, page_count\) passed to LLM) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 523.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 523.0 Td (Configurable OCR DPI for speed/quality tradeoff in different document types) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 496.5 Td (3.4  Reporting & Audit Trail) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 491.5 m 558.0 491.5 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 475.5 Td (After each test run, FAST generates a standalone HTML report that can be shared with stakeholders, embedded) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 461.0 Td (in portals, or archived for compliance purposes. Reports are self-contained -- no external dependencies -- with) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 446.5 Td (embedded visual evidence.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 417.5 Td (Decision Matrix) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 401.0 Td (Per-page table with columns: Status, Severity, Decision, Evidence, Similarity Score, and visual Snapshot link.) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 386.5 Td (Filterable by Mismatch / Review / Match. Evidence text included up to 900 characters per finding.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 359.5 Td (Severity Classification) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 343.0 Td (Four-level severity system: Critical > High > Medium > Low, derived from the AI finding type and page-level) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 328.5 Td (visual analysis. Each page receives a deterministic verdict based on the highest-severity finding on that page.) Tj ET
+BT /F2 10.5 Tf 0.150 0.150 0.150 rg 54.0 301.5 Td (Run History & Evidence) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 285.0 Td (Full execution history with pass/warn/error counters per run. Individual result drill-down per test case.) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 62.0 270.5 Td (Three-panel PNG snapshots embedded in reports. AI-generated narrative summary accompanies all findings.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 238.0 Td (3.5  Project & Form Management) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 233.0 m 558.0 233.0 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 217.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 217.0 Td (Multi-project workspace: each project encapsulates forms, test cases, and run history) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 202.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 202.5 Td (PDF upload with automatic duplicate-name resolution and strict .pdf extension enforcement) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 188.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 188.0 Td (Form version tracking via naming convention \(filename-based versioning\)) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 173.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 173.5 Td (Benchmark \(golden copy\) form designation per test case for regression workflows) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 159.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 159.0 Td (Test case library: create, view, and delete test cases independently of run execution) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 144.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 144.5 Td (Bulk test execution: select multiple test cases and execute them in a single run) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 130.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 130.0 Td (Real-time run status polling endpoint for live UI progress tracking) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 115.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 115.5 Td (Run dashboard: per-project summary of latest run results at a glance) Tj ET
+0.890 0.094 0.216 rg 54.0 69.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 81.0 Td (4) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 81.0 Td (Technical Architecture) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 6) Tj ET
+
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 6357 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 718.0 Td (4.1  Component Overview) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 713.0 m 558.0 713.0 l S 0 0 0 RG
+0.120 0.120 0.170 rg 54.0 491.0 504.0 216.0 re f 0 0 0 rg
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 692.0 Td (-- PRESENTATION LAYER ------------------------------------------) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 681.0 Td (Browser \(Jinja2 Templates + Custom CSS\)) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 670.0 Td (  Home | Forms | Test Cases | Execute | Results | Reports) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 659.0 Td (                       | HTTP \(19 endpoints\)) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 648.0 Td (-- APPLICATION LAYER --------------------------------------------) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 637.0 Td (Flask Web Server  \(app/routes/web.py\)) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 626.0 Td (  [Auth/Session] [Project/Form Mgmt] [TestCase/Runs/Results]) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 615.0 Td (  Runner Service  \(app/services/runner.py\)) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 604.0 Td (                       |) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 593.0 Td (-- ENGINE LAYER -------------------------------------------------) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 582.0 Td ([extractor.py]   [visual_diff.py]   [prompt_builder.py]) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 571.0 Td ([pdfplumber]     [pdf2image+Pillow]  [llm_client.py -> Gemini]) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 560.0 Td ([pytesseract]    [Signature Detect]  [Temperature=0.0]) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 549.0 Td (                       |) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 538.0 Td (-- DATA LAYER ---------------------------------------------------) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 527.0 Td (SQLite \(fast.db\)                 File System \(instance/\)) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 516.0 Td (Projects / Forms /               uploads/  reports/) Tj ET
+BT /F3 8.0 Tf 0.800 0.840 0.960 rg 62.0 505.0 Td (TestCases / Runs / Results       visual_diffs/) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 472.0 Td (4.2  Test Execution Data Flow) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 467.0 m 558.0 467.0 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 433.0 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 441.0 Td (1) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 444.0 Td (User Triggers a Run) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 423.5 Td (Analyst selects test cases and clicks Execute. A Run record is created in the database with status "pending".) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 409.7 Td (The web server returns immediately; processing executes per test case via the runner service.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 405.5 m 69.0 405.5 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 373.5 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 381.5 Td (2) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 384.5 Td (PDF Text Extraction) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 364.0 Td (extractor.py reads the form PDF, extracts embedded text via pdfplumber, and enumerates AcroForm fields. If) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 350.2 Td (the document is detected as scanned, Tesseract OCR is invoked at 300 DPI as a fallback pipeline.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 345.9 m 69.0 345.9 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 313.9 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 321.9 Td (3) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 324.9 Td (Visual Diff Generation \(Benchmark mode\)) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 304.4 Td (For benchmark test cases, visual_diff.py converts both PDFs to images and performs pixel-level comparison.) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 290.6 Td (Three-panel snapshots saved to instance/visual_diffs/. Per-page similarity scores and signature candidates) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 276.9 Td (computed.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 272.6 m 69.0 272.6 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 240.6 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 248.6 Td (4) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 251.6 Td (Prompt Construction) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 231.1 Td (prompt_builder.py assembles a structured prompt containing extracted text, per-page text array, form fields,) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 217.3 Td (visual diff evidence, and mode-specific validation instructions. A deterministic system message ensures) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 203.5 Td (consistent JSON output.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 199.3 m 69.0 199.3 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 167.3 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 175.3 Td (5) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 178.3 Td (LLM Analysis) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 157.8 Td (The prompt is sent to Gemini \(temperature=0.0 for maximum determinism\). The model returns structured JSON) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 144.0 Td (with categorized findings, severity levels, page references, and an overall summary narrative across all 8) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 130.2 Td (finding categories.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 125.9 m 69.0 125.9 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 93.9 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 101.9 Td (6) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 104.9 Td (Reconciliation & Persistence) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 84.4 Td (The runner reconciles visual findings with LLM output, recomputes summary counts, derives pass/warn/error) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 70.7 Td (metrics, and persists the full result_json to the database alongside the generated HTML report path.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 66.4 m 69.0 66.4 l S 0 0 0 RG
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 7) Tj ET
+
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 6618 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 54.0 712.0 28.0 28.0 re f 0 0 0 rg
+BT /F2 13.0 Tf 1.000 1.000 1.000 rg 61.0 720.0 Td (7) Tj ET
+BT /F2 11.0 Tf 0.120 0.120 0.120 rg 90.0 723.0 Td (HTML Report Generation) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 702.5 Td (html_report.py generates a standalone HTML document with decision matrix, severity chips, visual snapshot) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 688.7 Td (links, and summary metrics. Written to instance/reports/ and served via a dedicated endpoint with) Tj ET
+BT /F1 9.5 Tf 0.220 0.220 0.220 rg 90.0 675.0 Td (SAMEORIGIN frame policy.) Tj ET
+0.750 0.750 0.750 RG 0.5 w 67.0 670.7 m 69.0 670.7 l S 0 0 0 RG
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 644.7 Td (4.3  Data Model) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 639.7 m 558.0 639.7 l S 0 0 0 RG
+0.106 0.106 0.106 rg 54.0 611.7 504.0 22.0 re f 0 0 0 rg
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 58.0 620.2 Td (ENTITY) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 138.0 620.2 Td (KEY FIELDS) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 348.0 620.2 Td (RELATIONSHIPS) Tj ET
+0.992 0.992 0.992 rg 54.0 589.2 504.0 22.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 598.2 Td (Project) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 598.2 Td (id, name, description, created_at) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 598.2 Td (Has many Forms, TestCases, Runs \(cascade delete\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 589.2 m 558.0 589.2 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 554.2 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 575.7 Td (Form) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 575.7 Td (id, project_id, name, file_path, size_bytes, version,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 563.2 Td (uploaded_at) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 575.7 Td (Belongs to Project; referenced by TestCase as form &) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 563.2 Td (benchmark) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 554.2 m 558.0 554.2 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 519.2 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 540.7 Td (TestCase) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 540.7 Td (id, project_id, form_id, benchmark_form_id, name,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 528.2 Td (mode, prompt_text) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 540.7 Td (Belongs to Project & Form; optional benchmark Form) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 528.2 Td (reference) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 519.2 m 558.0 519.2 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 484.2 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 505.7 Td (Run) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 505.7 Td (id, project_id, status, total, passed, warnings, errors,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 493.2 Td (triggered_by) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 505.7 Td (Belongs to Project; has many RunResults \(cascade) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 493.2 Td (delete\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 484.2 m 558.0 484.2 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 436.7 504.0 47.5 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 470.7 Td (RunResult) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 470.7 Td (id, run_id, test_case_id, mode, status, passed,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 458.2 Td (warnings, errors, result_json, duration,) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 138.0 445.7 Td (report_html_path) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 470.7 Td (Belongs to Run & TestCase; references) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 348.0 458.2 Td (visual_diff_images \(JSON array\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 436.7 m 558.0 436.7 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 386.7 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 398.7 Td (5) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 398.7 Td (Current Limitations) Tj ET
+1.000 0.980 0.940 rg 54.0 302.7 504.0 76.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 302.7 4.0 76.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 1.000 0.600 0.000 rg 68.0 358.7 Td (MVP Scope Notice) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 344.7 Td (FAST is currently in MVP \(Minimum Viable Product\) state. The limitations below are known, documented, and) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 330.7 Td (addressed in the enterprise roadmap. They do not reflect the target production architecture -- see Section 6) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 316.7 Td (for the AWS Bedrock migration path.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 270.7 Td (5.1  Capacity & Scale Constraints) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 265.7 m 558.0 265.7 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 221.7 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 221.7 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 243.7 Td (Form Upload Limit -- 10 Forms per Project) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 230.7 Td (Hard-coded to 10 PDF forms per project. Exceeding this limit blocks further uploads. This is a development convenience) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 204.7 Td (guard, not a platform constraint -- trivially configurable or removed in production.) Tj ET
+0.890 0.094 0.216 rg 54.0 162.6 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 162.6 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 184.6 Td (File Size -- No Enforcement) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 171.6 Td (There is no maximum PDF file size validation on upload. Large PDFs \(100+ pages, embedded images\) will consume) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 145.6 Td (significant memory during OCR and visual diff generation, potentially causing timeouts or process crashes.) Tj ET
+0.890 0.094 0.216 rg 54.0 103.6 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 103.6 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 125.6 Td (Serial Test Execution -- No Concurrency) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 112.6 Td (Test cases within a run are processed serially. There is no parallel execution engine or job queue. For large runs \(>5) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 86.6 Td (complex test cases\), execution time can extend into several minutes, blocking the web request thread.) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 8) Tj ET
+
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 6015 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.890 0.094 0.216 rg 54.0 702.0 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 702.0 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 724.0 Td (Results History -- 20-Run Display Limit) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 711.0 Td (The results history view is limited to displaying the 20 most recent runs per project. Older records persist in the database) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 685.0 Td (but are not accessible via the UI without modification.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 659.0 Td (5.2  Security & Authentication) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 654.0 m 558.0 654.0 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 610.0 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 610.0 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 632.0 Td (Stub Authentication -- No Password Validation) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 619.0 Td (The current login mechanism accepts any username/password combination. There is no real identity provider integration,) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 593.0 Td (password hashing, or user database. NOT suitable for production without replacement by a proper IAM solution \(e.g.,) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 579.9 Td (Cognito\).) Tj ET
+0.890 0.094 0.216 rg 54.0 537.8 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 537.8 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 559.8 Td (No Role-Based Access Control \(RBAC\)) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 546.8 Td (All authenticated sessions have full access to all projects and data. There are no user roles \(admin, analyst, read-only\)) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 520.8 Td (and no project-level access restrictions. All users can see, modify, and delete any project.) Tj ET
+0.890 0.094 0.216 rg 54.0 478.8 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 478.8 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 500.8 Td (Hardcoded Flask Secret Key) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 487.8 Td (The Flask SECRET_KEY is set to the literal string "dev" in the application factory. Session cookies are cryptographically) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 461.8 Td (weak in this configuration -- sessions can be forged. Must be replaced with a cryptographically strong random value from) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 448.7 Td (Secrets Manager.) Tj ET
+0.890 0.094 0.216 rg 54.0 406.7 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 406.7 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 428.7 Td (No CSRF Protection) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 415.7 Td (Form submissions do not include CSRF tokens. In a multi-user production deployment, this is a cross-site request forgery) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 389.7 Td (vulnerability. Flask-WTF or equivalent must be added.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 363.6 Td (5.3  Infrastructure & Persistence) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 358.6 m 558.0 358.6 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 314.6 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 314.6 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 336.6 Td (SQLite -- Not Production-Scale) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 323.6 Td (SQLite provides no network access, no concurrent write support, and limited scalability. In a containerized or) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 297.6 Td (multi-instance deployment, a proper RDBMS \(PostgreSQL, Amazon RDS\) is required. SQLAlchemy ORM requires only a) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 284.6 Td (connection string change.) Tj ET
+0.890 0.094 0.216 rg 54.0 242.5 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 242.5 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 264.5 Td (Local File System Dependency) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 251.5 Td (Uploaded PDFs, generated reports, and visual diff images are stored on the local file system in the instance/ directory.) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 225.5 Td (This is incompatible with horizontal scaling or container restarts without persistent volume or object storage \(Amazon S3\).) Tj ET
+0.890 0.094 0.216 rg 54.0 183.5 4.0 38.0 re f 0 0 0 rg
+0.998 0.970 0.972 rg 58.0 183.5 500.0 38.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 68.0 205.5 Td (No LLM Request Timeout or Retry Logic) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 68.0 192.5 Td (There is no timeout configured for Gemini API calls and no retry logic for transient failures. A slow or failed API response) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 68.0 166.5 Td (will block the entire run execution thread, causing the frontend to hang indefinitely until the request completes or errors.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 140.5 Td (5.4  Functional Gaps) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 135.5 m 558.0 135.5 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 119.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 119.5 Td (No REST API: FAST is web-UI-only. No endpoints for CI/CD pipeline or automation tool integration.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 105.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 105.0 Td (No scheduling or automation: test runs must be triggered manually. No EventBridge, webhooks, or CI) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 90.5 Td (hooks.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 76.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 76.0 Td (No audit logging: user actions \(login, upload, delete, run trigger\) are not recorded to an immutable audit) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 534.2 30.5 Td (Page 9) Tj ET
+
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 24 0 R >>
+endobj
+26 0 obj
+<< /Length 6687 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 730.0 Td (trail.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 715.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 715.5 Td (Single LLM provider dependency: tightly coupled to Google Gemini API. Provider outage directly impacts) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 701.0 Td (availability.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 686.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 686.5 Td (No concurrent test execution: serial processing only; large test suites block for extended periods.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 672.0 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 672.0 Td (No result trending: no analytics, no accuracy score tracking over time, no comparison between runs.) Tj ET
+BT /F1 10.0 Tf 0.890 0.094 0.216 rg 68.0 657.5 Td (*) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 82.0 657.5 Td (No multi-tenant isolation: no organization-level access controls or data separation between client groups.) Tj ET
+0.890 0.094 0.216 rg 54.0 611.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 623.0 Td (6) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 623.0 Td (AWS Bedrock & Container Architecture) Tj ET
+1.000 0.980 0.940 rg 54.0 513.0 504.0 90.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 513.0 4.0 90.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 1.000 0.600 0.000 rg 68.0 583.0 Td (Enterprise Migration Path) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 569.0 Td (This section describes a production-ready, enterprise-grade deployment of FAST on AWS. It replaces Google) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 555.0 Td (Gemini with Amazon Bedrock, containerizes all components via Docker and Amazon ECS Fargate, and) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 541.0 Td (introduces managed services for storage, database, auth, async execution, and security. All limitations from) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 527.0 Td (Section 5 are addressed.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 481.0 Td (6.1  Migration Overview) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 476.0 m 558.0 476.0 l S 0 0 0 RG
+0.106 0.106 0.106 rg 54.0 448.0 504.0 22.0 re f 0 0 0 rg
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 58.0 456.0 Td (CURRENT \(MVP\)) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 278.0 456.0 Td (AWS TARGET ARCHITECTURE) Tj ET
+0.992 0.992 0.992 rg 54.0 425.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 434.0 Td (Google Gemini 2.5 Flash API) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 434.0 Td (Amazon Bedrock -- Claude 3.5 Sonnet / Nova Pro / Titan) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 425.0 m 558.0 425.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 402.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 411.0 Td (Flask dev server \(run.py\)) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 411.0 Td (Gunicorn in Docker container -> ECS Fargate \(serverless\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 402.0 m 558.0 402.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 379.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 388.0 Td (SQLite local file) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 388.0 Td (Amazon RDS \(PostgreSQL\) Multi-AZ via SQLAlchemy) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 379.0 m 558.0 379.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 356.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 365.0 Td (Local instance/ filesystem) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 365.0 Td (Amazon S3 \(uploads, reports, visual diffs\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 356.0 m 558.0 356.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 333.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 342.0 Td (Stub authentication) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 342.0 Td (Amazon Cognito \(OAuth 2.0 / SAML / OIDC federation\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 333.0 m 558.0 333.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 310.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 319.0 Td (Serial test execution) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 319.0 Td (AWS SQS job queue + ECS Fargate worker containers) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 310.0 m 558.0 310.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 287.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 296.0 Td (Manual deployment) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 296.0 Td (AWS CDK / Terraform IaC + CodePipeline CI/CD) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 287.0 m 558.0 287.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 264.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 273.0 Td (No audit logging) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 273.0 Td (AWS CloudTrail + CloudWatch Logs + structured metrics) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 264.0 m 558.0 264.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 241.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 250.0 Td (Hardcoded secrets) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 278.0 250.0 Td (AWS Secrets Manager + IAM roles \(no env var secrets\)) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 241.0 m 558.0 241.0 l S 0 0 0 RG
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 211.0 Td (6.2  AWS Services & Components) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 206.0 m 558.0 206.0 l S 0 0 0 RG
+0.994 0.978 0.938 rg 54.0 156.0 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 156.0 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 159.0 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 182.5 Td (Amazon Bedrock) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 169.0 Td (Replaces Gemini as the LLM provider. Supports Claude 3.5 Sonnet, Amazon Nova, and Titan models via unified API.) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 141.0 Td (Provides enterprise SLA, data residency in AWS regions, no data egress to third-party providers, and model switching) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 128.0 Td (without code changes.) Tj ET
+0.994 0.978 0.938 rg 54.0 75.9 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 75.9 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 78.9 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 102.4 Td (Amazon ECS Fargate) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 88.9 Td (Serverless container runtime for the FAST web application and background worker containers. Auto-scales task count) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 10) Tj ET
+
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 26 0 R >>
+endobj
+28 0 obj
+<< /Length 6389 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 731.0 Td (based on SQS queue depth. No EC2 instance management required. Integrates with ALB for load balancing and ACM for) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 718.0 Td (TLS.) Tj ET
+0.994 0.978 0.938 rg 54.0 665.9 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 665.9 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 668.9 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 692.4 Td (Amazon RDS \(PostgreSQL\)) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 678.9 Td (Replaces SQLite with a fully managed relational database. Multi-AZ deployment for high availability. Supports connection) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 650.9 Td (pooling via RDS Proxy. SQLAlchemy ORM requires only a connection string change -- no application code refactoring.) Tj ET
+0.994 0.978 0.938 rg 54.0 598.9 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 598.9 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 601.9 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 625.4 Td (Amazon S3) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 611.9 Td (Object storage for uploaded PDFs, generated HTML reports, visual diff PNGs, and OCR artifacts. Replaces the local) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 583.9 Td (instance/ directory. Enables pre-signed URL generation for secure, time-limited report sharing with external stakeholders.) Tj ET
+0.994 0.978 0.938 rg 54.0 531.8 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 531.8 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 534.8 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 558.3 Td (Amazon Cognito) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 544.8 Td (Managed identity provider replacing the stub auth system. Supports SAML 2.0 federation with enterprise IdPs \(Active) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 516.8 Td (Directory, Okta\), OAuth 2.0 / OIDC flows, MFA enforcement, and role-based group assignments for RBAC) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 503.8 Td (implementation.) Tj ET
+0.994 0.978 0.938 rg 54.0 451.7 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 451.7 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 454.7 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 478.2 Td (Amazon SQS + Worker Containers) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 464.7 Td (Decouples test run submission from execution. The web app enqueues jobs to SQS; ECS Fargate worker tasks consume) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 436.7 Td (and process them asynchronously. Enables parallel execution across multiple workers and prevents UI timeouts on large) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 423.6 Td (test runs.) Tj ET
+0.994 0.978 0.938 rg 54.0 371.6 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 371.6 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 374.6 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 398.1 Td (AWS Secrets Manager) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 384.6 Td (Securely stores and rotates API keys, database credentials, and Flask secret keys. Containers retrieve secrets at runtime) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 356.6 Td (via IAM role -- no secrets in environment variables or container image layers. Automatic rotation on configurable) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 343.5 Td (schedule.) Tj ET
+0.994 0.978 0.938 rg 54.0 291.5 504.0 44.0 re f 0 0 0 rg
+1.000 0.600 0.000 rg 54.0 291.5 504.0 44.0 re f 0 0 0 rg
+0.994 0.978 0.938 rg 57.0 294.5 498.0 38.0 re f 0 0 0 rg
+BT /F2 10.5 Tf 0.100 0.100 0.100 rg 66.0 318.0 Td (Amazon CloudWatch) Tj ET
+BT /F1 9.0 Tf 0.300 0.300 0.300 rg 66.0 304.5 Td (Centralized logging, metric collection, and alerting. Container logs stream directly to CloudWatch Logs. Custom metrics) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 276.5 Td (track run duration, LLM latency, and error rates. Dashboards provide operational visibility; alarms page on-call for SLA) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 66.0 263.4 Td (breaches.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 233.4 Td (6.3  Container Architecture) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 228.4 m 558.0 228.4 l S 0 0 0 RG
+0.120 0.120 0.170 rg 54.0 54.0 504.0 168.4 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 207.9 Td (-- AWS Cloud \(VPC\) -------------------------------------------------) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 197.4 Td (|  +-- Public Subnet -----------------------------------------------+) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 186.9 Td (|  |  Application Load Balancer \(ALB\)                               |) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 176.4 Td (|  |  + AWS WAF  +  ACM TLS Certificate  +  Cognito Authorizer      |) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 165.9 Td (|  +-----------------------------+------------------------------------+) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 155.4 Td (|                               | HTTPS/443                          ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 144.9 Td (|  +-- Private Subnet \(ECS Cluster -- Fargate\) -------------------+  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 134.4 Td (|  |                            |                                 |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 123.9 Td (|  |  +-- FAST Web Container \(fast-web:latest\) ----------------+  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 113.4 Td (|  |  |  Gunicorn \(4 workers\) -> Flask App \(app/\)              |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 102.9 Td (|  |  |  Tesseract + Poppler \(system libs\)                     |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 92.4 Td (|  |  |  boto3: S3 uploads/downloads + Bedrock inference       |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 81.9 Td (|  |  |  Cognito JWT validation middleware                      |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 71.4 Td (|  |  +-----------------------------------------------------------+  |  ) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 11) Tj ET
+
+endstream
+endobj
+27 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 28 0 R >>
+endobj
+30 0 obj
+<< /Length 5877 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 732.5 Td (|  |                                                             |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 722.0 Td (|  |  +-- FAST Worker Container \(fast-worker:latest\) ----------+  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 711.5 Td (|  |  |  SQS Long-Poll -> runner.py pipeline                   |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 701.0 Td (|  |  |  engine/ \(extractor, visual_diff, prompt_builder\)      |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 690.5 Td (|  |  |  Writes results -> RDS + reports/diffs -> S3           |  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 680.0 Td (|  |  +-----------------------------------------------------------+  |  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 669.5 Td (|  +--------------------------------------------------------------------+  ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 659.0 Td (|                                                                    ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 648.5 Td (|  [Amazon RDS]    [Amazon S3]         [Amazon Bedrock]              ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 638.0 Td (|  PostgreSQL      PDFs, Reports,       Claude 3.5 Sonnet            ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 627.5 Td (|  Multi-AZ        Diffs, Artifacts     \(Replaces Gemini\)            ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 617.0 Td (|                                                                    ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 606.5 Td (|  [Amazon SQS]   [Cognito]            [CloudWatch + CloudTrail]     ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 596.0 Td (|  Job Queue       Auth / RBAC          Logs + Metrics + Alerts      ) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 585.5 Td (-------------------------------------------------------------------  ) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 552.5 Td (6.4  Dockerfile -- Multi-Stage Web Container) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 547.5 m 558.0 547.5 l S 0 0 0 RG
+0.120 0.120 0.170 rg 54.0 250.5 504.0 291.0 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 527.0 Td (# Stage 1: Build dependencies) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 516.5 Td (FROM python:3.11-slim AS builder) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 506.0 Td (WORKDIR /app) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 495.5 Td (COPY requirements.txt .) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 485.0 Td (RUN pip install --no-cache-dir --prefix=/install -r requirements.txt) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 464.0 Td (# Stage 2: Runtime image) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 453.5 Td (FROM python:3.11-slim) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 432.5 Td (# System dependencies for PDF processing) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 422.0 Td (RUN apt-get update && apt-get install -y --no-install-recommends \\) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 411.5 Td (    tesseract-ocr poppler-utils libgl1 \\) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 401.0 Td (    && rm -rf /var/lib/apt/lists/*) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 380.0 Td (WORKDIR /app) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 369.5 Td (COPY --from=builder /install /usr/local) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 359.0 Td (COPY . .) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 338.0 Td (# Non-root user for security hardening) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 327.5 Td (RUN useradd -m fastuser && chown -R fastuser:fastuser /app) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 317.0 Td (USER fastuser) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 296.0 Td (ENV FLASK_ENV=production PORT=8080) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 285.5 Td (EXPOSE 8080) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 275.0 Td (CMD ["gunicorn","--workers","4","--bind","0.0.0.0:8080",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 264.5 Td (     "--timeout","120","--access-logfile","-","run:app"]) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 231.5 Td (6.5  Amazon Bedrock LLM Adapter) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 226.5 m 558.0 226.5 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 210.5 Td (Replacing llm_client.py's Gemini call with Amazon Bedrock requires only a lightweight adapter swap. The prompt) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 196.0 Td (schema, JSON output contract, and system message remain identical -- only the transport layer changes:) Tj ET
+0.120 0.120 0.170 rg 54.0 54.0 504.0 133.5 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 173.0 Td (import boto3, json, os) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 152.0 Td (class BedrockLLMClient:) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 141.5 Td (    def __init__\(self\):) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 131.0 Td (        self.client = boto3.client\("bedrock-runtime", region_name="us-east-1"\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 120.5 Td (        self.model_id = os.getenv\("BEDROCK_MODEL_ID",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 110.0 Td (                                  "anthropic.claude-3-5-sonnet-20241022-v2:0"\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 89.0 Td (    def validate\(self, system_prompt: str, user_prompt: str\) -> dict:) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 78.5 Td (        body = json.dumps\({) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 68.0 Td (            "anthropic_version": "bedrock-2023-05-31",) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 12) Tj ET
+
+endstream
+endobj
+29 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 30 0 R >>
+endobj
+32 0 obj
+<< /Length 5659 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 732.5 Td (            "max_tokens": 8192,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 722.0 Td (            "temperature": 0.0,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 711.5 Td (            "system": system_prompt,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 701.0 Td (            "messages": [{"role": "user", "content": user_prompt}]) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 690.5 Td (        }\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 680.0 Td (        response = self.client.invoke_model\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 669.5 Td (            modelId=self.model_id,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 659.0 Td (            body=body,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 648.5 Td (            contentType="application/json",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 638.0 Td (            accept="application/json") Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 627.5 Td (        \)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 617.0 Td (        result = json.loads\(response["body"].read\(\)\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 606.5 Td (        return json.loads\(result["content"][0]["text"]\)  # same schema) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 573.5 Td (6.6  Infrastructure as Code \(AWS CDK -- Python\)) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 568.5 m 558.0 568.5 l S 0 0 0 RG
+0.120 0.120 0.170 rg 54.0 114.0 504.0 448.5 re f 0 0 0 rg
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 548.0 Td (# cdk_stack.py -- FAST on ECS + Bedrock + RDS + S3 + Cognito) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 537.5 Td (from aws_cdk import \(Stack, Duration,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 527.0 Td (    aws_ecs as ecs, aws_ecs_patterns as patterns,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 516.5 Td (    aws_rds as rds, aws_s3 as s3,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 506.0 Td (    aws_sqs as sqs, aws_cognito as cognito, aws_iam as iam\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 485.0 Td (class FastStack\(Stack\):) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 474.5 Td (    def __init__\(self, scope, id, **kwargs\):) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 464.0 Td (        super\(\).__init__\(scope, id, **kwargs\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 443.0 Td (        # S3 -- persistent storage for uploads, reports, diffs) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 432.5 Td (        bucket = s3.Bucket\(self, "FastAssets",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 422.0 Td (            versioned=True,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 411.5 Td (            encryption=s3.BucketEncryption.S3_MANAGED\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 390.5 Td (        # RDS PostgreSQL -- replaces SQLite) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 380.0 Td (        db = rds.DatabaseInstance\(self, "FastDB",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 369.5 Td (            engine=rds.DatabaseInstanceEngine.postgres\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 359.0 Td (                version=rds.PostgresEngineVersion.VER_16\),) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 348.5 Td (            multi_az=True, deletion_protection=True\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 327.5 Td (        # SQS -- async test execution job queue) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 317.0 Td (        queue = sqs.Queue\(self, "FastJobQueue",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 306.5 Td (            visibility_timeout=Duration.minutes\(15\)\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 285.5 Td (        # Cognito -- replaces stub auth with SAML/OIDC) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 275.0 Td (        pool = cognito.UserPool\(self, "FastUsers",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 264.5 Td (            mfa=cognito.Mfa.REQUIRED,) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 254.0 Td (            password_policy=cognito.PasswordPolicy\(min_length=12\)\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 233.0 Td (        # ECS Fargate web service with ALB) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 222.5 Td (        svc = patterns.ApplicationLoadBalancedFargateService\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 212.0 Td (            self, "FastWeb",) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 201.5 Td (            task_image_options=patterns.ApplicationLoadBalancedTaskImageOptions\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 191.0 Td (                image=ecs.ContainerImage.from_asset\(".", file="Dockerfile.web"\)\),) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 180.5 Td (            cpu=1024, memory_limit_mib=2048, desired_count=2\)) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 159.5 Td (        # Grant Bedrock inference permissions via IAM) Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 149.0 Td (        svc.task_definition.task_role.add_managed_policy\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 138.5 Td (            iam.ManagedPolicy.from_aws_managed_policy_name\() Tj ET
+BT /F3 7.5 Tf 0.800 0.840 0.960 rg 62.0 128.0 Td (                "AmazonBedrockFullAccess"\)\)) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 95.0 Td (6.7  Recommended Amazon Bedrock Models) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 90.0 m 558.0 90.0 l S 0 0 0 RG
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 13) Tj ET
+
+endstream
+endobj
+31 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 32 0 R >>
+endobj
+34 0 obj
+<< /Length 8265 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.106 0.106 0.106 rg 54.0 718.0 504.0 22.0 re f 0 0 0 rg
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 58.0 726.5 Td (MODEL) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 158.0 726.5 Td (MODEL ID) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 326.0 726.5 Td (RECOMMENDED FOR) Tj ET
+BT /F2 7.5 Tf 1.000 1.000 1.000 rg 474.0 726.5 Td (TRADE-OFF) Tj ET
+0.992 0.992 0.992 rg 54.0 683.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 704.5 Td (Claude 3.5 Sonnet v2) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 158.0 704.5 Td (anthropic.claude-3-5-sonnet-20241022-v2:0) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 704.5 Td (Default -- highest accuracy, complex) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 692.0 Td (multi-page forms) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 704.5 Td (Higher cost per) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 692.0 Td (token) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 683.0 m 558.0 683.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 648.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 669.5 Td (Claude 3 Haiku) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 158.0 669.5 Td (anthropic.claude-3-haiku-20240307-v1:0) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 669.5 Td (High-volume basic validation, cost) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 657.0 Td (optimisation) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 669.5 Td (Lower reasoning) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 657.0 Td (depth) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 648.0 m 558.0 648.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 613.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 634.5 Td (Amazon Nova Pro) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 158.0 634.5 Td (amazon.nova-pro-v1:0) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 634.5 Td (AWS-native workloads, no Anthropic) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 622.0 Td (dependency required) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 634.5 Td (Prompt schema) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 622.0 Td (retuning needed) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 613.0 m 558.0 613.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 578.0 504.0 35.0 re f 0 0 0 rg
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 599.5 Td (Amazon Titan Text) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 58.0 587.0 Td (Premier) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 158.0 599.5 Td (amazon.titan-text-premier-v1:0) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 599.5 Td (Cost-sensitive or GovCloud) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 326.0 587.0 Td (regulated deployments) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 599.5 Td (Limited structured) Tj ET
+BT /F1 8.5 Tf 0.220 0.220 0.220 rg 474.0 587.0 Td (JSON output) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 578.0 m 558.0 578.0 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 528.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 540.0 Td (7) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 540.0 Td (Product Roadmap) Tj ET
+0.106 0.106 0.106 rg 54.0 498.0 504.0 22.0 re f 0 0 0 rg
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 58.0 506.0 Td (PHASE) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 130.0 506.0 Td (DELIVERABLE) Tj ET
+BT /F2 8.0 Tf 1.000 1.000 1.000 rg 470.0 506.0 Td (PRIORITY) Tj ET
+0.992 0.992 0.992 rg 54.0 462.0 504.0 36.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 484.0 Td (Phase 1) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 484.0 Td (AWS Bedrock LLM adapter, Docker containerization, RDS migration, S3 file) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 471.0 Td (storage) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 484.0 Td (Critical) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 462.0 m 558.0 462.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 439.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 448.0 Td (Phase 1) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 448.0 Td (Amazon Cognito SAML/OIDC, RBAC groups, audit logging via CloudTrail) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 448.0 Td (Critical) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 439.0 m 558.0 439.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 416.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 425.0 Td (Phase 2) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 425.0 Td (REST API \(FastAPI\) for CI/CD pipeline and automation tool integration) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 425.0 Td (High) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 416.0 m 558.0 416.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 393.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 402.0 Td (Phase 2) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 402.0 Td (SQS-backed async test execution with ECS Fargate worker containers) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 402.0 Td (High) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 393.0 m 558.0 393.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 370.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 379.0 Td (Phase 2) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 379.0 Td (Scheduled runs \(EventBridge\), webhook triggers, CI/CD hook integration) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 379.0 Td (High) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 370.0 m 558.0 370.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 347.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 356.0 Td (Phase 3) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 356.0 Td (Result trending & analytics dashboard, accuracy scoring over time) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 356.0 Td (Medium) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 347.0 m 558.0 347.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 324.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 333.0 Td (Phase 3) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 333.0 Td (Multi-tenant project isolation, organization-level access controls) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 333.0 Td (Medium) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 324.0 m 558.0 324.0 l S 0 0 0 RG
+0.962 0.962 0.962 rg 54.0 301.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 310.0 Td (Phase 4) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 310.0 Td (Form versioning & changelogs, annotated diff PDF export capability) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 310.0 Td (Low) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 301.0 m 558.0 301.0 l S 0 0 0 RG
+0.992 0.992 0.992 rg 54.0 278.0 504.0 23.0 re f 0 0 0 rg
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 58.0 287.0 Td (Phase 4) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 130.0 287.0 Td (Plugin architecture for custom validation engine extensions) Tj ET
+BT /F1 9.0 Tf 0.220 0.220 0.220 rg 470.0 287.0 Td (Low) Tj ET
+0.870 0.870 0.870 RG 0.5 w 54.0 278.0 m 558.0 278.0 l S 0 0 0 RG
+0.890 0.094 0.216 rg 54.0 228.0 504.0 34.0 re f 0 0 0 rg
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 64.0 240.0 Td (8) Tj ET
+BT /F2 14.0 Tf 1.000 1.000 1.000 rg 98.0 240.0 Td (Contact & Engagement) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 210.0 Td (FAST is an internally developed CGI product. For sales inquiries, proof-of-concept engagements, or enterprise) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 195.5 Td (deployment scoping, please contact your CGI Account Executive or reach the product team directly through your) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 181.0 Td (CGI regional office.) Tj ET
+0.940 0.980 0.940 rg 54.0 92.5 504.0 76.0 re f 0 0 0 rg
+0.118 0.494 0.204 rg 54.0 92.5 4.0 76.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.118 0.494 0.204 rg 68.0 148.5 Td (Proof of Concept) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 134.5 Td (CGI can deliver a tailored PoC within 4-6 weeks using your organization's existing form library. The PoC) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 120.5 Td (covers integration with your identity provider, form upload, and validated report generation for a select set of) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 106.5 Td (target forms. Includes a working demo environment and stakeholder readout session.) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 14) Tj ET
+
+endstream
+endobj
+33 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 34 0 R >>
+endobj
+36 0 obj
+<< /Length 1692 >>
+stream
+0.890 0.094 0.216 rg 0.0 788.0 612.0 4.0 re f 0 0 0 rg
+0.940 0.960 0.990 rg 54.0 664.0 504.0 76.0 re f 0 0 0 rg
+0.000 0.440 0.750 rg 54.0 664.0 4.0 76.0 re f 0 0 0 rg
+BT /F2 10.0 Tf 0.000 0.440 0.750 rg 68.0 720.0 Td (Enterprise Deployment) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 706.0 Td (Full production deployment on AWS using the architecture in Section 6 is available as a managed CGI) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 692.0 Td (engagement. Includes IaC delivery \(CDK/Terraform\), Cognito federation setup, Bedrock model tuning,) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 68.0 678.0 Td (S3/RDS migration, and a full runbook for your operations team with SLA-backed support tiers.) Tj ET
+BT /F2 12.0 Tf 0.100 0.100 0.100 rg 54.0 624.0 Td (About CGI) Tj ET
+0.890 0.094 0.216 RG 1.2 w 54.0 619.0 m 558.0 619.0 l S 0 0 0 RG
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 603.0 Td (CGI is among the largest IT and business consulting services firms in the world, with 90,000 professionals) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 588.5 Td (operating in 400 locations across 40 countries. We are committed to building practical, secure, and scalable) Tj ET
+BT /F1 10.0 Tf 0.220 0.220 0.220 rg 54.0 574.0 Td (AI-powered solutions for our clients across government, financial services, healthcare, and commercial sectors.) Tj ET
+BT /F2 10.0 Tf 0.890 0.094 0.216 rg 54.0 555.5 Td (www.cgi.com | Always Delivering Value) Tj ET
+0.800 0.800 0.800 RG 0.5 w 54.0 44.0 m 558.0 44.0 l S 0 0 0 RG
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 54.0 30.5 Td (CGI Inc. -- FAST Technical Documentation v1.0 -- CONFIDENTIAL) Tj ET
+BT /F1 7.5 Tf 0.500 0.500 0.500 rg 530.1 30.5 Td (Page 15) Tj ET
+
+endstream
+endobj
+35 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents 36 0 R >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R 31 0 R 33 0 R 35 0 R] /Count 15 >>
+endobj
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+xref
+0 37
+0000000000 65535 f 
+0000090363 00000 n 
+0000090208 00000 n 
+0000089809 00000 n 
+0000089906 00000 n 
+0000090008 00000 n 
+0000090103 00000 n 
+0000003005 00000 n 
+0000000015 00000 n 
+0000006384 00000 n 
+0000003161 00000 n 
+0000012984 00000 n 
+0000006541 00000 n 
+0000021072 00000 n 
+0000013142 00000 n 
+0000027917 00000 n 
+0000021230 00000 n 
+0000034193 00000 n 
+0000028075 00000 n 
+0000040761 00000 n 
+0000034351 00000 n 
+0000047590 00000 n 
+0000040919 00000 n 
+0000053816 00000 n 
+0000047748 00000 n 
+0000060714 00000 n 
+0000053974 00000 n 
+0000067314 00000 n 
+0000060872 00000 n 
+0000073402 00000 n 
+0000067472 00000 n 
+0000079272 00000 n 
+0000073560 00000 n 
+0000087748 00000 n 
+0000079430 00000 n 
+0000089651 00000 n 
+0000087906 00000 n 
+trailer
+<< /Size 37 /Root 1 0 R >>
+startxref
+90412
+%%EOF
