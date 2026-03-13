@@ -500,24 +500,31 @@
       <li class="section-head"><a href="#solution-overview">2. Solution Overview</a></li>
       <li class="sub"><a href="#purpose">Purpose &amp; Business Value</a></li>
       <li class="sub"><a href="#tech-stack">Technology Stack</a></li>
-      <li class="section-head"><a href="#features">3. Features &amp; Capabilities</a></li>
+      <li class="section-head"><a href="#user-guide">3. Getting Started — User Guide</a></li>
+      <li class="sub"><a href="#ug-login">Step 1: Log In</a></li>
+      <li class="sub"><a href="#ug-project">Step 2: Create a Project</a></li>
+      <li class="sub"><a href="#ug-forms">Step 3: Upload PDF Forms</a></li>
+      <li class="sub"><a href="#ug-testcase">Step 4: Create a Test Case</a></li>
+      <li class="sub"><a href="#ug-execute">Step 5: Execute Tests</a></li>
+      <li class="sub"><a href="#ug-results">Step 6: View Results &amp; Reports</a></li>
+      <li class="section-head"><a href="#features">4. Features &amp; Capabilities</a></li>
       <li class="sub"><a href="#validation-modes">Validation Modes</a></li>
       <li class="sub"><a href="#visual-diff">Visual Diff Engine</a></li>
       <li class="sub"><a href="#ocr">OCR &amp; Text Extraction</a></li>
       <li class="sub"><a href="#reporting">Reporting &amp; Audit Trail</a></li>
       <li class="sub"><a href="#project-mgmt">Project Management</a></li>
-      <li class="section-head"><a href="#architecture">4. Architecture</a></li>
+      <li class="section-head"><a href="#architecture">5. Architecture</a></li>
       <li class="sub"><a href="#components">Component Overview</a></li>
       <li class="sub"><a href="#data-flow">Execution Data Flow</a></li>
       <li class="sub"><a href="#data-model">Data Model</a></li>
-      <li class="section-head"><a href="#limitations">5. Current Limitations</a></li>
-      <li class="section-head"><a href="#aws-bedrock">6. AWS Bedrock &amp; Container Architecture</a></li>
+      <li class="section-head"><a href="#limitations">6. Current Limitations</a></li>
+      <li class="section-head"><a href="#aws-bedrock">7. AWS Bedrock &amp; Container Architecture</a></li>
       <li class="sub"><a href="#aws-overview">Migration Overview</a></li>
       <li class="sub"><a href="#aws-components">AWS Components</a></li>
       <li class="sub"><a href="#container-arch">Container Architecture</a></li>
       <li class="sub"><a href="#iac">Infrastructure as Code</a></li>
-      <li class="section-head"><a href="#roadmap">7. Roadmap</a></li>
-      <li class="section-head"><a href="#contact">8. Contact</a></li>
+      <li class="section-head"><a href="#roadmap">8. Roadmap</a></li>
+      <li class="section-head"><a href="#contact">9. Contact</a></li>
     </ul>
   </nav>
 
@@ -667,15 +674,370 @@
       </div>
     </section>
 
-    <!-- 3. Features & Capabilities -->
-    <section class="section" id="features">
+    <!-- 3. Getting Started: Step-by-Step User Guide -->
+    <section class="section" id="user-guide">
       <div class="section-header">
         <div class="section-num">3</div>
+        <div class="section-title">Getting Started &mdash; Step-by-Step User Guide</div>
+      </div>
+
+      <p>
+        This section walks through the complete FAST workflow from first login to viewing a validated HTML report.
+        Follow each step in order on your first use. Subsequent uses will typically start from <strong>Step 5 (Execute)</strong>
+        once projects, forms, and test cases have been set up.
+      </p>
+
+      <div class="callout blue">
+        <strong>Prerequisites</strong>
+        FAST must be running and accessible at your server URL (default: <code>http://localhost:5000</code>).
+        Have at least one PDF form ready to upload. For Benchmark mode, you will need two PDF versions
+        of the same form &mdash; an approved (golden) copy and the form under test.
+      </div>
+
+      <!-- ── STEP 1: LOG IN ─────────────────────────────────────────────── -->
+      <h3 id="ug-login">Step 1 &mdash; Log In</h3>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Open FAST in your browser</strong>
+            <p>Navigate to the FAST URL provided by your administrator (e.g., <code>http://localhost:5000</code>). The login screen displays the product tagline and a welcome form.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Enter your credentials</strong>
+            <p>Fill in the <strong>Username</strong> and <strong>Password</strong> fields. In development environments the defaults are <code>demo / demo</code>. In production these will be your organization&rsquo;s SSO credentials via Cognito.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Login&rdquo;</strong>
+            <p>On success you are redirected to the <strong>Project Dashboard</strong>. If credentials are missing an error banner appears at the top of the page.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 2: CREATE A PROJECT ──────────────────────────────────── -->
+      <h3 id="ug-project">Step 2 &mdash; Create a Project</h3>
+      <p>
+        A <strong>Project</strong> is the top-level container that groups related PDF forms, test cases, and run history together.
+        Create one project per client engagement, form suite, or environment (DEV / UAT / PROD).
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>From the Project Dashboard, locate &ldquo;Create New Project&rdquo; on the left panel</strong>
+            <p>The dashboard is your landing page after login. All existing projects appear on the right; the creation form is on the left.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Fill in the project details</strong>
+            <p>Complete the fields below and click <strong>Create Project</strong>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Description</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Project Name</strong></td><td><span class="badge badge-red">Required</span></td><td>A short, descriptive label for this form suite or engagement</td><td>Loan Application Forms &mdash; UAT</td></tr>
+            <tr><td><strong>Account</strong></td><td><span class="badge badge-gray">Optional</span></td><td>Client or account name for tracking purposes</td><td>First National Bank</td></tr>
+            <tr><td><strong>Area</strong></td><td><span class="badge badge-gray">Optional</span></td><td>Business area: Branch, PNC, Wealth, or Payments</td><td>Wealth</td></tr>
+            <tr><td><strong>Environment</strong></td><td><span class="badge badge-gray">Optional</span></td><td>Target environment: DEV, QA, UAT, or PROD</td><td>UAT</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>After Creation</strong>
+        You are taken to the <strong>Project Overview</strong> screen. From here, the left sidebar shows navigation links: Overview, Forms, Test Cases, Execute, and Results.
+      </div>
+
+      <!-- ── STEP 3: UPLOAD FORMS ──────────────────────────────────────── -->
+      <h3 id="ug-forms">Step 3 &mdash; Upload PDF Forms</h3>
+      <p>
+        PDF forms are the raw input for every test case. Upload the form(s) you want to validate, plus any golden-copy (benchmark) PDFs you will compare against.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Forms&rdquo; in the sidebar</strong>
+            <p>This opens the Forms management screen showing all currently uploaded PDFs and their metadata.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Upload Forms&rdquo; and select your PDF file(s)</strong>
+            <p>Use the file picker to select one or multiple <code>.pdf</code> files at once. Only PDF files are accepted &mdash; other formats are silently skipped.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Click the red &ldquo;Upload&rdquo; button</strong>
+            <p>Each file is stored with its original filename. If a duplicate name exists, FAST auto-appends <code>_1</code>, <code>_2</code>, etc. A success banner shows how many forms were uploaded.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Verify the forms list</strong>
+            <p>The table shows: Form Name, Version, Upload Date, and File Size. You can delete any form using the trash-icon button (with confirmation). Maximum 10 forms per project.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Constraint</th><th>Value</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Allowed file types</td><td><code>.pdf</code> only</td><td>Other formats are rejected with an error message</td></tr>
+            <tr><td>Max forms per project</td><td>10</td><td>Upload is blocked once the limit is reached</td></tr>
+            <tr><td>Max file size</td><td>No enforced limit (MVP)</td><td>Very large PDFs (&gt;50 MB) may slow OCR/diff processing</td></tr>
+            <tr><td>Duplicate filenames</td><td>Auto-suffixed</td><td><code>form.pdf</code> becomes <code>form_1.pdf</code> automatically</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── STEP 4: CREATE A TEST CASE ────────────────────────────────── -->
+      <h3 id="ug-testcase">Step 4 &mdash; Create a Test Case</h3>
+      <p>
+        A <strong>Test Case</strong> defines <em>what</em> to validate, <em>which</em> form to test, and <em>how</em> to validate it (Basic, Specific, or Benchmark mode). You can create multiple test cases per project and run any combination together.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Test Cases&rdquo; &rarr; &ldquo;New Test Case&rdquo;</strong>
+            <p>The two-column form opens: left column for metadata, right column for the validation prompt.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Fill in the test case fields (left column)</strong>
+            <p>Enter the name, choose a mode, and select the form to test.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Write your validation prompt (right column)</strong>
+            <p>For Specific and Benchmark modes, write numbered validation rules in plain English. The prompt drives the AI analysis. For Basic mode, the prompt is optional.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Create Test Case&rdquo;</strong>
+            <p>The test case is saved and appears in the Test Cases list, ready for execution.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Description</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Test Case Name</strong></td><td><span class="badge badge-red">Required</span></td><td>Concise description of what this test validates</td><td>Verify account number field spelling</td></tr>
+            <tr><td><strong>Mode</strong></td><td><span class="badge badge-red">Required</span></td><td>Basic = AI auto-check &bull; Specific = rule-driven &bull; Benchmark = golden-copy comparison</td><td>Benchmark</td></tr>
+            <tr><td><strong>Form</strong></td><td><span class="badge badge-red">Required</span></td><td>The PDF form under test (selected from uploaded forms)</td><td>loan_application_v2.pdf</td></tr>
+            <tr><td><strong>Benchmark (Golden Copy)</strong></td><td><span class="badge badge-orange">Benchmark only</span></td><td>The approved reference PDF to compare against</td><td>loan_application_v1_approved.pdf</td></tr>
+            <tr><td><strong>Prompt / Test Steps</strong></td><td><span class="badge badge-orange">Specific &amp; Benchmark</span></td><td>Numbered plain-English validation rules applied by the AI</td><td>1) Verify customer name matches 'Jana Montgome'&hellip;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="two-col">
+        <div class="callout blue">
+          <strong>Prompt Writing Tips</strong>
+          Keep each rule concise and test-like. One test case = one intent. Number your rules (1, 2, 3&hellip;).
+          Example: <em>&ldquo;1) Verify field X matches expected value. 2) Check signature block on page 3. 3) Confirm no extra content in section B.&rdquo;</em>
+        </div>
+        <div class="callout green">
+          <strong>Mode Quick Reference</strong>
+          <strong>Basic:</strong> No prompt needed &mdash; AI finds errors automatically.<br/>
+          <strong>Specific:</strong> Prompt required &mdash; AI applies your rules.<br/>
+          <strong>Benchmark:</strong> Golden copy + prompt required &mdash; pixel &amp; AI comparison.
+        </div>
+      </div>
+
+      <!-- ── STEP 5: EXECUTE TESTS ──────────────────────────────────────── -->
+      <h3 id="ug-execute">Step 5 &mdash; Execute Tests</h3>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Execute&rdquo; in the sidebar</strong>
+            <p>The Execute screen shows all test cases for this project in a selectable table.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Select one or more test cases using the checkboxes</strong>
+            <p>You can select all test cases to run a full suite, or pick individual ones for targeted validation. At least one must be selected.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Execute Selected&rdquo; (red button)</strong>
+            <p>A <strong>progress modal</strong> appears immediately with a live progress bar. FAST is now running the AI pipeline for each selected test case sequentially.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Monitor the progress modal</strong>
+            <p>The modal polls the server every 2 seconds and updates the status message and progress bar automatically. You can close the modal &mdash; execution continues on the server. You will need to navigate to Results manually if you close it early.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Automatic redirect on completion</strong>
+            <p>When all test cases are done, the page automatically navigates to the <strong>Results</strong> screen for the completed run. A success banner confirms the run ID.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Progress Status</th><th>What It Means</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Preparing selected test cases&hellip;</code></td><td>Run record created, pipeline initializing (0&ndash;20%)</td></tr>
+            <tr><td><code>Execution in progress&hellip;</code></td><td>AI extraction, visual diff, and LLM analysis running (40&ndash;70%)</td></tr>
+            <tr><td><code>Generating result artifacts&hellip;</code></td><td>HTML report being written, database updated (70&ndash;88%)</td></tr>
+            <tr><td><code>Almost done&hellip;</code></td><td>Finalizing run record and redirecting (88&ndash;95%)</td></tr>
+            <tr><td><span class="badge badge-green">Completed</span></td><td>All test cases finished &mdash; auto-redirect to Results page</td></tr>
+            <tr><td><span class="badge badge-red">Failed</span></td><td>One or more test cases encountered an error &mdash; check result detail for the error message</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── STEP 6: VIEW RESULTS & REPORTS ────────────────────────────── -->
+      <h3 id="ug-results">Step 6 &mdash; View Results &amp; Reports</h3>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Select a run from the &ldquo;Recent Runs&rdquo; dropdown</strong>
+            <p>The Results screen shows the 20 most recent runs. Select &ldquo;Run #[ID]&rdquo; from the dropdown and click <strong>Load</strong>.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Review the Run Summary</strong>
+            <p>The summary banner shows the aggregate totals: <span class="badge badge-red">Errors</span> <span class="badge badge-orange">Warnings</span> <span class="badge badge-green">Passed</span> and the total test case count.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Click &ldquo;View&rdquo; on any result row to drill into a single test case</strong>
+            <p>The Result Detail screen shows the test case name, mode, run metadata, and an embedded HTML report in an iframe.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <strong>Read the embedded HTML report</strong>
+            <p>The report contains: an execution summary, verdict chip (Pass / Review / Fail), and a per-page decision table with Status, Severity, Decision, Evidence, Similarity Score, and visual Snapshot links.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <strong>Click &ldquo;Open Report&rdquo; to view the full report in a new browser tab</strong>
+            <p>The standalone HTML report can be saved, printed, or attached to a ticket. Use the filter buttons (<strong>All / Mismatch / Review</strong>) to focus on findings that need attention.</p>
+          </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <strong>Click snapshot links to view three-panel visual diffs (Benchmark mode)</strong>
+            <p>Each changed page has a PNG snapshot showing: <em>Expected (golden copy)</em> &mdash; <em>Actual (test form)</em> &mdash; <em>Diff overlay (changes highlighted in red)</em>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Report Column</th><th>Description</th><th>Possible Values</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Page</strong></td><td>PDF page number where the finding was detected</td><td>Integer (1, 2, 3&hellip;)</td></tr>
+            <tr><td><strong>Status</strong></td><td>Overall verdict for this page</td><td><span class="badge badge-red">Mismatch</span> <span class="badge badge-orange">Review</span> <span class="badge badge-green">Match</span></td></tr>
+            <tr><td><strong>Severity</strong></td><td>Highest-severity finding on this page</td><td>Critical / High / Medium / Low</td></tr>
+            <tr><td><strong>Decision</strong></td><td>AI-generated description of what was found</td><td>Free text from LLM</td></tr>
+            <tr><td><strong>Evidence</strong></td><td>Supporting text excerpt (up to 900 chars)</td><td>Extracted form text + field values</td></tr>
+            <tr><td><strong>Similarity</strong></td><td>Visual similarity score (Benchmark mode only)</td><td>0.00&ndash;1.00 (1.00 = identical)</td></tr>
+            <tr><td><strong>Snapshot</strong></td><td>Link to three-panel PNG visual diff image</td><td>Image opens in new tab</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout green">
+        <strong>Workflow Complete!</strong>
+        You have now completed the full FAST validation cycle: Login &rarr; Project &rarr; Forms &rarr; Test Case &rarr; Execute &rarr; Report.
+        Repeat Steps 5&ndash;6 on every subsequent form release to generate consistent, auditable evidence with zero manual effort.
+      </div>
+
+    </section>
+
+    <!-- 4. Features & Capabilities -->
+    <section class="section" id="features">
+      <div class="section-header">
+        <div class="section-num">4</div>
         <div class="section-title">Features &amp; Capabilities</div>
       </div>
 
       <!-- Validation Modes -->
-      <h3 id="validation-modes">3.1 &nbsp;Validation Modes</h3>
+      <h3 id="validation-modes">4.1 &nbsp;Validation Modes</h3>
       <p>FAST supports three distinct test modes, each addressing a different QA scenario:</p>
 
       <div class="card-grid">
@@ -702,7 +1064,7 @@
       </div>
 
       <!-- Visual Diff Engine -->
-      <h3 id="visual-diff">3.2 &nbsp;Visual Difference Engine</h3>
+      <h3 id="visual-diff">4.2 &nbsp;Visual Difference Engine</h3>
       <p>
         The visual diff engine converts both PDFs to high-resolution images (200 DPI), performs pixel-level comparison using <code>ImageChops.difference()</code>, and generates a three-panel composite snapshot (expected | actual | diff overlay) for every changed page.
       </p>
@@ -731,7 +1093,7 @@
       </ul>
 
       <!-- OCR -->
-      <h3 id="ocr">3.3 &nbsp;OCR &amp; Intelligent Text Extraction</h3>
+      <h3 id="ocr">4.3 &nbsp;OCR &amp; Intelligent Text Extraction</h3>
       <div class="two-col">
         <div>
           <h4>Digital PDFs</h4>
@@ -754,7 +1116,7 @@
       </div>
 
       <!-- Reporting -->
-      <h3 id="reporting">3.4 &nbsp;Reporting &amp; Audit Trail</h3>
+      <h3 id="reporting">4.4 &nbsp;Reporting &amp; Audit Trail</h3>
       <p>
         After each test run, FAST generates a standalone HTML report that can be shared with stakeholders, embedded in portals, or archived for compliance purposes. Reports are self-contained (no external dependencies) and include embedded visual evidence.
       </p>
@@ -783,7 +1145,7 @@
       </div>
 
       <!-- Project Management -->
-      <h3 id="project-mgmt">3.5 &nbsp;Project &amp; Form Management</h3>
+      <h3 id="project-mgmt">4.5 &nbsp;Project &amp; Form Management</h3>
       <ul class="feature-list">
         <li>Multi-project workspace: each project encapsulates its own forms, test cases, and run history</li>
         <li>PDF upload with automatic duplicate-name resolution and strict .pdf extension enforcement</li>
@@ -799,11 +1161,11 @@
     <!-- 4. Architecture -->
     <section class="section" id="architecture">
       <div class="section-header">
-        <div class="section-num">4</div>
+        <div class="section-num">5</div>
         <div class="section-title">Technical Architecture</div>
       </div>
 
-      <h3 id="components">4.1 &nbsp;Component Overview</h3>
+      <h3 id="components">5.1 &nbsp;Component Overview</h3>
 
       <div class="arch-diagram">
         <div class="layer-label">── Presentation Layer ──────────────────────────────────</div>
@@ -840,7 +1202,7 @@
 └─────────────────────────────────────────────────────────────┘
       </div>
 
-      <h3 id="data-flow">4.2 &nbsp;Test Execution Data Flow</h3>
+      <h3 id="data-flow">5.2 &nbsp;Test Execution Data Flow</h3>
 
       <div class="steps">
         <div class="step">
@@ -900,7 +1262,7 @@
         </div>
       </div>
 
-      <h3 id="data-model">4.3 &nbsp;Data Model</h3>
+      <h3 id="data-model">5.3 &nbsp;Data Model</h3>
 
       <div class="table-wrap">
         <table>
@@ -941,7 +1303,7 @@
     <!-- 5. Limitations -->
     <section class="section" id="limitations">
       <div class="section-header">
-        <div class="section-num">5</div>
+        <div class="section-num">6</div>
         <div class="section-title">Current Limitations</div>
       </div>
 
@@ -950,7 +1312,7 @@
         FAST is currently in an MVP (Minimum Viable Product) state. The limitations below are known, documented, and addressed in the enterprise roadmap. They do not reflect the target production architecture.
       </div>
 
-      <h3>5.1 &nbsp;Capacity &amp; Scale Constraints</h3>
+      <h3>6.1 &nbsp;Capacity &amp; Scale Constraints</h3>
 
       <div class="limit-block">
         <div class="limit-title">Form Upload Limit — 10 Forms per Project</div>
@@ -969,7 +1331,7 @@
         <p>The results history view is limited to displaying the 20 most recent runs per project. Older records persist in the database but are not accessible via the UI without modification.</p>
       </div>
 
-      <h3>5.2 &nbsp;Security &amp; Authentication</h3>
+      <h3>6.2 &nbsp;Security &amp; Authentication</h3>
 
       <div class="limit-block">
         <div class="limit-title">Stub Authentication — No Password Validation</div>
@@ -988,7 +1350,7 @@
         <p>Form submissions do not include CSRF tokens. In a multi-user production deployment, this is a cross-site request forgery vulnerability.</p>
       </div>
 
-      <h3>5.3 &nbsp;Infrastructure &amp; Persistence</h3>
+      <h3>6.3 &nbsp;Infrastructure &amp; Persistence</h3>
 
       <div class="limit-block">
         <div class="limit-title">SQLite — Not Production-Scale</div>
@@ -1003,7 +1365,7 @@
         <p>There is no timeout configured for Gemini API calls, and no retry logic for transient failures. A slow or failed API response will block the entire run execution thread.</p>
       </div>
 
-      <h3>5.4 &nbsp;Functional Gaps</h3>
+      <h3>6.4 &nbsp;Functional Gaps</h3>
 
       <div class="limit-block">
         <div class="limit-title">No REST API</div>
@@ -1026,7 +1388,7 @@
     <!-- 6. AWS Bedrock & Containers -->
     <section class="section" id="aws-bedrock">
       <div class="section-header">
-        <div class="section-num">6</div>
+        <div class="section-num">7</div>
         <div class="section-title">AWS Bedrock &amp; Container Architecture</div>
       </div>
 
@@ -1036,7 +1398,7 @@
       </div>
 
       <!-- Overview -->
-      <h3 id="aws-overview">6.1 &nbsp;Migration Overview</h3>
+      <h3 id="aws-overview">7.1 &nbsp;Migration Overview</h3>
 
       <div class="table-wrap">
         <table>
@@ -1057,7 +1419,7 @@
       </div>
 
       <!-- AWS Components -->
-      <h3 id="aws-components">6.2 &nbsp;AWS Components &amp; Services</h3>
+      <h3 id="aws-components">7.2 &nbsp;AWS Components &amp; Services</h3>
 
       <div class="card-grid">
         <div class="card">
@@ -1103,7 +1465,7 @@
       </div>
 
       <!-- Container Architecture -->
-      <h3 id="container-arch">6.3 &nbsp;Container Architecture</h3>
+      <h3 id="container-arch">7.3 &nbsp;Container Architecture</h3>
 
       <div class="arch-diagram">
         <div class="layer-label">── AWS Cloud (VPC) ─────────────────────────────────────────────</div>
@@ -1155,7 +1517,7 @@
 └──────────────────────────────────────────────────────────────────┘
       </div>
 
-      <h3>6.4 &nbsp;Dockerfile — Web Container</h3>
+      <h3>7.4 &nbsp;Dockerfile — Web Container</h3>
 <pre><span class="comment"># ── Stage 1: Build dependencies ──────────────────────────</span>
 <span class="keyword">FROM</span> <span class="string">python:3.11-slim</span> AS builder
 <span class="keyword">WORKDIR</span> /app
@@ -1187,7 +1549,7 @@
 <span class="keyword">CMD</span> ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:8080",
      "--timeout", "120", "--access-logfile", "-", "run:app"]</pre>
 
-      <h3>6.5 &nbsp;Bedrock LLM Client Integration</h3>
+      <h3>7.5 &nbsp;Bedrock LLM Client Integration</h3>
       <p>Replacing <code>llm_client.py</code>'s Gemini call with Amazon Bedrock requires only a lightweight adapter swap. The prompt schema, JSON output contract, and system message remain identical:</p>
 
 <pre><span class="keyword">import</span> boto3, json
@@ -1219,7 +1581,7 @@
 </pre>
 
       <!-- IaC -->
-      <h3 id="iac">6.6 &nbsp;Infrastructure as Code (AWS CDK — Python)</h3>
+      <h3 id="iac">7.6 &nbsp;Infrastructure as Code (AWS CDK — Python)</h3>
 
 <pre><span class="comment"># cdk_stack.py — FAST on AWS ECS + Bedrock (abbreviated)</span>
 <span class="keyword">from</span> aws_cdk <span class="keyword">import</span> (
@@ -1268,7 +1630,7 @@
                 <span class="string">"AmazonBedrockFullAccess"</span>))
 </pre>
 
-      <h3>6.7 &nbsp;Recommended AWS Models via Bedrock</h3>
+      <h3>7.7 &nbsp;Recommended AWS Models via Bedrock</h3>
 
       <div class="table-wrap">
         <table>
@@ -1309,7 +1671,7 @@
     <!-- 7. Roadmap -->
     <section class="section" id="roadmap">
       <div class="section-header">
-        <div class="section-num">7</div>
+        <div class="section-num">8</div>
         <div class="section-title">Product Roadmap</div>
       </div>
 
@@ -1372,7 +1734,7 @@
     <!-- 8. Contact -->
     <section class="section" id="contact">
       <div class="section-header">
-        <div class="section-num">8</div>
+        <div class="section-num">9</div>
         <div class="section-title">Contact &amp; Engagement</div>
       </div>
 
