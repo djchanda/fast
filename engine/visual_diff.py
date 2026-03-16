@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 POPPLER_BIN = os.getenv("POPPLER_PATH", r"C:\Poppler\Release-25.12.0-0\poppler-25.12.0\Library\bin")
 
+# Costs used by the edit-distance page-alignment DP.
+# A match is preferred when  sim(i,j)  >  (DELETE_COST + INSERT_COST) / (2 * MATCH_SCALE).
+# With defaults (1.0 / 1.0 / 2.0) pages must be > 50 % similar to be considered a match.
+_ALIGN_DELETE_COST: float = 1.0
+_ALIGN_INSERT_COST: float = 1.0
+_ALIGN_MATCH_SCALE: float = 2.0   # amplifier so mismatch cost = scale*(1-sim)
+
 
 def _poppler_path() -> Optional[str]:
     """
@@ -52,11 +59,21 @@ class VisualDiff:
         dpi: int = 200,
     ) -> List[Dict[str, Any]]:
         """
-        Returns per-page visual comparison rows.
+        Returns per-page visual comparison rows using sequence alignment.
+
+        When the two PDFs have different page counts (e.g. pages were removed or
+        inserted), a DP edit-distance alignment is performed first so that pages
+        are compared against their true counterparts rather than their positional
+        neighbours.  Deleted / inserted pages receive their own rows with
+        alignment_op = "deleted" | "inserted" so that downstream LLM prompts and
+        reports can surface the structural change explicitly.
 
         Output row shape:
         {
-            "page": 3,
+            "page": 3,                        # sequential output row number
+            "expected_page_num": 3,           # page number in the expected PDF
+            "actual_page_num":   3,           # page number in the actual PDF (None if deleted)
+            "alignment_op": "matched",        # "matched" | "deleted" | "inserted"
             "similarity": 0.998,
             "major": False,
             "warn": True,
@@ -64,6 +81,7 @@ class VisualDiff:
             "snapshot_path": "...",
             "diff_bbox": [x0, y0, x1, y1] | None,
             "diff_pixels_pct": 0.1234,
+            "diff_area_pct": 0.0,
             "signature_candidate": bool,
             "signature_label": "PRESIDENT" | None,
             "signature_reason": "...",
@@ -86,30 +104,109 @@ class VisualDiff:
                 poppler_path=poppler,
             )
 
-            max_pages = max(len(expected_pages), len(actual_pages))
-            if max_pages == 0:
+            if not expected_pages and not actual_pages:
                 return []
 
             base_name = Path(original_pdf_path).stem
             if result_id:
                 base_name = f"{result_id}_{base_name}"
 
+            fallback_size = (
+                expected_pages[0].size if expected_pages
+                else actual_pages[0].size
+            )
+
+            # ── Sequence alignment ──────────────────────────────────────────
+            # Skip the DP when page counts are equal — direct 1-to-1 is enough
+            # and saves thumbnail computation time.
+            if len(expected_pages) == len(actual_pages):
+                alignment = [
+                    ("matched", i, i) for i in range(len(expected_pages))
+                ]
+                if len(expected_pages) == 0:
+                    return []
+            else:
+                n_exp = len(expected_pages)
+                n_act = len(actual_pages)
+                logger.info(
+                    "Page count mismatch: expected=%d actual=%d — running "
+                    "sequence alignment DP",
+                    n_exp, n_act,
+                )
+                alignment = self._align_pages(expected_pages, actual_pages)
+
+            # ── Per-alignment-op comparison ─────────────────────────────────
             rows: List[Dict[str, Any]] = []
 
-            fallback_size = None
-            if expected_pages:
-                fallback_size = expected_pages[0].size
-            elif actual_pages:
-                fallback_size = actual_pages[0].size
+            for output_row_num, (op, exp_idx, act_idx) in enumerate(alignment, start=1):
 
-            for i in range(max_pages):
-                page_num = i + 1
+                if op == "deleted":
+                    # Page present in expected but absent in actual
+                    exp = expected_pages[exp_idx].convert("RGB")
+                    blank = self._create_blank_image(exp.size)
+                    exp_n, blank_n = self._normalize_sizes(exp, blank)
+                    empty_mask = Image.new("L", exp_n.size, 0)
+                    panel = self._build_three_panel(exp_n, blank_n, empty_mask)
+                    out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
+                    panel.save(out_path, "PNG")
+                    rows.append({
+                        "page": output_row_num,
+                        "expected_page_num": exp_idx + 1,
+                        "actual_page_num": None,
+                        "alignment_op": "deleted",
+                        "similarity": 0.0,
+                        "major": True,
+                        "warn": False,
+                        "note": (
+                            f"Page {exp_idx + 1} of the expected PDF is absent in "
+                            f"the actual PDF — this page was removed."
+                        ),
+                        "snapshot_path": f"visual_diffs/{out_path.name}",
+                        "diff_bbox": None,
+                        "diff_pixels_pct": 100.0,
+                        "diff_area_pct": 100.0,
+                        "signature_candidate": False,
+                        "signature_label": None,
+                        "signature_reason": "",
+                        "signature_confidence": "none",
+                    })
+                    continue
 
-                exp = expected_pages[i] if i < len(expected_pages) else self._create_blank_image(fallback_size)
-                act = actual_pages[i] if i < len(actual_pages) else self._create_blank_image(fallback_size)
+                if op == "inserted":
+                    # Page present in actual but absent in expected
+                    act = actual_pages[act_idx].convert("RGB")
+                    blank = self._create_blank_image(act.size)
+                    blank_n, act_n = self._normalize_sizes(blank, act)
+                    empty_mask = Image.new("L", act_n.size, 0)
+                    panel = self._build_three_panel(blank_n, act_n, empty_mask)
+                    out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
+                    panel.save(out_path, "PNG")
+                    rows.append({
+                        "page": output_row_num,
+                        "expected_page_num": None,
+                        "actual_page_num": act_idx + 1,
+                        "alignment_op": "inserted",
+                        "similarity": 0.0,
+                        "major": True,
+                        "warn": False,
+                        "note": (
+                            f"Page {act_idx + 1} of the actual PDF has no counterpart "
+                            f"in the expected PDF — this is an extra / inserted page."
+                        ),
+                        "snapshot_path": f"visual_diffs/{out_path.name}",
+                        "diff_bbox": None,
+                        "diff_pixels_pct": 100.0,
+                        "diff_area_pct": 100.0,
+                        "signature_candidate": False,
+                        "signature_label": None,
+                        "signature_reason": "",
+                        "signature_confidence": "none",
+                    })
+                    continue
 
-                exp = exp.convert("RGB")
-                act = act.convert("RGB")
+                # op == "matched" — standard pixel-level comparison
+                exp = expected_pages[exp_idx].convert("RGB")
+                act = actual_pages[act_idx].convert("RGB")
                 exp, act = self._normalize_sizes(exp, act)
 
                 similarity, diff_pct, mask = self._compute_similarity_and_mask(act, exp)
@@ -117,9 +214,6 @@ class VisualDiff:
                 diff_bbox = self._get_diff_bbox(mask)
                 diff_area_pct = self._bbox_area_pct(diff_bbox, exp.size) if diff_bbox else 0.0
 
-                # Tuned thresholds:
-                # - major: only strong whole-page / content-level differences
-                # - warn: smaller but real visible differences
                 major = diff_pct >= 2.0
                 warn = (diff_pct >= 0.10) and not major
 
@@ -129,13 +223,22 @@ class VisualDiff:
                 elif warn:
                     note = "Minor visual differences detected."
 
+                # Annotate when pages were re-ordered / shifted
+                if exp_idx != act_idx:
+                    note += (
+                        f" (aligned: expected p{exp_idx + 1} "
+                        f"→ actual p{act_idx + 1})"
+                    )
+
                 signature_candidate = False
                 signature_label = None
                 signature_reason = ""
                 signature_confidence = "none"
 
                 if diff_bbox:
-                    signature_labels = self._find_signature_labels(expected_pdf_path, page_num, exp.size)
+                    signature_labels = self._find_signature_labels(
+                        expected_pdf_path, exp_idx + 1, exp.size
+                    )
                     signature_eval = self._evaluate_signature_candidate(
                         diff_bbox=diff_bbox,
                         image_size=exp.size,
@@ -143,13 +246,11 @@ class VisualDiff:
                         diff_pixels_pct=diff_pct,
                         diff_area_pct=diff_area_pct,
                     )
-
                     signature_candidate = signature_eval["candidate"]
                     signature_label = signature_eval["label"]
                     signature_reason = signature_eval["reason"]
                     signature_confidence = signature_eval["confidence"]
 
-                    # Only elevate note when signature detection is actually credible
                     if signature_candidate:
                         warn = True
                         if signature_confidence == "high":
@@ -158,26 +259,27 @@ class VisualDiff:
                             note = "Possible signature-region change detected."
 
                 panel = self._build_three_panel(exp, act, mask)
-                out_path = self.output_dir / f"{base_name}_page{page_num}.png"
+                out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
 
-                rows.append(
-                    {
-                        "page": page_num,
-                        "similarity": round(similarity, 3),
-                        "major": bool(major),
-                        "warn": bool(warn),
-                        "note": note,
-                        "snapshot_path": f"visual_diffs/{out_path.name}",
-                        "diff_bbox": list(diff_bbox) if diff_bbox else None,
-                        "diff_pixels_pct": round(diff_pct, 4),
-                        "diff_area_pct": round(diff_area_pct, 4),
-                        "signature_candidate": signature_candidate,
-                        "signature_label": signature_label,
-                        "signature_reason": signature_reason,
-                        "signature_confidence": signature_confidence,
-                    }
-                )
+                rows.append({
+                    "page": output_row_num,
+                    "expected_page_num": exp_idx + 1,
+                    "actual_page_num": act_idx + 1,
+                    "alignment_op": "matched",
+                    "similarity": round(similarity, 3),
+                    "major": bool(major),
+                    "warn": bool(warn),
+                    "note": note,
+                    "snapshot_path": f"visual_diffs/{out_path.name}",
+                    "diff_bbox": list(diff_bbox) if diff_bbox else None,
+                    "diff_pixels_pct": round(diff_pct, 4),
+                    "diff_area_pct": round(diff_area_pct, 4),
+                    "signature_candidate": signature_candidate,
+                    "signature_label": signature_label,
+                    "signature_reason": signature_reason,
+                    "signature_confidence": signature_confidence,
+                })
 
             return rows
 
@@ -188,6 +290,122 @@ class VisualDiff:
     def compare_pdfs(self, original_pdf_path: str, expected_pdf_path: str, result_id: Optional[str] = None) -> List[str]:
         rows = self.compare_pdfs_detailed(original_pdf_path, expected_pdf_path, result_id=result_id)
         return [r.get("snapshot_path") for r in rows if r.get("snapshot_path")]
+
+    # ---------------------------------------------------
+    # Page sequence alignment
+    # ---------------------------------------------------
+
+    _THUMB_SIZE: Tuple[int, int] = (150, 210)   # ~13 DPI equivalent — fast but discriminative
+
+    def _align_pages(
+        self,
+        expected_pages: List[Image.Image],
+        actual_pages: List[Image.Image],
+    ) -> List[Tuple[str, Optional[int], Optional[int]]]:
+        """
+        Compute the minimum-cost alignment between two page sequences using
+        edit-distance dynamic programming (analogous to the Myers diff algorithm
+        but operating on rendered page images).
+
+        Operations and costs
+        --------------------
+        matched : _ALIGN_MATCH_SCALE * (1 - sim)
+            Aligning expected[i] with actual[j].  Cost is zero when the pages
+            are identical, and rises to _ALIGN_MATCH_SCALE when they share
+            nothing.  A match is preferred over delete+insert when the two pages
+            are more than 50 % visually similar.
+        deleted : _ALIGN_DELETE_COST
+            Expected[i] has no counterpart in actual (page was removed).
+        inserted : _ALIGN_INSERT_COST
+            Actual[j] has no counterpart in expected (page was added).
+
+        Returns a list of (op, exp_idx, act_idx) tuples in document order.
+        """
+        n = len(expected_pages)
+        m = len(actual_pages)
+
+        # Edge cases
+        if n == 0:
+            return [("inserted", None, j) for j in range(m)]
+        if m == 0:
+            return [("deleted", i, None) for i in range(n)]
+
+        # ── Build thumbnail similarity matrix ───────────────────────────────
+        # Thumbnails are computed once and reused for all DP cell evaluations.
+        def _thumb(img: Image.Image) -> Image.Image:
+            t = img.convert("L").resize(self._THUMB_SIZE, Image.LANCZOS)
+            return t.convert("RGB")
+
+        exp_thumbs = [_thumb(p) for p in expected_pages]
+        act_thumbs = [_thumb(p) for p in actual_pages]
+
+        sim: List[List[float]] = []
+        for i in range(n):
+            row: List[float] = []
+            for j in range(m):
+                et, at = self._normalize_sizes(exp_thumbs[i], act_thumbs[j])
+                s, _, _ = self._compute_similarity_and_mask(at, et)
+                row.append(s)
+            sim.append(row)
+
+        logger.debug("Alignment similarity matrix %dx%d computed", n, m)
+
+        # ── Edit-distance DP ────────────────────────────────────────────────
+        INF = float("inf")
+
+        # dp[i][j] = min cost to align first i expected pages with first j actual pages
+        dp: List[List[float]] = [[INF] * (m + 1) for _ in range(n + 1)]
+        dp[0][0] = 0.0
+        for i in range(1, n + 1):
+            dp[i][0] = i * _ALIGN_DELETE_COST
+        for j in range(1, m + 1):
+            dp[0][j] = j * _ALIGN_INSERT_COST
+
+        for i in range(1, n + 1):
+            for j in range(1, m + 1):
+                cost_match  = dp[i - 1][j - 1] + _ALIGN_MATCH_SCALE * (1.0 - sim[i - 1][j - 1])
+                cost_delete = dp[i - 1][j]     + _ALIGN_DELETE_COST
+                cost_insert = dp[i][j - 1]     + _ALIGN_INSERT_COST
+                dp[i][j] = min(cost_match, cost_delete, cost_insert)
+
+        # ── Traceback ───────────────────────────────────────────────────────
+        ops: List[Tuple[str, Optional[int], Optional[int]]] = []
+        i, j = n, m
+        while i > 0 or j > 0:
+            if i > 0 and j > 0:
+                cost_match  = dp[i - 1][j - 1] + _ALIGN_MATCH_SCALE * (1.0 - sim[i - 1][j - 1])
+                cost_delete = dp[i - 1][j]     + _ALIGN_DELETE_COST
+                cost_insert = dp[i][j - 1]     + _ALIGN_INSERT_COST
+                best = min(cost_match, cost_delete, cost_insert)
+
+                if abs(dp[i][j] - cost_match) < 1e-9:
+                    ops.append(("matched", i - 1, j - 1))
+                    i -= 1; j -= 1
+                elif abs(dp[i][j] - cost_delete) < 1e-9:
+                    ops.append(("deleted", i - 1, None))
+                    i -= 1
+                else:
+                    ops.append(("inserted", None, j - 1))
+                    j -= 1
+            elif i > 0:
+                ops.append(("deleted", i - 1, None))
+                i -= 1
+            else:
+                ops.append(("inserted", None, j - 1))
+                j -= 1
+
+        ops.reverse()
+
+        # Log a compact summary for debugging
+        summary = {"matched": 0, "deleted": 0, "inserted": 0}
+        for op, _, _ in ops:
+            summary[op] += 1
+        logger.info(
+            "Alignment result: %d matched, %d deleted, %d inserted",
+            summary["matched"], summary["deleted"], summary["inserted"],
+        )
+
+        return ops
 
     # ---------------------------------------------------
     # Internals

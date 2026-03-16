@@ -175,6 +175,44 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(v, dict):
             continue
 
+        # ── Handle structural page changes (removed / inserted pages) ──────
+        alignment_op = str(v.get("alignment_op") or "matched").lower()
+
+        if alignment_op == "deleted":
+            exp_pg = v.get("expected_page_num")
+            out_pg = v.get("page")
+            label_pg = exp_pg if exp_pg is not None else out_pg
+            result_json["missing_content"].append({
+                "page": label_pg,
+                "severity": "critical",
+                "field_name": f"page_{label_pg}",
+                "category": "Removed page",
+                "description": (
+                    f"Page {label_pg} of the expected PDF is absent in the actual PDF "
+                    f"— this page was removed."
+                ),
+                "evidence": v.get("note") or "Page missing from actual PDF.",
+            })
+            continue
+
+        if alignment_op == "inserted":
+            act_pg = v.get("actual_page_num")
+            out_pg = v.get("page")
+            label_pg = act_pg if act_pg is not None else out_pg
+            result_json["extra_content"].append({
+                "page": label_pg,
+                "severity": "critical",
+                "field_name": f"page_{label_pg}",
+                "category": "Inserted page",
+                "description": (
+                    f"Page {label_pg} of the actual PDF has no counterpart in the expected PDF "
+                    f"— this is an extra / inserted page."
+                ),
+                "evidence": v.get("note") or "Extra page found in actual PDF.",
+            })
+            continue
+        # ── Standard per-page comparison ────────────────────────────────────
+
         p = v.get("page")
         try:
             p = int(str(p).strip()) if p not in (None, "") else None

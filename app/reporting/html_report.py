@@ -320,6 +320,47 @@ def write_cli_style_report(
 
     matched_ranges = _compress_pages([d["page"] for d in matches])
 
+    # ── Page-structure change summary (deleted / inserted pages) ────────────
+    visual_rows = _as_list(result_json.get("visual_validation"))
+    deleted_pages = [
+        v for v in visual_rows
+        if isinstance(v, dict) and str(v.get("alignment_op") or "") == "deleted"
+    ]
+    inserted_pages = [
+        v for v in visual_rows
+        if isinstance(v, dict) and str(v.get("alignment_op") or "") == "inserted"
+    ]
+    page_structure_banner = ""
+    if deleted_pages or inserted_pages:
+        parts = []
+        if deleted_pages:
+            pg_nums = ", ".join(
+                str(v.get("expected_page_num") or v.get("page", "?"))
+                for v in deleted_pages
+            )
+            parts.append(
+                f"<strong>{len(deleted_pages)} page(s) removed</strong> "
+                f"from expected PDF (expected page(s): {_esc(pg_nums)})"
+            )
+        if inserted_pages:
+            pg_nums = ", ".join(
+                str(v.get("actual_page_num") or v.get("page", "?"))
+                for v in inserted_pages
+            )
+            parts.append(
+                f"<strong>{len(inserted_pages)} page(s) inserted</strong> "
+                f"in actual PDF (actual page(s): {_esc(pg_nums)})"
+            )
+        page_structure_banner = (
+            "<div style='background:#fff3cd;border-left:4px solid #e6a817;"
+            "padding:12px 16px;border-radius:4px;margin-bottom:16px;font-size:13px;'>"
+            "<strong style='color:#856404;'>&#9888; Page-Structure Change Detected</strong><br/>"
+            + " &mdash; ".join(parts)
+            + "<br/><span style='color:#856404;font-size:12px;'>The sequence-alignment engine "
+            "re-aligned remaining pages so only true content differences are reported below.</span>"
+            "</div>"
+        )
+
     if llm_failed:
         summary_text = (
             "LLM classification failed. The page-by-page decision below is based on deterministic visual and structured evidence."
@@ -374,6 +415,8 @@ def write_cli_style_report(
         <div>Page-by-Page Decision</div>
         <div class="muted">Filter by decision type.</div>
       </div>
+
+      {page_structure_banner}
 
       <div class="rd-filterbar">
         <button class="rd-filter-btn active" onclick="filterDecisionRows('all', this)">All</button>
