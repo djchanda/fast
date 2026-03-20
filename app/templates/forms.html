@@ -47,6 +47,8 @@
           <td>{{ f.uploaded_at.strftime("%Y-%m-%d %H:%M") }}</td>
           <td>{{ (f.size_bytes / 1024) | round(1) }} KB</td>
           <td>
+            <a class="btn btn-outline" href="{{ url_for('web.form_field_inventory', project_id=project.id, form_id=f.id) }}" style="margin-right:4px;">📋</a>
+            <a class="btn btn-outline" href="{{ url_for('web.form_accessibility', project_id=project.id, form_id=f.id) }}" style="margin-right:4px;" title="Accessibility Check">♿</a>
             <form action="{{ url_for('web.delete_project_form', project_id=project.id, form_id=f.id) }}"
                   method="POST" style="display:inline;">
               <button class="btn btn-outline" type="submit"

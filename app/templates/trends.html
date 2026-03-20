@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Trend Dashboard</h1>
+  <p class="subtitle">Error, warning and pass trends across all runs for <strong>{{ project.name }}</strong></p>
+</div>
+
+{% if runs %}
+<div class="card mb-4">
+  <div class="card-header">Quality Trend Over Time</div>
+  <div class="card-body">
+    <canvas id="trendChart" style="max-height:340px;"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Run History</div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead>
+        <tr><th>#</th><th>Date</th><th>Status</th><th>Errors</th><th>Warnings</th><th>Passed</th><th>Total</th></tr>
+      </thead>
+      <tbody>
+        {% for r in runs | reverse %}
+        <tr>
+          <td><a href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">#{{ r.id }}</a></td>
+          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td><span class="badge badge-{{ 'success' if r.status == 'completed' else 'danger' }}">{{ r.status }}</span></td>
+          <td class="text-danger"><strong>{{ r.errors or 0 }}</strong></td>
+          <td class="text-warning">{{ r.warnings or 0 }}</td>
+          <td class="text-success">{{ r.passed or 0 }}</td>
+          <td>{{ r.total or 0 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const data = {{ trend_data_json | safe }};
+const labels = data.map(d => d.created_at);
+const ctx = document.getElementById('trendChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [
+      { label: 'Errors', data: data.map(d => d.errors), borderColor: '#e63946', backgroundColor: 'rgba(230,57,70,0.1)', tension: 0.3 },
+      { label: 'Warnings', data: data.map(d => d.warnings), borderColor: '#f4a261', backgroundColor: 'rgba(244,162,97,0.1)', tension: 0.3 },
+      { label: 'Passed', data: data.map(d => d.passed), borderColor: '#2a9d8f', backgroundColor: 'rgba(42,157,143,0.1)', tension: 0.3 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+</script>
+
+{% else %}
+<div class="empty-state">
+  <p>No runs yet. Execute your first test to see trends.</p>
+  <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">Go to Execute</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -7,3 +7,17 @@ google-generativeai>=0.7.2
 pytesseract>=0.3.10
 Pillow>=10.0.0
 pdf2image>=1.16.3
+
+# Multi-model LLM support (optional — configure in .env which to use)
+openai>=1.30.0
+anthropic>=0.25.0
+
+# REST API evidence bundle + webhook delivery
+requests>=2.31.0
+
+# PDF annotation (optional — annotated PDF download)
+reportlab>=4.0.0
+
+# Scheduled runs
+apscheduler>=3.10.0
+croniter>=2.0.0

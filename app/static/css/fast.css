@@ -1186,3 +1186,77 @@ body.landing-body {
 .fast-table th { background:#fafafa; position: sticky; top: 0; }
 .fast-table td { white-space: normal; }
 .fast-table td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* ============================================================
+   FAST Improved — New Feature Styles
+   ============================================================ */
+
+/* Role badges in topbar */
+.user-info { font-size: 0.85em; color: #fff; display: flex; align-items: center; gap: 6px; }
+.role-badge { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: uppercase; }
+.role-admin { background: #e63946; color: #fff; }
+.role-reviewer { background: #f4a261; color: #fff; }
+.role-viewer { background: #6c757d; color: #fff; }
+
+/* Sidebar section labels */
+.nav-section-label { font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.08em; color: #999; padding: 10px 16px 2px; font-weight: 600; }
+
+/* Badge variants */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 0.78em; font-weight: 600; }
+.badge-success { background: #52b788; color: #fff; }
+.badge-danger { background: #e63946; color: #fff; }
+.badge-warning { background: #f4a261; color: #fff; }
+.badge-secondary { background: #6c757d; color: #fff; }
+.badge-info { background: #0077b6; color: #fff; }
+.text-danger { color: #e63946; }
+.text-warning { color: #f4a261; }
+.text-success { color: #52b788; }
+.text-info { color: #0077b6; }
+.text-muted { color: #6c757d; }
+
+/* Card component */
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+.card-header { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 12px 16px; font-weight: 600; font-size: 0.95em; }
+.card-body { padding: 16px; }
+.card-body.p0 { padding: 0; }
+
+/* Actions bar */
+.actions-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Tables */
+.table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+.table th { background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 10px 12px; text-align: left; font-weight: 600; }
+.table td { border-bottom: 1px solid #f0f0f0; padding: 9px 12px; vertical-align: middle; }
+.table tr:hover td { background: #fafafa; }
+
+/* Form controls */
+.form-control { border: 1px solid #ced4da; border-radius: 4px; padding: 7px 10px; font-size: 0.9em; }
+.form-control:focus { border-color: #005eb8; outline: none; box-shadow: 0 0 0 2px rgba(0,94,184,0.15); }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.88em; }
+.required { color: #e63946; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 4px; font-size: 0.88em; font-weight: 600; cursor: pointer; text-decoration: none; border: none; gap: 6px; }
+.btn-primary { background: #005eb8; color: #fff; }
+.btn-primary:hover { background: #004a94; }
+.btn-secondary { background: #6c757d; color: #fff; }
+.btn-secondary:hover { background: #545b62; }
+.btn-success { background: #52b788; color: #fff; }
+.btn-danger { background: #e63946; color: #fff; }
+.btn-outline { background: transparent; border: 1px solid #005eb8; color: #005eb8; }
+.btn-outline:hover { background: #005eb8; color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 0.82em; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 40px 20px; color: #6c757d; }
+
+/* Page header */
+.page-header { margin-bottom: 20px; }
+.page-header h1 { margin: 0 0 4px; font-size: 1.6em; }
+.page-header .subtitle { margin: 0; color: #6c757d; font-size: 0.92em; }
+
+/* Utility */
+.mt-1 { margin-top: 4px; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .mt-4 { margin-top: 20px; }
+.mb-2 { margin-bottom: 8px; } .mb-3 { margin-bottom: 12px; } .mb-4 { margin-bottom: 20px; }
+.float-right { float: right; }

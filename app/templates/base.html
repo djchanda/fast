@@ -22,6 +22,10 @@
       <div class="partner"></div>
       <a class="icon-btn" href="{{ url_for('web.contact') }}" title="Contact">✉</a>
       {% if user %}
+        <span class="user-info">{{ user }} <span class="role-badge role-{{ session.get('role', 'viewer') }}">{{ session.get('role', 'viewer') }}</span></span>
+        {% if session.get('role') == 'admin' %}
+        <a class="icon-btn" href="{{ url_for('web.admin_panel') }}" title="Admin">⚙</a>
+        {% endif %}
         <a class="link" href="{{ url_for('web.logout') }}">Logout</a>
       {% endif %}
     </div>
@@ -37,11 +41,18 @@
         <div class="sidebar-title">Current Project</div>
         <div class="sidebar-project">{{ project.name }}</div>
         <nav class="nav">
-          <a class="nav-item" href="{{ url_for('web.project_overview', project_id=project.id) }}">Overview</a>
-          <a class="nav-item" href="{{ url_for('web.project_forms', project_id=project.id) }}">Forms</a>
-          <a class="nav-item" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Test Cases</a>
-          <a class="nav-item" href="{{ url_for('web.project_execute', project_id=project.id) }}">Execute</a>
-          <a class="nav-item" href="{{ url_for('web.project_results', project_id=project.id) }}">Results</a>
+          <a class="nav-item {% if active == 'overview' %}active{% endif %}" href="{{ url_for('web.project_overview', project_id=project.id) }}">Overview</a>
+          <a class="nav-item {% if active == 'forms' %}active{% endif %}" href="{{ url_for('web.project_forms', project_id=project.id) }}">Forms</a>
+          <a class="nav-item {% if active == 'testcases' %}active{% endif %}" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Test Cases</a>
+          <a class="nav-item {% if active == 'execute' %}active{% endif %}" href="{{ url_for('web.project_execute', project_id=project.id) }}">Execute</a>
+          <a class="nav-item {% if active == 'results' %}active{% endif %}" href="{{ url_for('web.project_results', project_id=project.id) }}">Results</a>
+          <div class="nav-section-label">Analytics</div>
+          <a class="nav-item {% if active == 'trends' %}active{% endif %}" href="{{ url_for('web.project_trends', project_id=project.id) }}">📈 Trends</a>
+          <div class="nav-section-label">Settings</div>
+          <a class="nav-item {% if active == 'settings' %}active{% endif %}" href="{{ url_for('web.project_webhooks', project_id=project.id) }}">🔔 Webhooks</a>
+          <a class="nav-item" href="{{ url_for('web.project_schedules', project_id=project.id) }}">🕐 Schedules</a>
+          <a class="nav-item" href="{{ url_for('web.project_false_positives', project_id=project.id) }}">🧠 False Positives</a>
+          <a class="nav-item" href="{{ url_for('web.project_audit_log', project_id=project.id) }}">📋 Audit Log</a>
         </nav>
       {% else %}
         <nav class="nav">

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Finding Review Workflow</h1>
+  <p class="subtitle">
+    Test Case: <strong>{{ tc.name if tc else 'N/A' }}</strong> &nbsp;|&nbsp;
+    Mode: <span class="badge">{{ rr.mode }}</span> &nbsp;|&nbsp;
+    Status: <span class="badge badge-{{ 'success' if rr.status == 'completed' else 'danger' }}">{{ rr.status }}</span>
+  </p>
+</div>
+
+{% if not findings %}
+<div class="empty-state"><p>No findings to review.</p></div>
+{% else %}
+
+<div class="stats-row mb-3">
+  <div class="stat-card">
+    <div class="stat-num text-danger">{{ findings | selectattr('review', 'none') | list | length + findings | selectattr('review.status', 'eq', 'open') | list | length }}</div>
+    <div class="stat-label">Open</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num text-warning">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'in_review') | list | length }}</div>
+    <div class="stat-label">In Review</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num text-success">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'resolved') | list | length }}</div>
+    <div class="stat-label">Resolved</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num text-info">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'false_positive') | list | length }}</div>
+    <div class="stat-label">False Positives</div>
+  </div>
+</div>
+
+{% for f in findings %}
+{% set item = f.item %}
+{% set review = f.review %}
+{% set status = review.status if review else 'open' %}
+<div class="finding-card finding-{{ item.severity | default('low') }} finding-status-{{ status }}">
+  <div class="finding-header">
+    <span class="badge badge-sev-{{ item.severity | default('low') }}">{{ item.severity | default('low') | upper }}</span>
+    <span class="badge badge-cat">{{ f.category.replace('_', ' ').title() }}</span>
+    {% if item.page %}<span class="badge badge-page">Page {{ item.page }}</span>{% endif %}
+    <span class="finding-status-badge status-{{ status }}">{{ status.replace('_', ' ').title() }}</span>
+    {% if review and review.assigned_to %}
+      <span class="assigned-to">Assigned: {{ review.assigned_to }}</span>
+    {% endif %}
+  </div>
+
+  <div class="finding-body">
+    <p>{{ item.description or item.text or '(no description)' }}</p>
+    {% if item.field_name %}<div class="finding-meta">Field: <code>{{ item.field_name }}</code></div>{% endif %}
+    {% if item.suggestion %}<div class="finding-meta">Suggestion: {{ item.suggestion }}</div>{% endif %}
+    {% if item.evidence %}<div class="finding-meta text-muted">Evidence: {{ item.evidence }}</div>{% endif %}
+  </div>
+
+  {% if review and review.comments.count() > 0 %}
+  <div class="finding-comments">
+    {% for comment in review.comments %}
+    <div class="comment">
+      <strong>{{ comment.author }}</strong> <small class="text-muted">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+      <p>{{ comment.body }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if status not in ('resolved', 'false_positive') %}
+  <div class="finding-actions">
+    {% if user_role in ('admin', 'reviewer') %}
+    <!-- Assign -->
+    <details class="inline-details">
+      <summary class="btn btn-sm btn-secondary">Assign</summary>
+      <form method="POST" action="{{ url_for('web.assign_finding', project_id=project.id, result_id=rr.id) }}" class="inline-form">
+        <input type="hidden" name="finding_index" value="{{ f.index }}">
+        <input type="hidden" name="finding_category" value="{{ f.category }}">
+        <input type="hidden" name="finding_description" value="{{ item.description | default('') | e }}">
+        <select name="assigned_to" class="form-control form-control-sm" required>
+          <option value="">Select reviewer...</option>
+          {% for r in reviewers %}<option value="{{ r.username }}">{{ r.display_name or r.username }} ({{ r.role }})</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary mt-1">Assign</button>
+      </form>
+    </details>
+
+    <!-- Resolve -->
+    <details class="inline-details">
+      <summary class="btn btn-sm btn-success">Resolve</summary>
+      <form method="POST" action="{{ url_for('web.resolve_finding', project_id=project.id, result_id=rr.id) }}" class="inline-form">
+        <input type="hidden" name="finding_index" value="{{ f.index }}">
+        <input type="hidden" name="finding_category" value="{{ f.category }}">
+        <input type="hidden" name="finding_description" value="{{ item.description | default('') | e }}">
+        <select name="status" class="form-control form-control-sm">
+          <option value="resolved">Resolved</option>
+          <option value="false_positive">False Positive (suppress future)</option>
+        </select>
+        <textarea name="resolution_note" class="form-control form-control-sm mt-1" placeholder="Resolution note..." rows="2"></textarea>
+        <button type="submit" class="btn btn-sm btn-success mt-1">Save</button>
+      </form>
+    </details>
+    {% endif %}
+
+    <!-- Comment -->
+    {% if review %}
+    <details class="inline-details">
+      <summary class="btn btn-sm btn-outline">Comment</summary>
+      <form method="POST" action="{{ url_for('web.add_finding_comment', project_id=project.id, result_id=rr.id) }}" class="inline-form">
+        <input type="hidden" name="finding_index" value="{{ f.index }}">
+        <textarea name="body" class="form-control form-control-sm" placeholder="Add a comment..." rows="2" required></textarea>
+        <button type="submit" class="btn btn-sm btn-primary mt-1">Post Comment</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="finding-resolved-note">
+    <small class="text-muted">{{ status.replace('_', ' ').title() }} by {{ review.resolved_by }} — {{ review.resolution_note or '' }}</small>
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="mt-4">
+  <a class="btn btn-secondary" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">← Back to Result</a>
+  <a class="btn btn-outline" href="{{ url_for('web.run_approval_gate', project_id=project.id, run_id=rr.run_id) }}">Approval Gate →</a>
+</div>
+
+<style>
+.finding-card { border: 1px solid #ddd; border-radius: 6px; margin-bottom: 14px; padding: 14px; background: #fff; }
+.finding-card.finding-critical { border-left: 4px solid #e63946; }
+.finding-card.finding-high { border-left: 4px solid #f4a261; }
+.finding-card.finding-medium { border-left: 4px solid #f4d35e; }
+.finding-card.finding-low { border-left: 4px solid #52b788; }
+.finding-card.finding-status-resolved { opacity: 0.6; }
+.finding-card.finding-status-false_positive { opacity: 0.5; background: #f8f9fa; }
+.finding-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.finding-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.finding-comments { background: #f8f9fa; border-radius: 4px; padding: 10px; margin: 8px 0; }
+.comment { border-bottom: 1px solid #eee; margin-bottom: 8px; padding-bottom: 8px; }
+.inline-details summary { cursor: pointer; }
+.inline-form { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 6px; min-width: 260px; }
+.badge-sev-critical { background: #e63946; color: #fff; }
+.badge-sev-high { background: #f4a261; color: #fff; }
+.badge-sev-medium { background: #f4d35e; color: #333; }
+.badge-sev-low { background: #52b788; color: #fff; }
+.badge-cat { background: #6c757d; color: #fff; }
+.badge-page { background: #0077b6; color: #fff; }
+.status-open { color: #e63946; font-weight: 600; }
+.status-in_review { color: #f4a261; font-weight: 600; }
+.status-resolved { color: #52b788; font-weight: 600; }
+.status-false_positive { color: #6c757d; font-weight: 600; }
+.assigned-to { color: #6c757d; font-size: 0.85em; }
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 12px 20px; text-align: center; min-width: 80px; }
+.stat-num { font-size: 1.6em; font-weight: 700; }
+.stat-label { font-size: 0.8em; color: #6c757d; }
+</style>
+{% endblock %}

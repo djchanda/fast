@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Approval Gate — Run #{{ run.id }}</h1>
+  <p class="subtitle">Project: <strong>{{ project.name }}</strong></p>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Run Summary</div>
+  <div class="card-body">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num text-danger">{{ run.errors or 0 }}</div><div class="stat-label">Errors</div></div>
+      <div class="stat-card"><div class="stat-num text-warning">{{ run.warnings or 0 }}</div><div class="stat-label">Warnings</div></div>
+      <div class="stat-card"><div class="stat-num text-success">{{ run.passed or 0 }}</div><div class="stat-label">Passed</div></div>
+      <div class="stat-card"><div class="stat-num">{{ run.total or 0 }}</div><div class="stat-label">Total</div></div>
+    </div>
+    <div class="mt-2 text-muted">Triggered by: {{ run.triggered_by or 'N/A' }} | {{ run.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Gate Status</div>
+  <div class="card-body">
+    <div class="gate-status gate-{{ approval.status }}">
+      {% if approval.status == 'approved' %}
+        ✅ <strong>APPROVED</strong> by {{ approval.reviewed_by }} on {{ approval.reviewed_at.strftime('%Y-%m-%d %H:%M') if approval.reviewed_at else 'N/A' }}
+      {% elif approval.status == 'rejected' %}
+        ❌ <strong>REJECTED</strong> by {{ approval.reviewed_by }} on {{ approval.reviewed_at.strftime('%Y-%m-%d %H:%M') if approval.reviewed_at else 'N/A' }}
+      {% else %}
+        ⏳ <strong>PENDING REVIEW</strong>
+      {% endif %}
+    </div>
+    {% if approval.review_note %}
+    <blockquote class="mt-2">{{ approval.review_note }}</blockquote>
+    {% endif %}
+  </div>
+</div>
+
+{% if approval.status == 'pending' and user_role in ('admin', 'reviewer') %}
+<div class="card">
+  <div class="card-header">Submit Gate Decision</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('web.review_approval_gate', project_id=project.id, run_id=run.id) }}">
+      <div class="form-group">
+        <label>Decision</label>
+        <div class="radio-group">
+          <label><input type="radio" name="decision" value="approved" required> ✅ Approve — run meets quality bar</label>
+          <label><input type="radio" name="decision" value="rejected"> ❌ Reject — issues require remediation</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Review Note</label>
+        <textarea name="review_note" class="form-control" rows="3" placeholder="Optional notes for the team..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit Decision</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="mt-4">
+  <a class="btn btn-secondary" href="{{ url_for('web.project_results', project_id=project.id, run_id=run.id) }}">← Back to Results</a>
+  <a class="btn btn-outline" href="{{ url_for('web.download_evidence_bundle', project_id=project.id, run_id=run.id) }}">⬇ Download Evidence Bundle</a>
+</div>
+
+<style>
+.gate-status { font-size: 1.2em; padding: 16px; border-radius: 6px; }
+.gate-approved { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.gate-rejected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.gate-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-card { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 12px 20px; text-align: center; }
+.stat-num { font-size: 1.8em; font-weight: 700; }
+.stat-label { font-size: 0.8em; color: #6c757d; }
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+</style>
+{% endblock %}

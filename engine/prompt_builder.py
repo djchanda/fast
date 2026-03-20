@@ -125,7 +125,26 @@ Return ONLY valid JSON with this structure:
   ],
 
   "overall_summary": "Found <total> issue(s) across <n> page(s).",
-  "accuracy_score": 0
+  "accuracy_score": 0,
+
+  "compliance_issues": [
+    {"page": 1, "severity": "high", "standard": "WCAG21", "requirement": "1.1.1", "description": "Image missing alt text"}
+  ],
+
+  "accessibility_issues": [
+    {"page": 1, "severity": "medium", "type": "missing_label", "field_name": "field_x", "description": "Form field has no accessible label"}
+  ],
+
+  "confidence_scores": {
+    "spelling_errors": 0.95,
+    "format_issues": 0.90,
+    "value_mismatches": 0.98,
+    "missing_content": 0.85,
+    "extra_content": 0.80,
+    "layout_anomalies": 0.75,
+    "visual_mismatches": 0.92,
+    "overall": 0.88
+  }
 }
 """
 

@@ -24,9 +24,29 @@
            href="{{ report_url }}"
            target="_blank"
            rel="noopener">
-          Open report
+          Open Report
         </a>
       {% endif %}
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}">
+        🔍 Review Findings
+      </a>
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.download_annotated_pdf', project_id=project.id, result_id=rr.id) }}">
+        📄 Annotated PDF
+      </a>
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.download_evidence_bundle', project_id=project.id, run_id=rr.run_id) }}">
+        ⬇ Evidence Bundle
+      </a>
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.run_approval_gate', project_id=project.id, run_id=rr.run_id) }}">
+        ✅ Approval Gate
+      </a>
     </div>
   </div>
 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Learned False Positives</h1>
+  <p class="subtitle">Patterns suppressed in future runs for <strong>{{ project.name }}</strong></p>
+</div>
+
+{% if false_positives %}
+<div class="card">
+  <div class="card-header">{{ false_positives | length }} Pattern(s)</div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead><tr><th>Category</th><th>Pattern</th><th>Match Mode</th><th>Suppressed</th><th>Created By</th><th>Date</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for fp in false_positives %}
+        <tr class="{{ '' if fp.is_active else 'text-muted' }}">
+          <td><span class="badge">{{ fp.category.replace('_', ' ').title() }}</span></td>
+          <td><code>{{ fp.pattern[:80] }}{% if fp.pattern | length > 80 %}...{% endif %}</code></td>
+          <td>{{ fp.match_mode }}</td>
+          <td>{{ fp.suppressed_count or 0 }} times</td>
+          <td>{{ fp.created_by or '—' }}</td>
+          <td>{{ fp.created_at.strftime('%Y-%m-%d') }}</td>
+          <td><span class="badge {{ 'badge-success' if fp.is_active else 'badge-secondary' }}">{{ 'Active' if fp.is_active else 'Disabled' }}</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('web.toggle_false_positive', project_id=project.id, fp_id=fp.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-outline">{{ 'Disable' if fp.is_active else 'Enable' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No false positive patterns learned yet.</p>
+  <p class="text-muted">When you mark findings as "False Positive" in the review workflow, they are automatically suppressed in future runs.</p>
+</div>
+{% endif %}
+{% endblock %}

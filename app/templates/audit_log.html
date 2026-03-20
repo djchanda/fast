@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Audit Log</h1>
+  <p class="subtitle">Immutable record of all actions on <strong>{{ project.name }}</strong></p>
+</div>
+
+{% if logs %}
+<div class="card">
+  <div class="card-header">{{ logs | length }} Recent Entries</div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead><tr><th>Time</th><th>User</th><th>IP</th><th>Action</th><th>Resource</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+          <td>{{ log.username or '—' }}</td>
+          <td><small class="text-muted">{{ log.user_ip or '—' }}</small></td>
+          <td><code>{{ log.action }}</code></td>
+          <td>
+            {% if log.resource_type %}
+              {{ log.resource_type }}{% if log.resource_id %} #{{ log.resource_id }}{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if log.detail %}
+            <details><summary class="text-muted" style="cursor:pointer;">detail</summary><pre style="font-size:0.78em;">{{ log.detail }}</pre></details>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state"><p>No audit log entries yet for this project.</p></div>
+{% endif %}
+{% endblock %}

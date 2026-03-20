@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>AI Test Case Builder</h1>
+  <p class="subtitle">Describe what you want to test in plain English — AI converts it to a structured test case.</p>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Describe Your Test</div>
+  <div class="card-body">
+    <form method="POST">
+      <div class="form-group">
+        <label for="description">Plain-English Description <span class="required">*</span></label>
+        <textarea id="description" name="description" class="form-control" rows="5"
+          placeholder="e.g. Check that all signature fields are present and dated. Verify the form number in the header matches the footer. Ensure all monetary amounts use 2 decimal places."
+          required>{{ description }}</textarea>
+        <div class="form-hint">Be as specific as possible — mention fields, formats, business rules, or comparisons.</div>
+      </div>
+      <div class="form-group">
+        <label for="provider">LLM Provider</label>
+        <select id="provider" name="provider" class="form-control" style="max-width:200px;">
+          {% for p in available_providers %}
+          <option value="{{ p }}">{{ p.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">🤖 Generate Test Case</button>
+    </form>
+  </div>
+</div>
+
+{% if result %}
+<div class="card mb-4">
+  <div class="card-header">Generated Test Case</div>
+  <div class="card-body">
+    <div class="result-section">
+      <span class="badge badge-mode">Mode: {{ result.mode | upper }}</span>
+      <p class="mt-2 text-muted"><em>{{ result.rationale }}</em></p>
+    </div>
+
+    <form method="POST" action="{{ url_for('web.save_nl_testcase', project_id=project.id) }}">
+      <div class="form-group">
+        <label>Test Case Name</label>
+        <input type="text" name="name" class="form-control" value="{{ result.suggested_name }}" required>
+      </div>
+      <div class="form-group">
+        <label>Mode</label>
+        <select name="mode" class="form-control" style="max-width:200px;">
+          {% for m in ['basic', 'specific', 'benchmark'] %}
+          <option value="{{ m }}" {{ 'selected' if m == result.mode else '' }}>{{ m.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Form to Test</label>
+        <select name="form_id" class="form-control" style="max-width:400px;">
+          <option value="">— select a form —</option>
+          {% for f in forms %}
+          <option value="{{ f.id }}">{{ f.name }} ({{ f.original_filename }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" id="benchmarkGroup" {% if result.mode != 'benchmark' %}style="display:none"{% endif %}>
+        <label>Golden Copy (Benchmark)</label>
+        <select name="benchmark_form_id" class="form-control" style="max-width:400px;">
+          <option value="">— select golden copy —</option>
+          {% for f in forms %}
+          <option value="{{ f.id }}">{{ f.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Validation Rules (prompt)</label>
+        <textarea name="prompt_text" class="form-control" rows="10">{{ result.prompt_text }}</textarea>
+      </div>
+
+      {% if result.validation_rules %}
+      <div class="validation-rules mb-3">
+        <strong>Parsed Rules:</strong>
+        <ul>
+          {% for rule in result.validation_rules %}
+          <li>
+            <span class="badge badge-sev-{{ rule.severity | default('low') }}">{{ rule.severity | default('low') | upper }}</span>
+            <span class="badge badge-cat">{{ rule.category }}</span>
+            {{ rule.rule }}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary">💾 Save Test Case</button>
+      <a class="btn btn-secondary" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+document.querySelector('select[name="mode"]')?.addEventListener('change', function() {
+  document.getElementById('benchmarkGroup').style.display = this.value === 'benchmark' ? '' : 'none';
+});
+</script>
+<style>
+.badge-mode { background: #0077b6; color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; }
+.badge-sev-error { background: #e63946; color: #fff; }
+.badge-sev-warning { background: #f4a261; color: #fff; }
+.badge-cat { background: #6c757d; color: #fff; }
+.validation-rules li { margin: 6px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.form-hint { font-size: 0.85em; color: #6c757d; margin-top: 4px; }
+</style>
+{% endblock %}

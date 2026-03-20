@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Accessibility Check</h1>
+  <p class="subtitle">WCAG 2.1 and Section 508 compliance analysis for <strong>{{ form.name }}</strong></p>
+</div>
+
+<div class="actions-bar mb-3">
+  <a class="btn btn-outline" href="{{ url_for('web.form_field_inventory', project_id=project.id, form_id=form.id) }}">📋 Field Inventory</a>
+  <a class="btn btn-secondary" href="{{ url_for('web.project_forms', project_id=project.id) }}">← Back to Forms</a>
+</div>
+
+{% if issues %}
+<div class="summary-banner mb-3">
+  Found <strong>{{ issues | length }}</strong> accessibility issue(s).
+  <span class="text-danger">{{ issues | selectattr('severity', 'eq', 'high') | list | length }} high</span>,
+  <span class="text-warning">{{ issues | selectattr('severity', 'eq', 'medium') | list | length }} medium</span>,
+  <span class="text-success">{{ issues | selectattr('severity', 'eq', 'low') | list | length }} low</span>
+</div>
+
+{% for issue in issues %}
+<div class="a11y-card a11y-{{ issue.severity }}">
+  <div class="a11y-header">
+    <span class="badge badge-sev-{{ issue.severity }}">{{ issue.severity | upper }}</span>
+    <span class="a11y-type">{{ issue.type.replace('_', ' ').title() }}</span>
+    {% if issue.page %}<span class="badge badge-page">Page {{ issue.page }}</span>{% endif %}
+    {% if issue.field_name %}<code class="field-badge">{{ issue.field_name }}</code>{% endif %}
+  </div>
+  <p class="a11y-desc">{{ issue.description }}</p>
+  {% if issue.wcag_criterion %}
+  <div class="wcag-tag">📖 {{ issue.wcag_criterion }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% else %}
+<div class="success-banner">
+  <strong>✅ No accessibility issues detected!</strong>
+  <p>The PDF passed all automated accessibility checks.</p>
+</div>
+{% endif %}
+
+<div class="card mt-4">
+  <div class="card-header">About These Checks</div>
+  <div class="card-body">
+    <p>FAST automatically checks for:</p>
+    <ul>
+      <li><strong>Missing field labels</strong> — WCAG 1.3.1 (Level A)</li>
+      <li><strong>Language declaration</strong> — WCAG 3.1.1 (Level A)</li>
+      <li><strong>Document title</strong> — WCAG 2.4.2 (Level A)</li>
+      <li><strong>Unlabeled signature fields</strong> — WCAG 1.3.1 (Level A)</li>
+      <li><strong>Image-only pages</strong> — WCAG 1.1.1 (Level A)</li>
+      <li><strong>Required field indicators</strong> — WCAG 3.3.2 (Level A)</li>
+    </ul>
+    <p class="text-muted">Note: Automated checks catch common issues. A full accessibility audit by a human expert is recommended for compliance certification.</p>
+  </div>
+</div>
+
+<style>
+.a11y-card { border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; padding: 14px; background: #fff; }
+.a11y-high { border-left: 4px solid #e63946; }
+.a11y-medium { border-left: 4px solid #f4a261; }
+.a11y-low { border-left: 4px solid #52b788; }
+.a11y-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.a11y-type { font-weight: 600; }
+.a11y-desc { margin: 0 0 6px 0; }
+.wcag-tag { font-size: 0.82em; color: #0077b6; }
+.field-badge { background: #e9ecef; padding: 2px 6px; border-radius: 3px; }
+.badge-sev-high { background: #e63946; color: #fff; }
+.badge-sev-medium { background: #f4a261; color: #fff; }
+.badge-sev-low { background: #52b788; color: #fff; }
+.badge-page { background: #0077b6; color: #fff; }
+.summary-banner { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; }
+.success-banner { background: #d4edda; border: 1px solid #c3e6cb; padding: 16px; border-radius: 6px; color: #155724; }
+</style>
+{% endblock %}

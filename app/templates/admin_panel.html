@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% set show_sidebar = false %}
+{% block content %}
+<div class="page-header">
+  <h1>Admin Panel</h1>
+  <p class="subtitle">User management, API keys, and audit log</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-row mb-4">
+  <div class="stat-card"><div class="stat-num">{{ total_projects }}</div><div class="stat-label">Projects</div></div>
+  <div class="stat-card"><div class="stat-num">{{ total_runs }}</div><div class="stat-label">Runs</div></div>
+  <div class="stat-card"><div class="stat-num">{{ total_forms }}</div><div class="stat-label">Forms</div></div>
+  <div class="stat-card"><div class="stat-num">{{ users | length }}</div><div class="stat-label">Users</div></div>
+</div>
+
+<!-- Users -->
+<div class="card mb-4">
+  <div class="card-header">User Management</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('web.admin_create_user') }}" class="form-row mb-3">
+      <input type="text" name="username" class="form-control" placeholder="Username" required style="max-width:140px;">
+      <input type="text" name="email" class="form-control" placeholder="Email" style="max-width:200px;">
+      <input type="text" name="display_name" class="form-control" placeholder="Display name" style="max-width:160px;">
+      <select name="role" class="form-control" style="max-width:120px;">
+        <option value="viewer">Viewer</option>
+        <option value="reviewer">Reviewer</option>
+        <option value="admin">Admin</option>
+      </select>
+      <input type="password" name="password" class="form-control" placeholder="Password" required style="max-width:140px;">
+      <button type="submit" class="btn btn-primary">Add User</button>
+    </form>
+
+    <table class="table">
+      <thead><tr><th>Username</th><th>Display Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.display_name or '—' }}</td>
+          <td>{{ u.email or '—' }}</td>
+          <td><span class="badge role-{{ u.role }}">{{ u.role }}</span></td>
+          <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else 'Never' }}</td>
+          <td><span class="badge {{ 'badge-success' if u.is_active else 'badge-secondary' }}">{{ 'Active' if u.is_active else 'Inactive' }}</span></td>
+          <td>
+            {% if u.username != user %}
+            <form method="POST" action="{{ url_for('web.admin_toggle_user', user_id=u.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-outline">{{ 'Deactivate' if u.is_active else 'Activate' }}</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- API Keys -->
+<div class="card mb-4">
+  <div class="card-header">API Keys</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('web.admin_create_api_key') }}" class="form-row mb-3">
+      <input type="text" name="name" class="form-control" placeholder="Key name (e.g. CI/CD Pipeline)" required style="max-width:280px;">
+      <button type="submit" class="btn btn-primary">Generate Key</button>
+    </form>
+
+    {% if api_keys %}
+    <table class="table">
+      <thead><tr><th>Name</th><th>Prefix</th><th>Scopes</th><th>Last Used</th><th>Created</th><th></th></tr></thead>
+      <tbody>
+        {% for k in api_keys %}
+        <tr>
+          <td>{{ k.name }}</td>
+          <td><code>{{ k.key_prefix }}...</code></td>
+          <td><small>{{ k.scopes }}</small></td>
+          <td>{{ k.last_used_at.strftime('%Y-%m-%d') if k.last_used_at else 'Never' }}</td>
+          <td>{{ k.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('web.admin_revoke_api_key', key_id=k.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Revoke this key?')">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No API keys yet.</p>
+    {% endif %}
+
+    <div class="api-usage mt-3">
+      <strong>API Usage:</strong>
+      <pre style="background:#f8f9fa;padding:12px;border-radius:4px;font-size:0.82em;">curl -H "Authorization: Bearer YOUR_KEY" http://localhost:5000/api/v1/projects
+curl -X POST -F "file=@form.pdf" -F "mode=basic" -H "Authorization: Bearer YOUR_KEY" http://localhost:5000/api/v1/validate</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Log -->
+<div class="card">
+  <div class="card-header">Recent Audit Log</div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead><tr><th>Time</th><th>User</th><th>IP</th><th>Action</th><th>Resource</th></tr></thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr>
+          <td><small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+          <td>{{ log.username or '—' }}</td>
+          <td><small>{{ log.user_ip or '—' }}</small></td>
+          <td><code>{{ log.action }}</code></td>
+          <td>
+            {% if log.resource_type %}{{ log.resource_type }}{% if log.resource_id %}#{{ log.resource_id }}{% endif %}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 16px 24px; text-align: center; }
+.stat-num { font-size: 1.8em; font-weight: 700; }
+.stat-label { font-size: 0.82em; color: #6c757d; }
+.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.role-admin { background: #e63946; color: #fff; }
+.role-reviewer { background: #f4a261; color: #fff; }
+.role-viewer { background: #6c757d; color: #fff; }
+</style>
+{% endblock %}

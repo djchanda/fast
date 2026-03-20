@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Field Inventory</h1>
+  <p class="subtitle">All form fields discovered in <strong>{{ form.name }}</strong></p>
+</div>
+
+<div class="actions-bar mb-3">
+  <form method="POST" action="{{ url_for('web.scan_field_inventory', project_id=project.id, form_id=form.id) }}" style="display:inline">
+    <button type="submit" class="btn btn-primary">🔍 Re-scan Fields</button>
+  </form>
+  <a class="btn btn-outline" href="{{ url_for('web.form_accessibility', project_id=project.id, form_id=form.id) }}">♿ Accessibility Check</a>
+  <a class="btn btn-secondary" href="{{ url_for('web.project_forms', project_id=project.id) }}">← Back to Forms</a>
+</div>
+
+{% if fields %}
+<div class="card">
+  <div class="card-header">
+    {{ fields | length }} Field(s) Found
+    <span class="float-right text-muted" style="font-size:0.85em;">Last scanned: {{ fields[0].scanned_at.strftime('%Y-%m-%d %H:%M') if fields else '' }}</span>
+  </div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Field Name</th><th>Type</th><th>Page</th><th>Required</th>
+          <th>Has Label</th><th>Has Tooltip</th><th>Tab Order</th><th>Change</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fields %}
+        <tr class="{{ 'row-added' if f.change_status == 'added' else 'row-removed' if f.change_status == 'removed' else '' }}">
+          <td><code>{{ f.field_name }}</code>
+            {% if f.previous_name %}<span class="text-muted"> (was: {{ f.previous_name }})</span>{% endif %}
+          </td>
+          <td><span class="badge badge-type">{{ f.field_type or 'text' }}</span></td>
+          <td>{{ f.page_number or '—' }}</td>
+          <td>{{ '✓' if f.is_required else '—' }}</td>
+          <td>
+            {% if f.has_label %}
+              <span class="text-success">✓</span>
+            {% else %}
+              <span class="text-danger">✗</span>
+            {% endif %}
+          </td>
+          <td>{{ '✓' if f.has_tooltip else '—' }}</td>
+          <td>{{ f.tab_order or '—' }}</td>
+          <td><span class="badge change-{{ f.change_status }}">{{ f.change_status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="stats-row mt-3">
+  <div class="stat-card">
+    <div class="stat-num">{{ fields | length }}</div>
+    <div class="stat-label">Total Fields</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num text-danger">{{ fields | rejectattr('has_label') | list | length }}</div>
+    <div class="stat-label">Missing Labels</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num text-success">{{ fields | selectattr('is_required') | list | length }}</div>
+    <div class="stat-label">Required Fields</div>
+  </div>
+</div>
+
+{% else %}
+<div class="empty-state">
+  <p>No field inventory yet. Click "Re-scan Fields" to extract form fields from this PDF.</p>
+</div>
+{% endif %}
+
+<style>
+.row-added { background: #f0fff4; }
+.row-removed { background: #fff0f0; text-decoration: line-through; opacity: 0.7; }
+.badge-type { background: #e9ecef; color: #495057; }
+.change-added { background: #52b788; color: #fff; }
+.change-removed { background: #e63946; color: #fff; }
+.change-unchanged { background: #6c757d; color: #fff; }
+.change-renamed { background: #f4a261; color: #fff; }
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 12px 20px; text-align: center; }
+.stat-num { font-size: 1.6em; font-weight: 700; }
+.stat-label { font-size: 0.8em; color: #6c757d; }
+</style>
+{% endblock %}

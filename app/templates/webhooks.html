@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% set show_sidebar = true %}
+{% block content %}
+<div class="page-header">
+  <h1>Webhooks</h1>
+  <p class="subtitle">Get notified of run completions and gate decisions via HTTP callbacks.</p>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Add Webhook</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('web.create_webhook', project_id=project.id) }}">
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Name</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Slack Notification" required>
+        </div>
+        <div class="form-group flex-2">
+          <label>URL <span class="required">*</span></label>
+          <input type="url" name="url" class="form-control" placeholder="https://hooks.example.com/..." required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Secret (for HMAC signing)</label>
+          <input type="text" name="secret" class="form-control" placeholder="Optional signing secret">
+        </div>
+        <div class="form-group flex-1">
+          <label>Events</label>
+          <input type="text" name="events" class="form-control" value="run.completed" placeholder="run.completed,gate.approved">
+          <div class="form-hint">Comma-separated: run.completed, run.failed, gate.approved, gate.rejected</div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Webhook</button>
+    </form>
+  </div>
+</div>
+
+{% if webhooks %}
+<div class="card">
+  <div class="card-header">Active Webhooks</div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead><tr><th>Name</th><th>URL</th><th>Events</th><th>Last Triggered</th><th>Last Status</th><th></th></tr></thead>
+      <tbody>
+        {% for wh in webhooks %}
+        <tr>
+          <td>{{ wh.name }}</td>
+          <td class="text-muted"><code>{{ wh.url[:60] }}{% if wh.url | length > 60 %}...{% endif %}</code></td>
+          <td>
+            {% for ev in wh.event_list() %}
+            <span class="badge badge-event">{{ ev }}</span>
+            {% endfor %}
+          </td>
+          <td>{{ wh.last_triggered_at.strftime('%Y-%m-%d %H:%M') if wh.last_triggered_at else 'Never' }}</td>
+          <td>
+            {% if wh.last_status_code %}
+              <span class="badge {{ 'badge-success' if wh.last_status_code < 300 else 'badge-danger' }}">{{ wh.last_status_code }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('web.delete_webhook', project_id=project.id, webhook_id=wh.id) }}" style="display:inline">
+              <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this webhook?')">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state"><p>No webhooks configured yet.</p></div>
+{% endif %}
+
+<div class="card mt-4">
+  <div class="card-header">Webhook Payload Format</div>
+  <div class="card-body">
+    <pre style="background:#f8f9fa;padding:12px;border-radius:4px;font-size:0.85em;">{
+  "event": "run.completed",
+  "project_id": 1,
+  "timestamp": "2025-01-15T09:30:00Z",
+  "payload": {
+    "run_id": 42,
+    "status": "completed",
+    "errors": 2,
+    "warnings": 1,
+    "passed": 5
+  }
+}</pre>
+    <p class="text-muted mt-2">When a secret is set, the <code>X-FAST-Signature: sha256=&lt;hmac&gt;</code> header is included for verification.</p>
+  </div>
+</div>
+
+<style>
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.flex-1 { flex: 1; min-width: 200px; }
+.flex-2 { flex: 2; min-width: 300px; }
+.badge-event { background: #0077b6; color: #fff; }
+.form-hint { font-size: 0.8em; color: #6c757d; }
+</style>
+{% endblock %}
