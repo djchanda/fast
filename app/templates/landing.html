@@ -3,41 +3,103 @@
 {% block content %}
 
 <div class="landing-page">
-  <div class="landing-card">
-    <div class="landing-title-row">
-      <div class="landing-fast-3d">FAST</div>
-      <div class="landing-subtitle">AI Assisted Forms Testing</div>
-    </div>
+  <div class="landing-split">
 
-    <div class="landing-grid">
-      <!-- Left: value props -->
+    <!-- LEFT: Branding & features -->
+    <div class="landing-left">
       <div>
-        <ul class="landing-bullets">
-          <li>Basic / Specific / Benchmark validation</li>
-          <li>Strict JSON output + Plain English summary</li>
-          <li>Built for accurate and fast form validation</li>
-        </ul>
+        <div class="landing-logo-row">
+          <img class="landing-logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
+          <div>
+            <div class="landing-brand">FAST <span>AI Assisted Forms Testing</span></div>
+          </div>
+        </div>
 
-        <div class="landing-note">
-          FAST delivers traceable, repeatable form validation across every release.
+        <div class="landing-hero-title">
+          Validate forms<br>with <span class="accent-red">AI precision.</span>
+        </div>
+
+        <p class="landing-hero-sub">
+          Automated PDF form validation powered by LLMs.
+          Catch errors, compare versions, and generate
+          traceable evidence — across every release.
+        </p>
+
+        <div class="landing-features">
+          <div class="landing-feature">
+            <div class="landing-feature-icon">🤖</div>
+            <div class="landing-feature-text">
+              <strong>Multi-Model AI</strong>
+              <span>Gemini, GPT-4o, or Claude — your choice</span>
+            </div>
+          </div>
+          <div class="landing-feature">
+            <div class="landing-feature-icon">📊</div>
+            <div class="landing-feature-text">
+              <strong>Visual Diff Engine</strong>
+              <span>Page-by-page comparison with signature detection</span>
+            </div>
+          </div>
+          <div class="landing-feature">
+            <div class="landing-feature-icon">✅</div>
+            <div class="landing-feature-text">
+              <strong>Review Workflow</strong>
+              <span>Assign, resolve, approve with full audit trail</span>
+            </div>
+          </div>
+          <div class="landing-feature">
+            <div class="landing-feature-icon">🔗</div>
+            <div class="landing-feature-text">
+              <strong>API-First</strong>
+              <span>Integrate into CI/CD pipelines via REST API</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Right: login -->
-      <div class="landing-form">
-        <form method="POST" action="{{ url_for('web.landing') }}">
-          <label class="form-label">Username</label>
-          <input class="input" type="text" name="username" value="demo" />
-
-          <label class="form-label">Password</label>
-          <input class="input" type="password" name="password" value="demo" />
-
-          <button class="btn btn-primary btn-block" type="submit">Login</button>
-
-          <div class="muted">Forgot password? (stub)</div>
-        </form>
+      <div style="margin-top: 40px; font-size: 12px; color: #334155;">
+        Default credentials — admin / admin &nbsp;·&nbsp; reviewer / reviewer &nbsp;·&nbsp; viewer / viewer
       </div>
     </div>
+
+    <!-- RIGHT: Login form -->
+    <div class="landing-right">
+      <div class="landing-form-title">Welcome back</div>
+      <div class="landing-form-sub">Sign in to your FAST workspace</div>
+
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash-wrap" style="margin-bottom: 16px;">
+            {% for category, msg in messages %}
+              <div class="flash flash-{{ category }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('web.landing') }}" class="landing-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input class="input" id="username" type="text" name="username"
+                 placeholder="Enter your username" autocomplete="username" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input class="input" id="password" type="password" name="password"
+                 placeholder="Enter your password" autocomplete="current-password" required />
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 4px; padding: 11px;">
+          Sign in →
+        </button>
+      </form>
+
+      <div class="landing-hint">
+        Need access? Contact your FAST administrator.
+      </div>
+    </div>
+
   </div>
 </div>
 
