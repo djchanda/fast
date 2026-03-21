@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FAST — UI Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"/>
+<style>
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0f111a;color:#e2e4ea;font-size:14px;}
+
+/* ── SCREEN SWITCHER ── */
+.switcher{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);
+  z-index:9999;display:flex;gap:8px;
+  background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.12);border-radius:999px;padding:6px 8px;
+}
+.sw-btn{
+  padding:7px 18px;border-radius:999px;border:none;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:600;
+  background:transparent;color:#aab;transition:all .2s;
+}
+.sw-btn.active{background:#e31837;color:#fff;}
+.sw-btn:hover:not(.active){background:rgba(255,255,255,0.1);color:#fff;}
+
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ═══════════════════════════════════════
+   SCREEN 1 — LANDING / LOGIN
+═══════════════════════════════════════ */
+#s1{
+  min-height:100vh;
+  background: linear-gradient(135deg, #0b0d14 0%, #111827 60%, #1a0a12 100%);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+#s1::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(227,24,55,0.12) 0%, transparent 70%);
+}
+.land-wrap{
+  display:grid;grid-template-columns:1fr 420px;gap:72px;
+  max-width:980px;width:100%;padding:0 32px;position:relative;z-index:1;
+  align-items:center;
+}
+.land-left{}
+.land-eyebrow{
+  font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:#e31837;margin-bottom:20px;display:flex;align-items:center;gap:8px;
+}
+.land-eyebrow::before{content:'';display:inline-block;width:24px;height:2px;background:#e31837;border-radius:2px;}
+.land-wordmark{font-size:72px;font-weight:800;letter-spacing:-2px;line-height:1;color:#fff;}
+.land-wordmark span{color:#e31837;}
+.land-tagline{font-size:18px;color:#9aa3b2;margin-top:14px;font-weight:400;line-height:1.6;}
+.land-features{margin-top:36px;display:flex;flex-direction:column;gap:14px;}
+.lf-item{display:flex;align-items:flex-start;gap:14px;}
+.lf-icon{
+  width:36px;height:36px;border-radius:8px;background:rgba(227,24,55,0.15);
+  border:1px solid rgba(227,24,55,0.3);display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.lf-text strong{display:block;color:#e2e4ea;font-size:13px;font-weight:600;}
+.lf-text span{color:#6b7485;font-size:12px;}
+
+.land-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;padding:36px;backdrop-filter:blur(20px);
+}
+.land-card-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.land-card-sub{font-size:13px;color:#6b7485;margin-bottom:28px;}
+.lc-label{font-size:12px;font-weight:600;color:#9aa3b2;margin-bottom:6px;display:block;}
+.lc-input{
+  width:100%;padding:12px 14px;border-radius:10px;font-family:inherit;font-size:14px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  color:#e2e4ea;outline:none;transition:border-color .2s;margin-bottom:16px;
+}
+.lc-input:focus{border-color:#e31837;}
+.lc-input::placeholder{color:#4a5062;}
+.lc-btn{
+  width:100%;padding:14px;border-radius:10px;border:none;cursor:pointer;
+  background:#e31837;color:#fff;font-family:inherit;font-size:14px;font-weight:700;
+  letter-spacing:.02em;transition:filter .2s;
+}
+.lc-btn:hover{filter:brightness(1.1);}
+.lc-divider{text-align:center;font-size:12px;color:#4a5062;margin:16px 0;}
+.lc-sso{
+  width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);
+  background:transparent;color:#9aa3b2;font-family:inherit;font-size:13px;
+  font-weight:600;cursor:pointer;transition:all .2s;
+}
+.lc-sso:hover{background:rgba(255,255,255,0.05);color:#e2e4ea;}
+
+/* ═══════════════════════════════════════
+   SCREEN 2 — DASHBOARD
+═══════════════════════════════════════ */
+#s2{min-height:100vh;display:flex;flex-direction:column;background:#0f111a;}
+.topbar2{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 24px;height:60px;
+  background:#13161f;border-bottom:1px solid #1e2130;
+  flex-shrink:0;position:sticky;top:0;z-index:10;
+}
+.tb-left{display:flex;align-items:center;gap:14px;}
+.tb-logo{
+  font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;
+  display:flex;align-items:center;gap:8px;
+}
+.tb-logo .dot{color:#e31837;}
+.tb-sep{width:1px;height:24px;background:#1e2130;}
+.tb-breadcrumb{font-size:13px;color:#6b7485;}
+.tb-right{display:flex;align-items:center;gap:12px;}
+.tb-badge{
+  padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
+  background:rgba(227,24,55,0.15);color:#e31837;border:1px solid rgba(227,24,55,0.3);
+}
+.tb-avatar{
+  width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#e31837,#ff6b85);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;
+}
+
+.body2{display:flex;flex:1;overflow:hidden;}
+
+/* sidebar */
+.sidebar2{
+  width:220px;background:#13161f;border-right:1px solid #1e2130;
+  padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;
+  overflow-y:auto;
+}
+.s2-section{font-size:10px;font-weight:700;color:#3d4357;letter-spacing:.1em;
+  text-transform:uppercase;padding:12px 10px 6px;}
+.s2-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+  text-decoration:none;color:#6b7485;font-size:13px;font-weight:500;cursor:pointer;
+  transition:all .15s;border:1px solid transparent;
+}
+.s2-item:hover{background:rgba(255,255,255,0.04);color:#c8cdd8;}
+.s2-item.active{background:rgba(227,24,55,0.1);color:#e31837;border-color:rgba(227,24,55,0.2);}
+.s2-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.s2-count{
+  margin-left:auto;background:#1e2130;color:#6b7485;
+  font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;
+}
+
+/* main */
+.main2{flex:1;padding:28px;overflow-y:auto;background:#0f111a;}
+.dash-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
+.dash-title2{font-size:22px;font-weight:700;color:#fff;}
+.dash-sub2{font-size:13px;color:#6b7485;margin-top:4px;}
+.new-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:10px;border:none;cursor:pointer;
+  background:#e31837;color:#fff;font-family:inherit;font-size:13px;font-weight:700;
+}
+
+/* kpi row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.kpi-card{
+  background:#13161f;border:1px solid #1e2130;border-radius:14px;padding:20px;
+  position:relative;overflow:hidden;
+}
+.kpi-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.kpi-card.red::after{background:linear-gradient(90deg,#e31837,transparent);}
+.kpi-card.blue::after{background:linear-gradient(90deg,#005eb8,transparent);}
+.kpi-card.green::after{background:linear-gradient(90deg,#22c55e,transparent);}
+.kpi-card.amber::after{background:linear-gradient(90deg,#f59e0b,transparent);}
+.kpi-label{font-size:11px;font-weight:700;color:#4a5062;text-transform:uppercase;letter-spacing:.08em;}
+.kpi-num2{font-size:32px;font-weight:800;color:#fff;margin:8px 0 4px;line-height:1;}
+.kpi-delta{font-size:12px;color:#22c55e;font-weight:600;}
+.kpi-delta.down{color:#e31837;}
+
+/* projects table */
+.section-title2{font-size:14px;font-weight:700;color:#fff;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;}
+.section-title2 .badge2{
+  background:#1e2130;color:#6b7485;font-size:10px;font-weight:700;
+  padding:3px 8px;border-radius:999px;
+}
+.card2{background:#13161f;border:1px solid #1e2130;border-radius:14px;overflow:hidden;}
+.table2{width:100%;border-collapse:collapse;}
+.table2 th{
+  padding:12px 16px;text-align:left;font-size:11px;font-weight:700;
+  color:#3d4357;text-transform:uppercase;letter-spacing:.08em;
+  border-bottom:1px solid #1e2130;background:#0f111a;
+}
+.table2 td{
+  padding:14px 16px;font-size:13px;color:#9aa3b2;border-bottom:1px solid #1a1d29;
+}
+.table2 tr:last-child td{border-bottom:none;}
+.table2 tr:hover td{background:rgba(255,255,255,0.02);}
+.proj-name{color:#e2e4ea;font-weight:600;}
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
+}
+.status-pill::before{content:'';width:6px;height:6px;border-radius:50%;}
+.pill-active{background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.2);}
+.pill-active::before{background:#22c55e;box-shadow:0 0 6px #22c55e;}
+.pill-idle{background:rgba(107,116,133,0.12);color:#6b7485;border:1px solid rgba(107,116,133,0.2);}
+.pill-idle::before{background:#6b7485;}
+.pill-warn{background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.2);}
+.pill-warn::before{background:#f59e0b;box-shadow:0 0 6px #f59e0b;}
+.open-btn{
+  padding:6px 14px;border-radius:8px;border:1px solid #2a2f42;
+  background:transparent;color:#9aa3b2;font-family:inherit;font-size:12px;
+  font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-block;
+}
+.open-btn:hover{background:#1e2130;color:#e2e4ea;border-color:#3a4055;}
+
+/* ═══════════════════════════════════════
+   SCREEN 3 — RESULT DETAIL
+═══════════════════════════════════════ */
+#s3{min-height:100vh;display:flex;flex-direction:column;background:#0f111a;}
+
+.rd-main{flex:1;padding:28px;display:grid;grid-template-columns:1fr 340px;gap:20px;}
+
+.rd-left{display:flex;flex-direction:column;gap:16px;}
+.rd-right{display:flex;flex-direction:column;gap:16px;}
+
+.section-card{
+  background:#13161f;border:1px solid #1e2130;border-radius:14px;padding:20px;
+}
+.sc-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;}
+.sc-title .sc-badge{
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
+  background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.2);
+}
+.sc-title .sc-badge.pass{background:rgba(34,197,94,0.12);color:#22c55e;border-color:rgba(34,197,94,0.2);}
+
+/* iframe mock */
+.iframe-mock{
+  height:320px;border-radius:10px;overflow:hidden;
+  background:linear-gradient(160deg,#1a1d29,#13161f);
+  border:1px solid #2a2f42;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;color:#3d4357;
+}
+.iframe-mock .if-icon{font-size:32px;}
+.iframe-mock .if-text{font-size:13px;font-weight:600;color:#4a5062;}
+
+/* findings list */
+.finding-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 0;border-bottom:1px solid #1a1d29;
+}
+.finding-item:last-child{border-bottom:none;}
+.fi-dot{
+  width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;
+}
+.fi-dot.fail{background:#e31837;box-shadow:0 0 8px rgba(227,24,55,.5);}
+.fi-dot.warn{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5);}
+.fi-dot.pass{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.5);}
+.fi-body{}
+.fi-title{font-size:13px;font-weight:600;color:#e2e4ea;}
+.fi-sub{font-size:12px;color:#4a5062;margin-top:2px;}
+
+/* score ring */
+.score-wrap{display:flex;justify-content:center;padding:8px 0 16px;}
+.score-ring{position:relative;width:120px;height:120px;}
+.score-ring svg{width:120px;height:120px;transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:#1e2130;stroke-width:10;}
+.ring-fill{fill:none;stroke-width:10;stroke-linecap:round;stroke-dasharray:339.3;transition:stroke-dashoffset .6s;}
+.ring-pass{stroke:#22c55e;stroke-dashoffset:50;}
+.ring-warn{stroke:#f59e0b;stroke-dashoffset:170;}
+.score-num{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;
+}
+.score-num .n{font-size:26px;font-weight:800;color:#fff;}
+.score-num .l{font-size:10px;color:#4a5062;font-weight:600;}
+
+/* meta list */
+.meta-row{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid #1a1d29;font-size:13px;}
+.meta-row:last-child{border-bottom:none;}
+.meta-key{color:#4a5062;font-weight:500;}
+.meta-val{color:#9aa3b2;font-weight:600;text-align:right;}
+
+/* action buttons row */
+.actions-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+.act-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:9px 14px;border-radius:9px;border:1px solid #2a2f42;
+  background:rgba(255,255,255,0.03);color:#9aa3b2;
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .15s;text-decoration:none;
+}
+.act-btn:hover{background:#1e2130;color:#e2e4ea;border-color:#3a4055;}
+.act-btn.primary{background:#e31837;color:#fff;border-color:#e31837;}
+.act-btn.primary:hover{filter:brightness(1.1);}
+
+/* progress bars */
+.prog-row{margin-bottom:10px;}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;
+  color:#6b7485;margin-bottom:5px;}
+.prog-bar{height:6px;background:#1e2130;border-radius:999px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:999px;}
+.prog-green{background:linear-gradient(90deg,#22c55e,#16a34a);}
+.prog-red{background:linear-gradient(90deg,#e31837,#b91c1c);}
+.prog-amber{background:linear-gradient(90deg,#f59e0b,#d97706);}
+
+</style>
+</head>
+<body>
+
+<!-- SCREEN SWITCHER -->
+<div class="switcher">
+  <button class="sw-btn active" onclick="show('s1',this)">Landing</button>
+  <button class="sw-btn" onclick="show('s2',this)">Dashboard</button>
+  <button class="sw-btn" onclick="show('s3',this)">Result Detail</button>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN 1 — LANDING
+══════════════════════════════════ -->
+<div id="s1" class="screen active">
+  <div class="land-wrap">
+    <div class="land-left">
+      <div class="land-eyebrow">AI Assisted Forms Testing</div>
+      <div class="land-wordmark">FA<span>S</span>T</div>
+      <div class="land-tagline">Repeatable, traceable validation evidence<br>across every form and every release.</div>
+      <div class="land-features">
+        <div class="lf-item">
+          <div class="lf-icon">🧠</div>
+          <div class="lf-text">
+            <strong>AI-Powered Analysis</strong>
+            <span>Basic / Specific / Benchmark validation with strict JSON output</span>
+          </div>
+        </div>
+        <div class="lf-item">
+          <div class="lf-icon">📋</div>
+          <div class="lf-text">
+            <strong>Evidence Bundles</strong>
+            <span>Annotated PDFs + audit trail ready for sign-off</span>
+          </div>
+        </div>
+        <div class="lf-item">
+          <div class="lf-icon">🔁</div>
+          <div class="lf-text">
+            <strong>Carry Rules Forward</strong>
+            <span>DEV → UAT → PROD with identical test case logic</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="land-card">
+      <div class="land-card-title">Sign in to FAST</div>
+      <div class="land-card-sub">Use your CGI credentials or SSO</div>
+
+      <label class="lc-label">Username</label>
+      <input class="lc-input" type="text" placeholder="you@cgi.com" value=""/>
+
+      <label class="lc-label">Password</label>
+      <input class="lc-input" type="password" placeholder="••••••••"/>
+
+      <button class="lc-btn">Continue →</button>
+
+      <div class="lc-divider">or</div>
+      <button class="lc-sso">🔐 &nbsp;Sign in with SSO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN 2 — DASHBOARD
+══════════════════════════════════ -->
+<div id="s2" class="screen">
+  <!-- Topbar -->
+  <div class="topbar2">
+    <div class="tb-left">
+      <div class="tb-logo">FA<span class="dot">S</span>T</div>
+      <div class="tb-sep"></div>
+      <div class="tb-breadcrumb">Project Dashboard</div>
+    </div>
+    <div class="tb-right">
+      <span class="tb-badge">admin</span>
+      <div class="tb-avatar">JD</div>
+    </div>
+  </div>
+
+  <div class="body2">
+    <!-- Sidebar -->
+    <aside class="sidebar2">
+      <div class="s2-section">Workspace</div>
+      <div class="s2-item active"><span class="s2-icon">⬛</span> Dashboard</div>
+      <div class="s2-item"><span class="s2-icon">📁</span> Projects <span class="s2-count">4</span></div>
+      <div class="s2-item"><span class="s2-icon">📈</span> Trends</div>
+
+      <div class="s2-section">Current Project</div>
+      <div class="s2-item"><span class="s2-icon">🗂</span> Overview</div>
+      <div class="s2-item"><span class="s2-icon">📄</span> Forms</div>
+      <div class="s2-item"><span class="s2-icon">✅</span> Test Cases</div>
+      <div class="s2-item"><span class="s2-icon">▶</span> Execute</div>
+      <div class="s2-item"><span class="s2-icon">🔍</span> Results <span class="s2-count">12</span></div>
+
+      <div class="s2-section">Settings</div>
+      <div class="s2-item"><span class="s2-icon">🔔</span> Webhooks</div>
+      <div class="s2-item"><span class="s2-icon">🕐</span> Schedules</div>
+      <div class="s2-item"><span class="s2-icon">🧩</span> False Positives</div>
+      <div class="s2-item"><span class="s2-icon">📋</span> Audit Log</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main2">
+      <div class="dash-header">
+        <div>
+          <div class="dash-title2">Project Dashboard</div>
+          <div class="dash-sub2">Welcome back, John. Build evidence, not slides.</div>
+        </div>
+        <button class="new-btn">＋ &nbsp;New Project</button>
+      </div>
+
+      <!-- KPI row -->
+      <div class="kpi-row">
+        <div class="kpi-card red">
+          <div class="kpi-label">Total Projects</div>
+          <div class="kpi-num2">4</div>
+          <div class="kpi-delta">↑ 1 this month</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Runs This Week</div>
+          <div class="kpi-num2">28</div>
+          <div class="kpi-delta">↑ 12% vs last week</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Pass Rate</div>
+          <div class="kpi-num2">91%</div>
+          <div class="kpi-delta">↑ 3% vs last run</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Open Findings</div>
+          <div class="kpi-num2">7</div>
+          <div class="kpi-delta down">↑ 2 new today</div>
+        </div>
+      </div>
+
+      <!-- Projects table -->
+      <div class="section-title2">
+        All Projects <span class="badge2">4</span>
+      </div>
+      <div class="card2">
+        <table class="table2">
+          <thead>
+            <tr>
+              <th>Project Name</th>
+              <th>Account</th>
+              <th>Environment</th>
+              <th>Last Run</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="proj-name">Form Validation — Onboarding</span></td>
+              <td>Bank Corp</td>
+              <td>UAT</td>
+              <td>2 hours ago</td>
+              <td><span class="status-pill pill-active">Active</span></td>
+              <td><a class="open-btn" href="#">Open →</a></td>
+            </tr>
+            <tr>
+              <td><span class="proj-name">KYC Document Suite</span></td>
+              <td>FinServ Inc</td>
+              <td>QA</td>
+              <td>Yesterday</td>
+              <td><span class="status-pill pill-warn">Review</span></td>
+              <td><a class="open-btn" href="#">Open →</a></td>
+            </tr>
+            <tr>
+              <td><span class="proj-name">Wealth — Risk Disclosure</span></td>
+              <td>Wealth Mgmt</td>
+              <td>DEV</td>
+              <td>3 days ago</td>
+              <td><span class="status-pill pill-idle">Idle</span></td>
+              <td><a class="open-btn" href="#">Open →</a></td>
+            </tr>
+            <tr>
+              <td><span class="proj-name">Branch Teller Forms</span></td>
+              <td>PNC</td>
+              <td>PROD</td>
+              <td>1 week ago</td>
+              <td><span class="status-pill pill-active">Active</span></td>
+              <td><a class="open-btn" href="#">Open →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN 3 — RESULT DETAIL
+══════════════════════════════════ -->
+<div id="s3" class="screen">
+  <!-- Topbar (reuse) -->
+  <div class="topbar2">
+    <div class="tb-left">
+      <div class="tb-logo">FA<span class="dot">S</span>T</div>
+      <div class="tb-sep"></div>
+      <div class="tb-breadcrumb">Results &rsaquo; Run #42 &rsaquo; Test Case #7</div>
+    </div>
+    <div class="tb-right">
+      <span class="tb-badge">admin</span>
+      <div class="tb-avatar">JD</div>
+    </div>
+  </div>
+
+  <div class="rd-main">
+    <!-- LEFT COL -->
+    <div class="rd-left">
+
+      <!-- Action buttons -->
+      <div class="actions-row">
+        <a class="act-btn" href="#">← Back to Run</a>
+        <a class="act-btn primary" href="#">Open Report ↗</a>
+        <a class="act-btn" href="#">🔍 Review Findings</a>
+        <a class="act-btn" href="#">📄 Annotated PDF</a>
+        <a class="act-btn" href="#">⬇ Evidence Bundle</a>
+        <a class="act-btn" href="#">✅ Approval Gate</a>
+      </div>
+
+      <!-- HTML Report card -->
+      <div class="section-card">
+        <div class="sc-title">
+          HTML Report
+          <span class="sc-badge warn">3 Findings</span>
+        </div>
+        <div class="iframe-mock">
+          <div class="if-icon">📊</div>
+          <div class="if-text">Report renders here as an embedded iframe</div>
+        </div>
+      </div>
+
+      <!-- Findings -->
+      <div class="section-card">
+        <div class="sc-title">
+          Finding Breakdown
+          <span class="sc-badge pass">Run #42</span>
+        </div>
+        <div class="finding-item">
+          <div class="fi-dot fail"></div>
+          <div class="fi-body">
+            <div class="fi-title">Field "Date of Birth" — missing required validation</div>
+            <div class="fi-sub">Severity: High &nbsp;·&nbsp; Rule: BENCHMARK-04 &nbsp;·&nbsp; Page 2</div>
+          </div>
+        </div>
+        <div class="finding-item">
+          <div class="fi-dot warn"></div>
+          <div class="fi-body">
+            <div class="fi-title">Checkbox group lacks accessible label</div>
+            <div class="fi-sub">Severity: Medium &nbsp;·&nbsp; Rule: ACCESS-11 &nbsp;·&nbsp; Page 3</div>
+          </div>
+        </div>
+        <div class="finding-item">
+          <div class="fi-dot warn"></div>
+          <div class="fi-body">
+            <div class="fi-title">Signature block — tab order non-sequential</div>
+            <div class="fi-sub">Severity: Medium &nbsp;·&nbsp; Rule: ACCESS-07 &nbsp;·&nbsp; Page 4</div>
+          </div>
+        </div>
+        <div class="finding-item">
+          <div class="fi-dot pass"></div>
+          <div class="fi-body">
+            <div class="fi-title">Address section — all fields validated correctly</div>
+            <div class="fi-sub">Severity: — &nbsp;·&nbsp; Rule: SPECIFIC-12 &nbsp;·&nbsp; Page 1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COL -->
+    <div class="rd-right">
+
+      <!-- Score -->
+      <div class="section-card">
+        <div class="sc-title">Overall Score</div>
+        <div class="score-wrap">
+          <div class="score-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="54"/>
+              <circle class="ring-fill ring-warn" cx="60" cy="60" r="54"/>
+            </svg>
+            <div class="score-num">
+              <div class="n">78</div>
+              <div class="l">/ 100</div>
+            </div>
+          </div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Passed</span><span>18 / 23</span></div>
+          <div class="prog-bar"><div class="prog-fill prog-green" style="width:78%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Warnings</span><span>2 / 23</span></div>
+          <div class="prog-bar"><div class="prog-fill prog-amber" style="width:9%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Failures</span><span>1 / 23</span></div>
+          <div class="prog-bar"><div class="prog-fill prog-red" style="width:4%"></div></div>
+        </div>
+      </div>
+
+      <!-- Meta -->
+      <div class="section-card">
+        <div class="sc-title">Run Metadata</div>
+        <div class="meta-row"><span class="meta-key">Run ID</span><span class="meta-val">#42</span></div>
+        <div class="meta-row"><span class="meta-key">Test Case</span><span class="meta-val">#7 — KYC Basic</span></div>
+        <div class="meta-row"><span class="meta-key">Project</span><span class="meta-val">KYC Document Suite</span></div>
+        <div class="meta-row"><span class="meta-key">Environment</span><span class="meta-val">QA</span></div>
+        <div class="meta-row"><span class="meta-key">Executed</span><span class="meta-val">Mar 21, 2026 14:32</span></div>
+        <div class="meta-row"><span class="meta-key">Duration</span><span class="meta-val">1m 43s</span></div>
+        <div class="meta-row"><span class="meta-key">Model</span><span class="meta-val">claude-sonnet-4-6</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id, btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.sw-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
