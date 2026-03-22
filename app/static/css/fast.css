@@ -56,7 +56,7 @@ body{
 }
 
 .topbar-left{display:flex;align-items:center;gap:12px;}
-.logo{height:36px;width:auto;}
+.logo{height:36px;width:auto;mix-blend-mode:multiply;}
 .brand-title{font-weight:700;font-size:18px;letter-spacing:0.4px;}
 .brand-sub{font-weight:500;color:#444;font-size:12px;margin-left:6px;}
 
