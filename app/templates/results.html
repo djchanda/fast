@@ -14,18 +14,6 @@
     </div>
   </div>
   <div class="ov-actions">
-    {% if runs %}
-    <form method="get" action="{{ url_for('web.project_results', project_id=project.id) }}" id="runSwitchForm">
-      <select class="input run-switcher" name="run_id" onchange="document.getElementById('runSwitchForm').submit()">
-        {% for r in runs %}
-          <option value="{{ r.id }}" {% if selected_run and r.id == selected_run.id %}selected{% endif %}>
-            Run #{{ r.id }} — {{ r.created_at.strftime("%b %d, %H:%M") if r.created_at else "" }}
-            {%- if r.errors %} · {{ r.errors }} err{% endif %}
-          </option>
-        {% endfor %}
-      </select>
-    </form>
-    {% endif %}
     <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       New Run
@@ -52,82 +40,121 @@
 
 {% else %}
 
-<!-- Run summary KPIs -->
-{% if selected_run %}
-<div class="results-summary-row">
-  <div class="results-kpi results-kpi-red">
-    <div class="results-kpi-num">{{ selected_run.errors or 0 }}</div>
-    <div class="results-kpi-label">Errors</div>
-  </div>
-  <div class="results-kpi results-kpi-amber">
-    <div class="results-kpi-num">{{ selected_run.warnings or 0 }}</div>
-    <div class="results-kpi-label">Warnings</div>
-  </div>
-  <div class="results-kpi results-kpi-green">
-    <div class="results-kpi-num">{{ selected_run.passed or 0 }}</div>
-    <div class="results-kpi-label">Passed</div>
-  </div>
-  <div class="results-kpi results-kpi-blue">
-    <div class="results-kpi-num">{{ selected_run.total or (results|length) }}</div>
-    <div class="results-kpi-label">Total Checks</div>
-  </div>
-  <div class="results-run-meta">
-    <div class="results-run-id">Run #{{ selected_run.id }}</div>
-    <div class="results-run-detail">
-      {{ selected_run.created_at.strftime("%Y-%m-%d at %H:%M") if selected_run.created_at else "" }}
-      {% if selected_run.triggered_by %} · by {{ selected_run.triggered_by }}{% endif %}
+<div class="results-layout">
+
+  <!-- Left: All runs list -->
+  <div class="runs-list-panel">
+    <div class="runs-list-header">
+      <span>All Runs</span>
+      <span class="runs-list-count">{{ runs|length }}</span>
     </div>
-    <span class="results-status-badge results-status-{{ selected_run.status or 'unknown' }}">
-      {{ selected_run.status or "unknown" }}
-    </span>
-  </div>
-</div>
-{% endif %}
-
-<!-- Result cards -->
-<div class="card">
-  <div class="card-header">
-    <span>Test Results</span>
-    <span class="badge badge-secondary">{{ results|length }}</span>
-  </div>
-
-  {% if results %}
-  <div class="card-body p0">
-    {% for rr in results %}
-    {% set tc = tc_map.get(rr.test_case_id) %}
-    <a class="result-row" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">
-      <div class="result-row-left">
-        <div class="result-status-dot result-dot-{{ rr.status or 'unknown' }}"></div>
-        <div>
-          <div class="result-name">{{ tc.name if tc else ("Test Case #" ~ rr.test_case_id) }}</div>
-          <div class="result-meta">
-            {% if tc and tc.form %}{{ tc.form.original_filename }}{% endif %}
-          </div>
-        </div>
+    {% for r in runs %}
+    <a class="run-list-item {% if selected_run and r.id == selected_run.id %}active{% endif %}"
+       href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">
+      <div class="run-list-top">
+        <span class="run-list-num">Run #{{ r.id }}</span>
+        <span class="run-list-status run-list-status-{{ r.status or 'unknown' }}">{{ r.status or "—" }}</span>
       </div>
-      <div class="result-row-right">
-        {% if rr.mode %}
-          {% if rr.mode == 'benchmark' %}
-            <span class="mode-badge mode-benchmark">Benchmark</span>
-          {% elif rr.mode == 'specific' %}
-            <span class="mode-badge mode-specific">Specific</span>
-          {% else %}
-            <span class="mode-badge mode-basic">Basic</span>
-          {% endif %}
+      <div class="run-list-date">
+        {{ r.created_at.strftime("%b %d, %Y · %H:%M") if r.created_at else "—" }}
+        {% if r.triggered_by %} · {{ r.triggered_by }}{% endif %}
+      </div>
+      <div class="run-list-stats">
+        {% if r.errors %}
+          <span class="run-list-stat run-list-stat-red">{{ r.errors }} err</span>
         {% endif %}
-        <span class="result-status-pill result-pill-{{ rr.status or 'unknown' }}">{{ rr.status or "—" }}</span>
-        <span class="result-arrow">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </span>
+        {% if r.warnings %}
+          <span class="run-list-stat run-list-stat-amber">{{ r.warnings }} warn</span>
+        {% endif %}
+        <span class="run-list-stat run-list-stat-green">{{ r.passed or 0 }} ok</span>
       </div>
     </a>
     {% endfor %}
   </div>
-  {% else %}
-  <div class="card-body">
-    <p class="text-muted" style="text-align:center; padding: 24px 0;">No results for this run.</p>
+
+  <!-- Right: Selected run detail -->
+  <div class="run-detail-panel">
+    {% if selected_run %}
+
+    <!-- KPI cards for selected run -->
+    <div class="results-summary-row">
+      <div class="results-kpi results-kpi-red">
+        <div class="results-kpi-num">{{ selected_run.errors or 0 }}</div>
+        <div class="results-kpi-label">Errors</div>
+      </div>
+      <div class="results-kpi results-kpi-amber">
+        <div class="results-kpi-num">{{ selected_run.warnings or 0 }}</div>
+        <div class="results-kpi-label">Warnings</div>
+      </div>
+      <div class="results-kpi results-kpi-green">
+        <div class="results-kpi-num">{{ selected_run.passed or 0 }}</div>
+        <div class="results-kpi-label">Passed</div>
+      </div>
+      <div class="results-kpi results-kpi-blue">
+        <div class="results-kpi-num">{{ selected_run.total or (results|length) }}</div>
+        <div class="results-kpi-label">Total Checks</div>
+      </div>
+      <div class="results-run-meta">
+        <div class="results-run-id">Run #{{ selected_run.id }}</div>
+        <div class="results-run-detail">
+          {{ selected_run.created_at.strftime("%Y-%m-%d at %H:%M") if selected_run.created_at else "" }}
+          {% if selected_run.triggered_by %} · by {{ selected_run.triggered_by }}{% endif %}
+        </div>
+        <span class="results-status-badge results-status-{{ selected_run.status or 'unknown' }}">
+          {{ selected_run.status or "unknown" }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Test results list -->
+    <div class="card">
+      <div class="card-header">
+        <span>Test Results</span>
+        <span class="badge badge-secondary">{{ results|length }}</span>
+      </div>
+
+      {% if results %}
+      <div class="card-body p0">
+        {% for rr in results %}
+        {% set tc = tc_map.get(rr.test_case_id) %}
+        <a class="result-row" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">
+          <div class="result-row-left">
+            <div class="result-status-dot result-dot-{{ rr.status or 'unknown' }}"></div>
+            <div>
+              <div class="result-name">{{ tc.name if tc else ("Test Case #" ~ rr.test_case_id) }}</div>
+              <div class="result-meta">
+                {% if tc and tc.form %}{{ tc.form.original_filename }}{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="result-row-right">
+            {% if rr.mode %}
+              {% if rr.mode == 'benchmark' %}
+                <span class="mode-badge mode-benchmark">Benchmark</span>
+              {% elif rr.mode == 'specific' %}
+                <span class="mode-badge mode-specific">Specific</span>
+              {% else %}
+                <span class="mode-badge mode-basic">Basic</span>
+              {% endif %}
+            {% endif %}
+            <span class="result-status-pill result-pill-{{ rr.status or 'unknown' }}">{{ rr.status or "—" }}</span>
+            <span class="result-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="card-body">
+        <p class="text-muted" style="text-align:center; padding: 24px 0;">No results for this run.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% endif %}
   </div>
-  {% endif %}
+
 </div>
 
 {% endif %}

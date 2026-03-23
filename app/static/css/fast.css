@@ -1571,6 +1571,110 @@ body.landing-body {
 /* ============================================================
    RESULTS PAGE
    ============================================================ */
+/* Two-column layout: runs list + run detail */
+.results-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.runs-list-panel {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.runs-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.runs-list-count {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+}
+
+.run-list-item {
+  display: block;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.run-list-item:last-child { border-bottom: none; }
+.run-list-item:hover { background: var(--surface-2); }
+.run-list-item.active {
+  background: rgba(227,24,55,0.07);
+  border-left: 3px solid var(--cgi-red);
+  padding-left: 13px;
+}
+
+.run-list-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.run-list-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.run-list-status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 1px 7px;
+  border-radius: 99px;
+}
+.run-list-status-completed { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+.run-list-status-failed    { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.run-list-status-running   { background: var(--info-bg);    color: var(--info);    border: 1px solid var(--info-border); }
+.run-list-status-unknown   { background: var(--surface-2);  color: var(--text-muted); border: 1px solid var(--border); }
+
+.run-list-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.run-list-stats {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.run-list-stat {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 5px;
+}
+.run-list-stat-red   { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.run-list-stat-amber { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+.run-list-stat-green { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+
+.run-detail-panel { flex: 1; min-width: 0; }
+
 .run-switcher {
   min-width: 260px;
   font-size: 13px;
@@ -2206,4 +2310,30 @@ body.dark-page {
 }
 .dark-page .contact-card {
   border-color: rgba(255,255,255,0.07);
+}
+
+/* Results KPI border fix */
+.dark-page .results-kpi {
+  border-color: rgba(255,255,255,0.07);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+/* Running status pill (hardcoded light blue) */
+.dark-page .results-status-running,
+.dark-page .result-pill-running {
+  background: rgba(2,132,199,0.15);
+  color: #60a5fa;
+  border-color: rgba(2,132,199,0.3);
+}
+
+/* Mode badge dark overrides */
+.dark-page .mode-benchmark {
+  background: rgba(0,94,184,0.15);
+  color: #60a5fa;
+  border-color: rgba(0,94,184,0.3);
+}
+.dark-page .mode-specific {
+  background: rgba(124,58,237,0.15);
+  color: #a78bfa;
+  border-color: rgba(124,58,237,0.3);
 }
