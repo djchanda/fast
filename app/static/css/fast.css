@@ -267,7 +267,8 @@ body {
   padding-left: 8px;
 }
 
-.nav-item-icon { font-size: 14px; width: 18px; text-align: center; }
+.nav-item-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-item-icon svg { width: 15px; height: 15px; stroke: currentColor; }
 
 /* ============================================================
    MAIN CONTENT
