@@ -85,7 +85,7 @@ body {
 
 .brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 
-.logo { height: 30px; width: auto; filter: invert(1); mix-blend-mode: screen; }
+.logo { height: 30px; width: auto; filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
 
 .brand-divider {
   width: 1px;
