@@ -56,7 +56,7 @@
         <span class="run-list-status run-list-status-{{ r.status or 'unknown' }}">{{ r.status or "—" }}</span>
       </div>
       <div class="run-list-date">
-        {{ r.created_at.strftime("%b %d, %Y · %H:%M") if r.created_at else "—" }}
+        {{ r.created_at | est("%b %d, %Y · %H:%M") if r.created_at else "—" }}
         {% if r.triggered_by %} · {{ r.triggered_by }}{% endif %}
       </div>
       <div class="run-list-stats">
@@ -97,7 +97,7 @@
       <div class="results-run-meta">
         <div class="results-run-id">Run #{{ selected_run.id }}</div>
         <div class="results-run-detail">
-          {{ selected_run.created_at.strftime("%Y-%m-%d at %H:%M") if selected_run.created_at else "" }}
+          {{ selected_run.created_at | est if selected_run.created_at else "" }} ET
           {% if selected_run.triggered_by %} · by {{ selected_run.triggered_by }}{% endif %}
         </div>
         <span class="results-status-badge results-status-{{ selected_run.status or 'unknown' }}">

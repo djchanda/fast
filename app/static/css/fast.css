@@ -1020,6 +1020,12 @@ body.landing-body {
   padding: 0 4px;
   white-space: nowrap;
 }
+.findings-nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
 
 /* Webhooks */
 .wh-form-row { display: flex; gap: 12px; flex-wrap: wrap; }

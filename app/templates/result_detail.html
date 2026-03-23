@@ -71,7 +71,7 @@
 
       <div class="rd-iframe-wrap">
         {% if report_url %}
-          <iframe class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
+          <iframe id="report-iframe" class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
         {% else %}
           <div class="rd-muted" style="padding:16px;">
             Report was not generated. (report_html_path is empty)
@@ -85,4 +85,59 @@
   </div>
 
 </div>
+
+{% if report_url %}
+<script>
+(function () {
+  var DARK = [
+    ':root{',
+    '--bg:#0f1623 !important;',
+    '--card:#141c2d !important;',
+    '--card2:#1a2236 !important;',
+    '--text:#e2e8f0 !important;',
+    '--muted:#94a3b8 !important;',
+    '--border:rgba(255,255,255,.08) !important;',
+    '--border2:rgba(255,255,255,.05) !important;',
+    '--shadow:0 2px 10px rgba(0,0,0,.4) !important;',
+    '--ok-bg:rgba(22,163,74,.15) !important;--ok-b:rgba(22,163,74,.3) !important;--ok-t:#4ade80 !important;',
+    '--warn-bg:rgba(217,119,6,.15) !important;--warn-b:rgba(217,119,6,.3) !important;--warn-t:#fbbf24 !important;',
+    '--bad-bg:rgba(220,38,38,.15) !important;--bad-b:rgba(220,38,38,.3) !important;--bad-t:#f87171 !important;',
+    '--info-bg:rgba(2,132,199,.15) !important;--info-b:rgba(2,132,199,.3) !important;--info-t:#60a5fa !important;',
+    '--neutral-bg:rgba(255,255,255,.07) !important;--neutral-b:rgba(255,255,255,.12) !important;--neutral-t:#cbd5e1 !important;',
+    '}',
+    'html,body{background:#0f1623 !important;color:#e2e8f0 !important;}',
+    '.topbar,.card{background:#141c2d !important;border-color:rgba(255,255,255,.08) !important;}',
+    '.table-wrap{background:#141c2d !important;border-color:rgba(255,255,255,.08) !important;}',
+    '.fast-table th{background:#1a2236 !important;color:#94a3b8 !important;}',
+    '.fast-table th,.fast-table td{border-bottom-color:rgba(255,255,255,.08) !important;}',
+    '.kv{border-bottom-color:rgba(255,255,255,.05) !important;}',
+    '.rd-filter-btn{background:#1a2236 !important;color:#e2e8f0 !important;border-color:rgba(255,255,255,.08) !important;}',
+    '.rd-filter-btn:hover{background:rgba(255,255,255,.1) !important;}',
+    '.rd-filter-btn.active{background:rgba(2,132,199,.15) !important;border-color:rgba(2,132,199,.3) !important;color:#60a5fa !important;}',
+    '.banner{background:rgba(217,119,6,.12) !important;border-color:#d97706 !important;color:#fbbf24 !important;}',
+    'a{color:#60a5fa !important;}'
+  ].join('');
+
+  function inject(iframe) {
+    try {
+      var doc = iframe.contentDocument || iframe.contentWindow.document;
+      if (!doc || !doc.head) return;
+      var s = doc.createElement('style');
+      s.id = 'fast-dark-override';
+      if (doc.getElementById('fast-dark-override')) return;
+      s.textContent = DARK;
+      doc.head.appendChild(s);
+    } catch (e) {}
+  }
+
+  var iframe = document.getElementById('report-iframe');
+  if (iframe) {
+    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+      inject(iframe);
+    }
+    iframe.addEventListener('load', function () { inject(this); });
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

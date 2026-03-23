@@ -43,6 +43,23 @@ def create_app():
         except Exception:
             return str(value)
 
+    @app.template_filter("est")
+    def est_filter(dt, fmt="%Y-%m-%d at %H:%M"):
+        """Convert a naive UTC datetime to Eastern Time and format it."""
+        if dt is None:
+            return ""
+        from datetime import timezone
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        try:
+            from zoneinfo import ZoneInfo
+            et = dt.astimezone(ZoneInfo("America/New_York"))
+        except Exception:
+            from datetime import timedelta
+            # Fall back to fixed UTC-5 (EST) if zoneinfo unavailable
+            et = dt.astimezone(timezone(timedelta(hours=-5)))
+        return et.strftime(fmt)
+
     # Import models only after init_app (safe)
     from app import models  # noqa: F401
 
