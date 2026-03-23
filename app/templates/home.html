@@ -2,11 +2,10 @@
 {% set show_sidebar = True %}
 {% block content %}
 
-<!-- Hero banner -->
-<div class="dashboard-hero">
-  <div class="dashboard-hero-text">
-    <h1>Welcome back, {{ user }} 👋</h1>
-    <p>Create a project, upload forms, define test cases and generate repeatable validation evidence.</p>
+<div class="dashboard-header">
+  <div>
+    <h1 class="dashboard-title">Welcome back, {{ user }}</h1>
+    <p class="dashboard-sub">Create a project, upload forms, define test cases and generate repeatable validation evidence.</p>
   </div>
   <a class="btn btn-primary btn-lg" href="{{ url_for('web.create_project') }}">+ New Project</a>
 </div>
