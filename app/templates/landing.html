@@ -1,131 +1,407 @@
-{% extends "base.html" %}
-{% set show_sidebar = False %}
-{% block content %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title or "FAST | Login" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<div class="landing-page">
-  <div class="landing-split">
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0d0f14;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
 
-    <!-- LEFT: Branding & features -->
-    <div class="landing-left">
-      <div>
-        <!-- FAST wordmark -->
-        <div class="landing-wordmark">FAST</div>
-        <div class="landing-wordmark-sub">AI Assisted Forms Testing</div>
+    /* Background glow blobs */
+    body::before {
+      content: '';
+      position: fixed;
+      bottom: -120px;
+      right: -80px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(200, 30, 40, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      top: -100px;
+      left: 200px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(200, 30, 40, 0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        <div class="landing-divider"></div>
+    /* Subtle grid texture */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        <div class="landing-hero-title">
-          Validate forms<br>with <span class="accent-red">AI precision.</span>
-        </div>
+    .split {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      width: 100%;
+      max-width: 1100px;
+      min-height: 100vh;
+      align-items: center;
+      padding: 60px 48px;
+    }
 
-        <p class="landing-hero-sub">
-          Automated PDF form validation powered by LLMs.
-          Catch errors, compare versions, and generate
-          traceable evidence — across every release.
-        </p>
+    /* ---- LEFT SIDE ---- */
+    .left {
+      padding-right: 72px;
+    }
 
-        <div class="landing-features">
-          <div class="landing-feature">
-            <div class="landing-feature-icon">
-              <!-- CPU / AI chip icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="6" height="6" rx="1"/>
-                <path d="M4 9h1M4 12h1M4 15h1M19 9h1M19 12h1M19 15h1M9 4v1M12 4v1M15 4v1M9 19v1M12 19v1M15 19v1"/>
-                <rect x="6" y="6" width="12" height="12" rx="2"/>
-              </svg>
-            </div>
-            <div class="landing-feature-text">
-              <strong>Multi-Model AI</strong>
-              <span>Gemini, GPT-4o, or Claude — your choice</span>
-            </div>
-          </div>
-          <div class="landing-feature">
-            <div class="landing-feature-icon">
-              <!-- Diff / layers icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-            <div class="landing-feature-text">
-              <strong>Visual Diff Engine</strong>
-              <span>Page-by-page comparison with signature detection</span>
-            </div>
-          </div>
-          <div class="landing-feature">
-            <div class="landing-feature-icon">
-              <!-- Checklist / review icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-              </svg>
-            </div>
-            <div class="landing-feature-text">
-              <strong>Review Workflow</strong>
-              <span>Assign, resolve, approve with full audit trail</span>
-            </div>
-          </div>
-          <div class="landing-feature">
-            <div class="landing-feature-icon">
-              <!-- API / code icon -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="16 18 22 12 16 6"/>
-                <polyline points="8 6 2 12 8 18"/>
-              </svg>
-            </div>
-            <div class="landing-feature-text">
-              <strong>API-First</strong>
-              <span>Integrate into CI/CD pipelines via REST API</span>
-            </div>
-          </div>
-        </div>
+    .cgi-logo {
+      height: 36px;
+      filter: brightness(0) invert(1);
+      opacity: 0.9;
+      margin-bottom: 36px;
+      display: block;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #c8192a;
+      margin-bottom: 18px;
+    }
+    .eyebrow-line {
+      width: 28px;
+      height: 2px;
+      background: #c8192a;
+      flex-shrink: 0;
+    }
+
+    .wordmark {
+      font-size: 86px;
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      color: #ffffff;
+      margin-bottom: 20px;
+    }
+    .wordmark .red-a {
+      color: #c8192a;
+    }
+
+    .tagline {
+      font-size: 18px;
+      font-weight: 400;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 44px;
+      max-width: 360px;
+    }
+
+    /* Feature rows */
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .feature-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(200, 25, 42, 0.15);
+      border: 1px solid rgba(200, 25, 42, 0.25);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #e05060;
+    }
+    .feature-icon svg { width: 16px; height: 16px; }
+
+    .feature-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 2px;
+    }
+    .feature-text span {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    /* ---- RIGHT SIDE ---- */
+    .right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    }
+
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-bottom: 7px;
+    }
+    .form-group input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      color: #e2e8f0;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group input::placeholder { color: #475569; }
+    .form-group input:focus {
+      border-color: rgba(200, 25, 42, 0.5);
+      box-shadow: 0 0 0 3px rgba(200, 25, 42, 0.12);
+    }
+
+    .btn-continue {
+      width: 100%;
+      background: #c8192a;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      margin-top: 6px;
+      letter-spacing: 0.01em;
+    }
+    .btn-continue:hover {
+      background: #a81423;
+      box-shadow: 0 4px 20px rgba(200, 25, 42, 0.4);
+    }
+    .btn-continue:active { transform: scale(0.99); }
+
+    /* Flash messages */
+    .flash-wrap { margin-bottom: 16px; }
+    .flash {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .flash-error {
+      background: rgba(200, 25, 42, 0.15);
+      border: 1px solid rgba(200, 25, 42, 0.3);
+      color: #fca5a5;
+    }
+    .flash-success {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      color: #86efac;
+    }
+
+    .card-hint {
+      font-size: 11.5px;
+      color: #334155;
+      text-align: center;
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+
+    /* Bottom copyright */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #1e293b;
+      z-index: 1;
+    }
+
+    @media (max-width: 780px) {
+      .split {
+        grid-template-columns: 1fr;
+        padding: 40px 24px 80px;
+        gap: 48px;
+      }
+      .left { padding-right: 0; }
+      .wordmark { font-size: 64px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="split">
+
+    <!-- LEFT: Branding -->
+    <div class="left">
+      <img class="cgi-logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
+
+      <div class="eyebrow">
+        <span class="eyebrow-line"></span>
+        AI Assisted Forms Testing
       </div>
 
-      <div style="margin-top: 40px; font-size: 12px; color: #334155;">
-        Default credentials — admin / admin &nbsp;·&nbsp; reviewer / reviewer &nbsp;·&nbsp; viewer / viewer
+      <div class="wordmark">F<span class="red-a">A</span>ST</div>
+
+      <p class="tagline">
+        Repeatable, traceable validation evidence<br>
+        across every form and every release.
+      </p>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+              <path d="M12 8v4l3 3"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <strong>AI-Powered Analysis</strong>
+            <span>Basic / Specific / Benchmark validation with strict JSON output</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <strong>Evidence Bundles</strong>
+            <span>Annotated PDFs + audit trail ready for sign-off</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <strong>Carry Rules Forward</strong>
+            <span>DEV → UAT → PROD with identical test case logic</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- RIGHT: Login form -->
-    <div class="landing-right">
-      <div class="landing-form-title">Welcome back</div>
-      <div class="landing-form-sub">Sign in to your FAST workspace</div>
+    <!-- RIGHT: Login card -->
+    <div class="right">
+      <div class="login-card">
+        <div class="card-title">Sign in to FAST</div>
+        <div class="card-sub">Use your CGI credentials</div>
 
-      {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-          <div class="flash-wrap" style="margin-bottom: 16px;">
-            {% for category, msg in messages %}
-              <div class="flash flash-{{ category }}">{{ msg }}</div>
-            {% endfor %}
+        {% with messages = get_flashed_messages(with_categories=True) %}
+          {% if messages %}
+            <div class="flash-wrap">
+              {% for category, msg in messages %}
+                <div class="flash flash-{{ category }}">{{ msg }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('web.landing') }}">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input id="username" type="text" name="username"
+                   placeholder="you@cgi.com"
+                   autocomplete="username" required />
           </div>
-        {% endif %}
-      {% endwith %}
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password"
+                   placeholder="••••••••"
+                   autocomplete="current-password" required />
+          </div>
+          <button class="btn-continue" type="submit">Continue →</button>
+        </form>
 
-      <form method="POST" action="{{ url_for('web.landing') }}" class="landing-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input class="input" id="username" type="text" name="username"
-                 placeholder="Enter your username" autocomplete="username" required />
+        <div class="card-hint">
+          Need access? Contact your FAST administrator.<br>
+          Default: admin / admin &nbsp;·&nbsp; reviewer / reviewer &nbsp;·&nbsp; viewer / viewer
         </div>
-
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input class="input" id="password" type="password" name="password"
-                 placeholder="Enter your password" autocomplete="current-password" required />
-        </div>
-
-        <button class="btn btn-primary btn-block" type="submit" style="margin-top: 4px; padding: 11px;">
-          Sign in →
-        </button>
-      </form>
-
-      <div class="landing-hint">
-        Need access? Contact your FAST administrator.
       </div>
     </div>
 
   </div>
-</div>
 
-{% endblock %}
+  <div class="bottom-bar">
+    <span>© CGI Group Inc. — FAST · AI Assisted Forms Testing</span>
+    <span>Powered by CGI</span>
+  </div>
+
+</body>
+</html>
