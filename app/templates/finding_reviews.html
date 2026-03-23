@@ -3,16 +3,47 @@
 {% set show_sidebar = true %}
 {% block content %}
 
-<div class="page-header" style="align-items:flex-start;">
-  <h1>Finding Review Workflow</h1>
-  <p class="subtitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    Test Case: <strong>{{ tc.name if tc else 'N/A' }}</strong>
-    <span style="color:var(--border-strong)">|</span>
-    Mode: <strong>{{ rr.mode }}</strong>
-    <span style="color:var(--border-strong)">|</span>
-    Status:
-    <span class="results-status-badge results-status-{{ rr.status or 'unknown' }}">{{ rr.status or 'unknown' }}</span>
-  </p>
+<div class="page-header" style="align-items:flex-start;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1>Finding Review Workflow</h1>
+    <p class="subtitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      Test Case: <strong>{{ tc.name if tc else 'N/A' }}</strong>
+      <span style="color:var(--text-muted)">|</span>
+      Mode: <strong>{{ rr.mode }}</strong>
+      <span style="color:var(--text-muted)">|</span>
+      Status:
+      <span class="results-status-badge results-status-{{ rr.status or 'unknown' }}">{{ rr.status or 'unknown' }}</span>
+    </p>
+  </div>
+
+  <!-- Prev / Next result navigation -->
+  <div class="findings-nav">
+    {% if prev_result_id %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_reviews', project_id=project.id, result_id=prev_result_id) }}">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Previous
+    </a>
+    {% else %}
+    <span class="btn btn-outline btn-sm" style="opacity:0.35;cursor:not-allowed;pointer-events:none;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Previous
+    </span>
+    {% endif %}
+
+    <span class="findings-nav-count">{{ current_pos }} / {{ total_results }}</span>
+
+    {% if next_result_id %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_reviews', project_id=project.id, result_id=next_result_id) }}">
+      Next
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;vertical-align:-1px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
+    {% else %}
+    <span class="btn btn-outline btn-sm" style="opacity:0.35;cursor:not-allowed;pointer-events:none;">
+      Next
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;vertical-align:-1px"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </span>
+    {% endif %}
+  </div>
 </div>
 
 {% if not findings %}

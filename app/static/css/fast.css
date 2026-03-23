@@ -1006,6 +1006,21 @@ body.landing-body {
 .gate-radio-approve:hover { border-color: var(--success); color: var(--success); }
 .gate-radio-reject:hover  { border-color: var(--danger);  color: var(--danger); }
 
+/* Finding review prev/next nav */
+.findings-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.findings-nav-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
 /* Webhooks */
 .wh-form-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .wh-flex-1 { flex: 1; min-width: 200px; }

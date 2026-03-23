@@ -888,6 +888,13 @@ def result_reviews(project_id: int, result_id: int):
     reviewers = User.query.filter(User.role.in_(["admin", "reviewer"]), User.is_active == True).all()
     compliance_standards = ComplianceStandard.query.all()
 
+    # Prev / next result in the same run (ordered by id)
+    run_results = RunResult.query.filter_by(run_id=rr.run_id).order_by(RunResult.id.asc()).all()
+    run_result_ids = [r.id for r in run_results]
+    current_pos = run_result_ids.index(result_id) if result_id in run_result_ids else -1
+    prev_result_id = run_result_ids[current_pos - 1] if current_pos > 0 else None
+    next_result_id = run_result_ids[current_pos + 1] if current_pos >= 0 and current_pos < len(run_result_ids) - 1 else None
+
     return render_template(
         "finding_reviews.html",
         page_title=f"FAST | Review Findings",
@@ -897,6 +904,10 @@ def result_reviews(project_id: int, result_id: int):
         findings=findings,
         reviewers=reviewers,
         compliance_standards=compliance_standards,
+        prev_result_id=prev_result_id,
+        next_result_id=next_result_id,
+        current_pos=current_pos + 1,
+        total_results=len(run_result_ids),
         active="results",
         user=session.get("user"),
         user_role=session.get("role", "viewer"),

@@ -352,11 +352,11 @@ def write_cli_style_report(
                 f"in actual PDF (actual page(s): {_esc(pg_nums)})"
             )
         page_structure_banner = (
-            "<div style='background:#fff3cd;border-left:4px solid #e6a817;"
+            "<div style='background:rgba(217,119,6,0.12);border-left:4px solid #d97706;"
             "padding:12px 16px;border-radius:4px;margin-bottom:16px;font-size:13px;'>"
-            "<strong style='color:#856404;'>&#9888; Page-Structure Change Detected</strong><br/>"
+            "<strong style='color:#fbbf24;'>&#9888; Page-Structure Change Detected</strong><br/>"
             + " &mdash; ".join(parts)
-            + "<br/><span style='color:#856404;font-size:12px;'>The sequence-alignment engine "
+            + "<br/><span style='color:#fbbf24;font-size:12px;'>The sequence-alignment engine "
             "re-aligned remaining pages so only true content differences are reported below.</span>"
             "</div>"
         )
@@ -443,18 +443,20 @@ def write_cli_style_report(
   <title>FAST Report - {_esc(tc_name)}</title>
   <style>
     :root {{
-      --bg:#f6f8fb;
-      --card:#ffffff;
-      --text:#111827;
-      --muted:#6b7280;
-      --border:#e5e7eb;
-      --shadow:0 2px 10px rgba(17,24,39,.05);
+      --bg:#0f1623;
+      --card:#141c2d;
+      --card2:#1a2236;
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --border:rgba(255,255,255,0.08);
+      --border2:rgba(255,255,255,0.05);
+      --shadow:0 2px 10px rgba(0,0,0,0.4);
 
-      --ok-bg:#ecfdf3; --ok-b:#b7f0c8; --ok-t:#0f7a3a;
-      --warn-bg:#fff7ed; --warn-b:#fed7aa; --warn-t:#9a3412;
-      --bad-bg:#fff1f2; --bad-b:#fecdd3; --bad-t:#9f1239;
-      --info-bg:#eff6ff; --info-b:#bfdbfe; --info-t:#1d4ed8;
-      --neutral-bg:#f3f4f6; --neutral-b:#d1d5db; --neutral-t:#374151;
+      --ok-bg:rgba(22,163,74,0.15);   --ok-b:rgba(22,163,74,0.3);   --ok-t:#4ade80;
+      --warn-bg:rgba(217,119,6,0.15); --warn-b:rgba(217,119,6,0.3); --warn-t:#fbbf24;
+      --bad-bg:rgba(220,38,38,0.15);  --bad-b:rgba(220,38,38,0.3);  --bad-t:#f87171;
+      --info-bg:rgba(2,132,199,0.15); --info-b:rgba(2,132,199,0.3); --info-t:#60a5fa;
+      --neutral-bg:rgba(255,255,255,0.07); --neutral-b:rgba(255,255,255,0.12); --neutral-t:#cbd5e1;
     }}
 
     * {{ box-sizing: border-box; }}
@@ -535,7 +537,7 @@ def write_cli_style_report(
       display:flex;
       gap:12px;
       padding:8px 0;
-      border-bottom:1px dashed #eef0f3;
+      border-bottom:1px dashed var(--border2);
     }}
     .kv:last-child {{ border-bottom:none; }}
 
@@ -568,7 +570,7 @@ def write_cli_style_report(
       overflow-y: visible;
       border:1px solid var(--border);
       border-radius:12px;
-      background:#fff;
+      background:var(--card);
       margin-top:8px;
     }}
 
@@ -583,7 +585,7 @@ def write_cli_style_report(
     .fast-table th,
     .fast-table td {{
       padding: 10px 12px;
-      border-bottom:1px solid #eef0f3;
+      border-bottom:1px solid var(--border);
       text-align:left;
       vertical-align:top;
       font-size:13px;
@@ -592,11 +594,11 @@ def write_cli_style_report(
     }}
 
     .fast-table th {{
-      background:#f9fafb;
+      background:var(--card2);
       font-size:12px;
       text-transform:uppercase;
       letter-spacing:.4px;
-      color:#374151;
+      color:var(--muted);
       position: sticky;
       top: 0;
       z-index: 2;
@@ -614,9 +616,9 @@ def write_cli_style_report(
       margin-top:12px;
       padding:12px 14px;
       border-radius:12px;
-      border:1px solid #fed7aa;
-      background:#fff7ed;
-      color:#9a3412;
+      border:1px solid var(--warn-b);
+      background:var(--warn-bg);
+      color:var(--warn-t);
       font-size:13px;
     }}
 
@@ -629,7 +631,7 @@ def write_cli_style_report(
 
     .rd-filter-btn {{
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--card2);
       color: var(--text);
       border-radius: 999px;
       padding: 6px 12px;
@@ -639,7 +641,7 @@ def write_cli_style_report(
     }}
 
     .rd-filter-btn:hover {{
-      background: #f9fafb;
+      background: rgba(255,255,255,0.1);
     }}
 
     .rd-filter-btn.active {{
@@ -649,7 +651,7 @@ def write_cli_style_report(
     }}
 
     a {{
-      color:#2563eb;
+      color:#60a5fa;
       text-decoration:none;
     }}
     a:hover {{
