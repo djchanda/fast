@@ -692,12 +692,23 @@ def project_results(project_id: int):
 
     runs = Run.query.filter_by(project_id=project_id).order_by(Run.created_at.desc()).limit(20).all()
 
+    # Default to the most recent run
+    if not run_id and runs:
+        run_id = runs[0].id
+
     selected_run = None
     results = []
     if run_id:
         selected_run = Run.query.filter_by(id=run_id, project_id=project_id).first()
         if selected_run:
             results = RunResult.query.filter_by(run_id=run_id).order_by(RunResult.id.asc()).all()
+
+    # Build test case name lookup
+    tc_ids = [rr.test_case_id for rr in results if rr.test_case_id]
+    tc_map = {}
+    if tc_ids:
+        tcs = TestCase.query.filter(TestCase.id.in_(tc_ids)).all()
+        tc_map = {tc.id: tc for tc in tcs}
 
     return render_template(
         "results.html",
@@ -706,6 +717,7 @@ def project_results(project_id: int):
         runs=runs,
         selected_run=selected_run,
         results=results,
+        tc_map=tc_map,
         active="results",
         user=session.get("user"),
     )
