@@ -7,6 +7,9 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    account = db.Column(db.String(200))
+    area = db.Column(db.String(100))
+    environment = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     forms = db.relationship("Form", back_populates="project", lazy="dynamic", cascade="all, delete-orphan")

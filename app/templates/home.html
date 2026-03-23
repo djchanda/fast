@@ -1,97 +1,120 @@
 {% extends "base.html" %}
 {% set show_sidebar = True %}
+{% set dark_page = True %}
 {% block content %}
 
-<div class="dashboard-header">
+<!-- Page header -->
+<div class="db-header">
   <div>
-    <h1 class="dashboard-title">Welcome back, {{ user }}</h1>
-    <p class="dashboard-sub">Create a project, upload forms, define test cases and generate repeatable validation evidence.</p>
+    <h1 class="db-title">Project Dashboard</h1>
+    <p class="db-sub">Welcome back, {{ user }}. Build evidence, not slides.</p>
+  </div>
+  <a class="btn-new-project" href="{{ url_for('web.create_project') }}">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Project
+  </a>
+</div>
+
+<!-- KPI row -->
+<div class="db-kpi-row">
+  <div class="db-kpi" style="--kpi-color:#3b82f6">
+    <div class="db-kpi-label">TOTAL PROJECTS</div>
+    <div class="db-kpi-num">{{ projects | length }}</div>
+    <div class="db-kpi-trend db-trend-up">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      {{ projects | length }} active
+    </div>
+  </div>
+  <div class="db-kpi" style="--kpi-color:#22c55e">
+    <div class="db-kpi-label">RUNS THIS WEEK</div>
+    <div class="db-kpi-num">{{ runs_this_week }}</div>
+    <div class="db-kpi-trend db-trend-up">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      last 7 days
+    </div>
+  </div>
+  <div class="db-kpi" style="--kpi-color:#a78bfa">
+    <div class="db-kpi-label">PASS RATE</div>
+    <div class="db-kpi-num">{{ pass_rate }}%</div>
+    <div class="db-kpi-trend {% if pass_rate >= 80 %}db-trend-up{% else %}db-trend-down{% endif %}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      recent runs
+    </div>
+  </div>
+  <div class="db-kpi" style="--kpi-color:#f59e0b">
+    <div class="db-kpi-label">OPEN FINDINGS</div>
+    <div class="db-kpi-num">{{ open_findings }}</div>
+    <div class="db-kpi-trend {% if open_findings > 0 %}db-trend-down{% else %}db-trend-up{% endif %}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      total errors
+    </div>
   </div>
 </div>
 
-<div class="grid-2">
-
-  <!-- Create project card -->
-  <div class="card">
-    <div class="card-header">Create New Project</div>
-    <div class="card-body">
-      <form method="post" action="{{ url_for('web.create_project') }}" class="form">
-        <div class="form-group">
-          <label>Project Name <span class="required">*</span></label>
-          <input class="input" name="name" placeholder="e.g. Q1 Form Validation" required />
-        </div>
-        <div class="form-group">
-          <label>Account</label>
-          <input class="input" name="account" placeholder="e.g. Client Name" />
-        </div>
-        <div class="form-group">
-          <label>Area</label>
-          <select class="input" name="area">
-            <option value="">Select area...</option>
-            <option>Branch</option>
-            <option>PNC</option>
-            <option>Wealth</option>
-            <option>Payments</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Environment</label>
-          <select class="input" name="environment">
-            <option value="">Select environment...</option>
-            <option>DEV</option>
-            <option>QA</option>
-            <option>UAT</option>
-            <option>PROD</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" type="submit" style="margin-top: 4px;">Create Project</button>
-      </form>
-    </div>
+<!-- Projects table -->
+<div class="db-table-card">
+  <div class="db-table-header">
+    <span class="db-table-title">All Projects</span>
+    <span class="db-count-badge">{{ projects | length }}</span>
   </div>
 
-  <!-- Existing projects -->
-  <div class="card">
-    <div class="card-header">
-      <span>Existing Projects</span>
-      <span class="badge badge-secondary">{{ projects | length }}</span>
-    </div>
-    <div class="card-body p0">
-      {% if projects | length == 0 %}
-        <div class="empty-state">
-          <p class="empty-title">No projects yet</p>
-          <p class="empty-text">Create your first project to get started.</p>
-        </div>
+  {% if projects %}
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>PROJECT NAME</th>
+        <th>ACCOUNT</th>
+        <th>ENVIRONMENT</th>
+        <th>LAST RUN</th>
+        <th>STATUS</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+      {% set lr = last_runs.get(p.id) %}
+      {% if lr %}
+        {% set age = (now - lr.created_at).total_seconds() %}
+        {% if age < 3600 %}{% set age_label = (age // 60)|int ~ " min ago" %}
+        {% elif age < 86400 %}{% set age_label = (age // 3600)|int ~ " hours ago" %}
+        {% elif age < 172800 %}{% set age_label = "Yesterday" %}
+        {% elif age < 604800 %}{% set age_label = (age // 86400)|int ~ " days ago" %}
+        {% else %}{% set age_label = (age // 604800)|int ~ " week(s) ago" %}{% endif %}
+        {% if age < 86400 and lr.status == 'completed' %}{% set proj_status = "Active" %}
+        {% elif lr.warnings and lr.warnings > 0 %}{% set proj_status = "Review" %}
+        {% elif age < 604800 %}{% set proj_status = "Active" %}
+        {% else %}{% set proj_status = "Idle" %}{% endif %}
       {% else %}
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Project</th>
-              <th>Account</th>
-              <th>Env</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for p in projects %}
-            <tr>
-              <td class="font-semibold">{{ p.name }}</td>
-              <td class="text-muted">{{ p.account or "—" }}</td>
-              <td>
-                {% if p.environment %}
-                  <span class="pill pill-blue">{{ p.environment }}</span>
-                {% else %}—{% endif %}
-              </td>
-              <td class="right">
-                <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_overview', project_id=p.id) }}">Open →</a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        {% set age_label = "Never" %}
+        {% set proj_status = "Idle" %}
       {% endif %}
-    </div>
+      <tr>
+        <td class="db-proj-name">{{ p.name }}</td>
+        <td class="db-cell-muted">{{ p.account or "—" }}</td>
+        <td class="db-cell-muted">{{ p.environment or "—" }}</td>
+        <td class="db-cell-muted">{{ age_label }}</td>
+        <td>
+          <span class="db-status-pill db-status-{{ proj_status | lower }}">
+            <span class="db-status-dot"></span>{{ proj_status }}
+          </span>
+        </td>
+        <td class="db-cell-action">
+          <a class="db-open-btn" href="{{ url_for('web.project_overview', project_id=p.id) }}">Open →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="db-empty">
+    <p class="db-empty-title">No projects yet</p>
+    <p class="db-empty-sub">Create your first project to get started.</p>
+    <a class="btn-new-project" href="{{ url_for('web.create_project') }}" style="margin-top:16px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Project
+    </a>
   </div>
-
+  {% endif %}
 </div>
 
 {% endblock %}

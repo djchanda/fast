@@ -185,13 +185,47 @@ def home():
     if gate:
         return gate
 
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
     projects = Project.query.order_by(Project.created_at.desc()).all()
+
+    # KPI: runs this week
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    runs_this_week = Run.query.filter(Run.created_at >= week_ago).count()
+
+    # KPI: pass rate from last 20 completed runs
+    recent_runs = Run.query.filter_by(status="completed").order_by(Run.created_at.desc()).limit(20).all()
+    if recent_runs:
+        total_checks = sum(r.total or 0 for r in recent_runs)
+        total_passed = sum(r.passed or 0 for r in recent_runs)
+        pass_rate = round((total_passed / total_checks * 100) if total_checks > 0 else 0)
+    else:
+        pass_rate = 0
+
+    # KPI: open findings (errors in last run per project)
+    open_findings = Run.query.filter_by(status="completed").order_by(Run.created_at.desc()).with_entities(
+        func.sum(Run.errors)
+    ).scalar() or 0
+    open_findings = int(open_findings)
+
+    # Per-project last run info
+    last_runs = {}
+    for p in projects:
+        lr = Run.query.filter_by(project_id=p.id).order_by(Run.created_at.desc()).first()
+        last_runs[p.id] = lr
+
     return render_template(
         "home.html",
         page_title="FAST | Project Dashboard",
         projects=projects,
         user=session.get("user"),
         active="home",
+        runs_this_week=runs_this_week,
+        pass_rate=pass_rate,
+        open_findings=open_findings,
+        last_runs=last_runs,
+        now=datetime.utcnow(),
     )
 
 
@@ -209,7 +243,13 @@ def create_project():
             flash("Project name is required.", "error")
             return redirect(url_for("web.create_project"))
 
-        p = Project(name=name, description=description)
+        p = Project(
+            name=name,
+            description=description,
+            account=(request.form.get("account") or "").strip() or None,
+            area=(request.form.get("area") or "").strip() or None,
+            environment=(request.form.get("environment") or "").strip() or None,
+        )
         db.session.add(p)
         db.session.commit()
 
