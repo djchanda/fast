@@ -2,130 +2,137 @@
 {% set show_sidebar = True %}
 {% block content %}
 
-<div class="page-header">
-  <div>
-    <h2>New Test Case</h2>
-    <div class="muted">Project: {{ project.name }}</div>
+<!-- Page header -->
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
   </div>
-
-  <div class="actions">
-    <button form="tc-form" type="submit" class="btn btn-primary">Create Test Case</button>
+  <div class="ov-actions">
     <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Cancel</a>
+    <button form="tc-form" type="submit" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Create Test Case
+    </button>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-title">Create Test Case</div>
+<div class="card tc-form-card">
+  <div class="card-header">New Test Case</div>
+  <div class="card-body">
+    <form id="tc-form" method="POST" action="{{ url_for('web.create_testcase', project_id=project.id) }}">
 
-  <form id="tc-form" method="POST" action="{{ url_for('web.create_testcase', project_id=project.id) }}">
-    <div class="tc-grid">
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label-clean">Test Case Name <span class="required">*</span></label>
+        <input class="input" type="text" name="name" placeholder="e.g., Validate account number field" required>
+      </div>
 
-      <!-- LEFT COLUMN -->
-      <div class="tc-left">
-        <div class="form-row">
-          <label class="form-label">Test Case Name</label>
-          <input class="input" type="text" name="name" placeholder="e.g., Validate account number" required>
-        </div>
-
-        <div class="form-row">
-          <label class="form-label">Mode</label>
-          <select class="input" name="mode" id="modeSelect">
-            <option value="basic">Basic</option>
-            <option value="specific">Specific</option>
-            <option value="benchmark">Benchmark</option>
-          </select>
-          <div class="hint">
-            Basic = built-in checks. Specific = prompt driven. Benchmark = compare with golden copy + prompt.
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label class="form-label">Form</label>
-          <select class="input" name="form_id" id="formSelect">
-            <option value="">-- Select --</option>
-            {% for f in forms %}
-              <option value="{{ f.id }}">{{ f.original_filename }}</option>
-            {% endfor %}
-          </select>
-          <div class="hint">This is the form under test.</div>
-        </div>
-
-        <div class="form-row" id="benchmarkRow" style="display:none;">
-          <label class="form-label">Benchmark (Golden Copy)</label>
-          <select class="input" name="benchmark_form_id" id="benchmarkSelect">
-            <option value="">-- Select --</option>
-            {% for f in forms %}
-              <option value="{{ f.id }}">{{ f.original_filename }}</option>
-            {% endfor %}
-          </select>
-          <div class="hint">Pick the golden copy to compare against.</div>
-        </div>
-
-        <div class="tc-note">
-          <div class="tc-note-title">Quick tips</div>
-          <ul>
-            <li>Keep prompts crisp and test-like.</li>
-            <li>One test case = one intent (don’t dump 20 checks into one).</li>
-            <li>For Benchmark, keep the golden copy from the same version.</li>
-          </ul>
+      <!-- Mode selector -->
+      <div class="form-group">
+        <label class="form-label-clean">Mode <span class="required">*</span></label>
+        <div class="mode-cards" id="modeCards">
+          <label class="mode-card mode-card-active" data-mode="basic">
+            <input type="radio" name="mode" value="basic" checked hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Basic</strong>
+              <span>Built-in structural checks, no prompt required</span>
+            </div>
+          </label>
+          <label class="mode-card" data-mode="specific">
+            <input type="radio" name="mode" value="specific" hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Specific</strong>
+              <span>Prompt-driven — define exactly what to check</span>
+            </div>
+          </label>
+          <label class="mode-card" data-mode="benchmark">
+            <input type="radio" name="mode" value="benchmark" hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Benchmark</strong>
+              <span>Compare against a golden copy with custom rules</span>
+            </div>
+          </label>
         </div>
       </div>
 
-      <!-- RIGHT COLUMN -->
-      <div class="tc-right">
-        <div class="prompt-head">
-          <div>
-            <div class="prompt-title">Prompt / Test Steps</div>
-            <div class="muted small">Required for Specific and Benchmark. Optional for Basic.</div>
-          </div>
-
-          <div class="pill" id="promptPill">Not required for Basic</div>
-        </div>
-
-        <textarea class="textarea" name="prompt_text" id="promptText"
-          placeholder="Example:
-1) Verify customer name matches 'Jana Montgome'
-2) Validate signature blocks only up to Account holder #3
-3) Check spelling errors and formatting issues"></textarea>
-
-        <div class="muted small" style="margin-top:10px;">
-          Output will include strict JSON plus a plain English summary.
-        </div>
+      <!-- Form under test -->
+      <div class="form-group">
+        <label class="form-label-clean">Form Under Test <span class="required">*</span></label>
+        <select class="input" name="form_id">
+          <option value="">Select a form…</option>
+          {% for f in forms %}
+            <option value="{{ f.id }}">{{ f.original_filename }}</option>
+          {% endfor %}
+        </select>
       </div>
 
-    </div>
-  </form>
+      <!-- Benchmark golden copy (conditional) -->
+      <div class="form-group" id="benchmarkRow" style="display: none;">
+        <label class="form-label-clean">Golden Copy (Benchmark) <span class="required">*</span></label>
+        <select class="input" name="benchmark_form_id">
+          <option value="">Select the reference form…</option>
+          {% for f in forms %}
+            <option value="{{ f.id }}">{{ f.original_filename }}</option>
+          {% endfor %}
+        </select>
+        <p class="field-hint">The approved reference version to compare against.</p>
+      </div>
+
+      <!-- Prompt / test steps (conditional) -->
+      <div class="form-group" id="promptRow" style="display: none;">
+        <label class="form-label-clean">Test Steps / Prompt <span class="required" id="promptRequired">*</span></label>
+        <textarea class="input tc-textarea" name="prompt_text" id="promptText"
+          placeholder="1) Verify customer name matches 'Jana Montgomery'&#10;2) Validate signature blocks up to Account holder #3&#10;3) Check for spelling errors in section headers"></textarea>
+        <p class="field-hint">Be specific — one test case should cover one intent.</p>
+      </div>
+
+    </form>
+  </div>
 </div>
 
 <script>
-  (function () {
-    const mode = document.getElementById("modeSelect");
-    const benchmarkRow = document.getElementById("benchmarkRow");
-    const promptPill = document.getElementById("promptPill");
-    const promptText = document.getElementById("promptText");
+(function () {
+  const cards    = document.querySelectorAll('.mode-card');
+  const bRow     = document.getElementById('benchmarkRow');
+  const pRow     = document.getElementById('promptRow');
+  const pText    = document.getElementById('promptText');
 
-    function refresh() {
-      const v = (mode.value || "").toLowerCase();
+  const placeholders = {
+    specific:  "1) Verify customer name matches 'Jana Montgomery'\n2) Validate signature blocks up to Account holder #3\n3) Check for spelling errors in section headers",
+    benchmark: "1) Compare field labels against the golden copy\n2) Flag any new or removed fields\n3) Check for layout shifts between versions"
+  };
 
-      // benchmark dropdown
-      benchmarkRow.style.display = (v === "benchmark") ? "block" : "none";
+  function refresh(mode) {
+    cards.forEach(c => c.classList.toggle('mode-card-active', c.dataset.mode === mode));
+    bRow.style.display  = mode === 'benchmark' ? 'block' : 'none';
+    pRow.style.display  = mode !== 'basic'     ? 'block' : 'none';
+    if (placeholders[mode]) pText.placeholder = placeholders[mode];
+  }
 
-      // prompt helper
-      if (v === "basic") {
-        promptPill.textContent = "Not required for Basic";
-        promptText.placeholder = "Not needed for Basic.\n(We'll apply built-in checks.)";
-      } else if (v === "specific") {
-        promptPill.textContent = "Required for Specific";
-        promptText.placeholder = "Paste Specific test steps here...\nKeep them crisp and test-like.";
-      } else {
-        promptPill.textContent = "Required for Benchmark";
-        promptText.placeholder = "Benchmark steps:\n1) Compare against golden copy\n2) Add specific rules here...";
-      }
-    }
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      const mode = card.dataset.mode;
+      card.querySelector('input[type=radio]').checked = true;
+      refresh(mode);
+    });
+  });
 
-    mode.addEventListener("change", refresh);
-    refresh();
-  })();
+  refresh('basic');
+})();
 </script>
 
 {% endblock %}
