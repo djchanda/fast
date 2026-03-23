@@ -1339,3 +1339,17 @@ body.landing-body {
 .icon-action-btn svg { width: 14px; height: 14px; }
 .icon-action-btn:hover { background: var(--surface); border-color: var(--border-strong); color: var(--text-primary); }
 .icon-action-danger:hover { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
+
+/* Mode badges (test cases) */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.mode-benchmark { background: #eff6ff; color: var(--cgi-blue);  border: 1px solid #bfdbfe; }
+.mode-specific   { background: #f5f3ff; color: #7c3aed;          border: 1px solid #ddd6fe; }
+.mode-basic      { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); }

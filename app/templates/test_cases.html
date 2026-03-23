@@ -2,58 +2,90 @@
 {% set show_sidebar = True %}
 {% block content %}
 
-<div class="page-header">
-  <div>
-    <h2>Project: <span class="accent-red">{{ project.name }}</span></h2>
-    <div class="muted">Account: {{ project.account }} | Area: {{ project.area }} | Env: {{ project.environment }}</div>
+<!-- Page header -->
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
   </div>
-
-  <div class="actions">
-    <a class="btn btn-blue" href="{{ url_for('web.new_testcase', project_id=project.id) }}">New Test Case</a>
-    <a class="btn btn-outline" href="{{ url_for('web.nl_testcase_builder', project_id=project.id) }}" style="margin-left:8px;">🤖 AI Builder</a>
+  <div class="ov-actions">
+    <a class="btn btn-primary" href="{{ url_for('web.new_testcase', project_id=project.id) }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Test Case
+    </a>
   </div>
 </div>
 
+<!-- Test cases table -->
 <div class="card">
-  <div class="card-title">Test Cases</div>
+  <div class="card-header">
+    <span>Test Cases</span>
+    <span class="badge badge-secondary">{{ test_cases|length }}</span>
+  </div>
 
   {% if test_cases|length == 0 %}
-    <div class="empty">No test cases yet. Click “New Test Case” to create one.</div>
+  <div class="card-body">
+    <div class="upload-empty">
+      <div class="upload-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      </div>
+      <p class="upload-empty-title">No test cases yet</p>
+      <p class="upload-empty-sub">Create a test case to define what to validate.</p>
+      <a class="btn btn-primary" href="{{ url_for('web.new_testcase', project_id=project.id) }}" style="margin-top: 12px;">
+        + New Test Case
+      </a>
+    </div>
+  </div>
+
   {% else %}
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Mode</th>
-        <th>Form</th>
-        <th>Created</th>
-        <th style="width:140px;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for tc in test_cases %}
-      <tr>
-        <td>{{ tc.name }}</td>
-        <td>{{ tc.mode }}</td>
-        <td>
-          {% if tc.form_id %}
-            Form #{{ tc.form_id }}
-          {% else %}
-            —
-          {% endif %}
-        </td>
-        <td>{{ tc.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-        <td>
-          <form action="{{ url_for('web.delete_testcase', project_id=project.id, testcase_id=tc.id) }}"
-                method="POST" style="display:inline;">
-            <button class="btn btn-outline" type="submit"
-                    onclick="return confirm('Delete this test case?');">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="card-body p0">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Mode</th>
+          <th>Form</th>
+          <th>Created</th>
+          <th style="width: 60px; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tc in test_cases %}
+        <tr>
+          <td class="font-semibold">{{ tc.name }}</td>
+          <td>
+            {% if tc.mode == 'benchmark' %}
+              <span class="mode-badge mode-benchmark">Benchmark</span>
+            {% elif tc.mode == 'specific' %}
+              <span class="mode-badge mode-specific">Specific</span>
+            {% else %}
+              <span class="mode-badge mode-basic">{{ tc.mode | title }}</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">
+            {% if tc.form %}{{ tc.form.original_filename }}{% else %}—{% endif %}
+          </td>
+          <td class="text-muted">{{ tc.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>
+            <div class="form-actions">
+              <form action="{{ url_for('web.delete_testcase', project_id=project.id, testcase_id=tc.id) }}"
+                    method="POST" style="display:contents;">
+                <button class="icon-action-btn icon-action-danger" type="submit" title="Delete"
+                        onclick="return confirm('Delete \'{{ tc.name }}\'?')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
 
