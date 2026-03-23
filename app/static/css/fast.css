@@ -884,6 +884,154 @@ body.landing-body {
 .w-full { width: 100%; }
 
 /* ============================================================
+   INLINE LINK BUTTON (Open Report style)
+   ============================================================ */
+.btn-link-blue {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cgi-blue);
+  text-decoration: none;
+  padding: 0 4px;
+  transition: color 0.12s;
+}
+.btn-link-blue:hover { color: var(--cgi-blue-dark); text-decoration: underline; }
+.dark-page .btn-link-blue { color: #60a5fa; }
+.dark-page .btn-link-blue:hover { color: #93c5fd; }
+
+/* ============================================================
+   FINDING REVIEW
+   ============================================================ */
+.finding-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.finding-critical { border-left-color: var(--danger); }
+.finding-high     { border-left-color: var(--warning); }
+.finding-medium   { border-left-color: #f59e0b; }
+.finding-low      { border-left-color: var(--success); }
+.finding-status-resolved     { opacity: 0.65; }
+.finding-status-false_positive { opacity: 0.5; }
+
+.finding-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.finding-body { font-size: 14px; color: var(--text-secondary); }
+.finding-body p { margin: 0 0 4px; }
+.finding-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.finding-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.finding-resolved-note { margin-top: 10px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; }
+.finding-comments { background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 14px; margin: 10px 0; border: 1px solid var(--border); }
+.comment { border-bottom: 1px solid var(--border); margin-bottom: 10px; padding-bottom: 10px; }
+.comment:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.inline-details summary { cursor: pointer; list-style: none; }
+.inline-details summary::-webkit-details-marker { display: none; }
+.inline-form {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  min-width: 260px;
+}
+
+/* Severity & category badges */
+.badge-sev-critical { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.badge-sev-high     { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+.badge-sev-medium   { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-sev-low      { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+.badge-cat  { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border-strong); }
+.badge-page { background: var(--info-bg);   color: var(--info);   border: 1px solid var(--info-border); }
+.badge-event { background: var(--info-bg);  color: var(--info);   border: 1px solid var(--info-border); }
+
+/* Finding status text */
+.finding-status-badge { font-size: 12px; font-weight: 700; }
+.status-open          { color: var(--danger); }
+.status-in_review     { color: var(--warning); }
+.status-resolved      { color: var(--success); }
+.status-false_positive { color: var(--text-muted); }
+.assigned-to { display: inline-flex; align-items: center; color: var(--text-muted); font-size: 12px; }
+
+/* Stats row (finding_reviews, approval_gate) */
+.stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 24px;
+  text-align: center;
+  min-width: 90px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-num   { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 4px; }
+.stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+
+/* Approval gate status block */
+.gate-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid;
+}
+.gate-approved { background: var(--success-bg); color: var(--success); border-color: var(--success-border); }
+.gate-rejected { background: var(--danger-bg);  color: var(--danger);  border-color: var(--danger-border); }
+.gate-pending  { background: var(--warning-bg); color: var(--warning); border-color: var(--warning-border); }
+
+/* Gate decision radio buttons */
+.gate-radio-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.gate-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  max-width: 360px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.gate-radio-option:hover { border-color: var(--text-muted); background: var(--surface); }
+.gate-radio-approve:hover { border-color: var(--success); color: var(--success); }
+.gate-radio-reject:hover  { border-color: var(--danger);  color: var(--danger); }
+
+/* Webhooks */
+.wh-form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.wh-flex-1 { flex: 1; min-width: 200px; }
+.wh-flex-2 { flex: 2; min-width: 300px; }
+.wh-payload-pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  color: var(--text-secondary);
+  overflow-x: auto;
+}
+
+/* Dark mode overrides */
+.dark-page .finding-card { border-color: rgba(255,255,255,0.08); box-shadow: none; }
+.dark-page .stat-card    { border-color: rgba(255,255,255,0.08); box-shadow: none; }
+.dark-page .finding-comments { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.07); }
+.dark-page .inline-form { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+.dark-page .badge-cat   { background: rgba(255,255,255,0.08); color: var(--sidebar-text); border-color: rgba(255,255,255,0.1); }
+.dark-page .badge-sev-medium { background: rgba(245,158,11,0.12); color: #fbbf24; border-color: rgba(245,158,11,0.2); }
+.dark-page .gate-radio-option { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: var(--sidebar-text); }
+.dark-page .wh-payload-pre { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); color: #94a3b8; }
+
+/* ============================================================
    RESULT DETAIL
    ============================================================ */
 .rd-wrap { max-width: 100%; }

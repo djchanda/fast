@@ -17,83 +17,71 @@
     <div class="rd-actions">
       <a class="btn btn-ghost"
          href="{{ url_for('web.project_results', project_id=project.id, run_id=rr.run_id) }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         Back to Run
       </a>
 
       {% if report_url %}
-        <a class="btn"
+        <a class="btn-link-blue"
            href="{{ report_url }}"
            target="_blank"
            rel="noopener">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Open Report
         </a>
       {% endif %}
 
       <a class="btn btn-outline"
          href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}">
-        🔍 Review Findings
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Review Findings
       </a>
 
       <a class="btn btn-outline"
          href="{{ url_for('web.download_annotated_pdf', project_id=project.id, result_id=rr.id) }}">
-        📄 Annotated PDF
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Annotated PDF
       </a>
 
       <a class="btn btn-outline"
          href="{{ url_for('web.download_evidence_bundle', project_id=project.id, run_id=rr.run_id) }}">
-        ⬇ Evidence Bundle
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Evidence Bundle
       </a>
 
       <a class="btn btn-outline"
          href="{{ url_for('web.run_approval_gate', project_id=project.id, run_id=rr.run_id) }}">
-        ✅ Approval Gate
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Approval Gate
       </a>
     </div>
   </div>
 
   <!-- FULL WIDTH REPORT -->
   <div class="rd-full">
-
     <div class="rd-card">
       <div class="rd-card-head">
         <div>
           <div class="rd-card-title">HTML Report</div>
-
           {% if rr.report_html_path %}
-            <div class="rd-muted">
-              Source: {{ rr.report_html_path }}
-            </div>
+            <div class="rd-muted">Source: {{ rr.report_html_path }}</div>
           {% endif %}
         </div>
       </div>
 
       <div class="rd-iframe-wrap">
-
         {% if report_url %}
-
-          <iframe
-            class="rd-iframe"
-            src="{{ report_url }}"
-            loading="lazy">
-          </iframe>
-
+          <iframe class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
         {% else %}
-
-          <div class="rd-muted" style="padding:12px;">
+          <div class="rd-muted" style="padding:16px;">
             Report was not generated. (report_html_path is empty)
-
             {% if rr.summary_text %}
-              <div style="margin-top:8px;">
-                <b>Notes:</b> {{ rr.summary_text }}
-              </div>
+              <div style="margin-top:8px;"><b>Notes:</b> {{ rr.summary_text }}</div>
             {% endif %}
           </div>
-
         {% endif %}
-
       </div>
     </div>
-
   </div>
 
 </div>
