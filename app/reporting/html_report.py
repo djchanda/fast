@@ -690,7 +690,7 @@ def write_cli_style_report(
       <div class="section-title">Execution Summary</div>
       <div>{_esc(summary_text)}</div>
 
-      {f"<div class='banner'><b>LLM classification unavailable.</b> {_esc(result_json.get('error'))}</div>" if llm_failed else ""}
+      {f"<div class='banner'><b>LLM classification unavailable.</b> {_esc(result_json.get('error'))}{(': ' + _esc(result_json.get('details'))) if result_json.get('details') else ''}</div>" if llm_failed else ""}
 
       <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
         {_chip(f"Mismatches: {len(mismatches)}", "bad" if mismatches else "ok")}
