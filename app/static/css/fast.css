@@ -85,8 +85,8 @@ body {
 
 .brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 
-/* CGI brand red #CC0000 */
-.logo { height: 30px; width: auto; filter: brightness(0) saturate(100%) invert(17%) sepia(97%) saturate(2800%) hue-rotate(349deg) brightness(100%) contrast(106%); }
+/* CGI brand red: invert white-bg→black (screen makes it vanish), hue-rotate to restore red, saturate+brightness for vivid color */
+.logo { height: 30px; width: auto; filter: invert(1) hue-rotate(180deg) saturate(2) brightness(1.1); mix-blend-mode: screen; }
 
 .brand-divider {
   width: 1px;
@@ -664,7 +664,7 @@ body.landing-body {
   margin-bottom: 40px;
 }
 
-.landing-logo { height: 34px; filter: brightness(0) saturate(100%) invert(17%) sepia(97%) saturate(2800%) hue-rotate(349deg) brightness(100%) contrast(106%); }
+.landing-logo { height: 34px; filter: invert(1) hue-rotate(180deg) saturate(2) brightness(1.1); mix-blend-mode: screen; }
 
 .landing-brand {
   font-size: 16px;
