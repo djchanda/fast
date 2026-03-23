@@ -1,60 +1,102 @@
 {% extends "base.html" %}
-
-{% block title %}{{ page_title }}{% endblock %}
-
+{% set show_sidebar = False %}
+{% set dark_page = True %}
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-folder-plus"></i> Create New Project
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('web.create_project') }}">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">
-                                Project Name <span class="text-danger">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                class="form-control"
-                                id="name"
-                                name="name"
-                                placeholder="e.g., Loan Application Forms"
-                                required
-                                autofocus
-                            >
-                            <div class="form-text">
-                                Choose a descriptive name for your project
-                            </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea
-                                class="form-control"
-                                id="description"
-                                name="description"
-                                rows="4"
-                                placeholder="Optional: Add details about this project..."
-                            ></textarea>
-                        </div>
+<div class="cp-wrap">
 
-                        <div class="d-flex justify-content-between align-items-center mt-4">
-                            <a href="{{ url_for('web.home') }}" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Create Project
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="cp-header">
+    <a class="cp-back" href="{{ url_for('web.home') }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Dashboard
+    </a>
+    <h1 class="cp-title">New Project</h1>
+    <p class="cp-sub">Set up a project to start validating PDF forms with AI.</p>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      <div style="margin-bottom:16px;">
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('web.create_project') }}" class="cp-form">
+
+    <!-- Section 1: Identity -->
+    <div class="cp-section">
+      <div class="cp-section-label">Project Identity</div>
+      <div class="cp-fields">
+        <div class="cp-field cp-field-full">
+          <label for="name">Project Name <span class="cp-req">*</span></label>
+          <input class="cp-input" id="name" name="name" type="text"
+                 placeholder="e.g., Loan Application Forms — Q2 2026"
+                 required autofocus />
+          <span class="cp-hint">A clear, descriptive name visible across the dashboard.</span>
         </div>
+
+        <div class="cp-field cp-field-full">
+          <label for="description">Description</label>
+          <textarea class="cp-input cp-textarea" id="description" name="description"
+                    rows="3"
+                    placeholder="Optional: scope, purpose, or notes about this project…"></textarea>
+        </div>
+      </div>
     </div>
+
+    <!-- Section 2: Context -->
+    <div class="cp-section">
+      <div class="cp-section-label">Client &amp; Environment</div>
+      <div class="cp-fields">
+        <div class="cp-field">
+          <label for="account">Account / Client</label>
+          <input class="cp-input" id="account" name="account" type="text"
+                 placeholder="e.g., Bank Corp, Wealth Mgmt" />
+          <span class="cp-hint">Organisation or client this project belongs to.</span>
+        </div>
+
+        <div class="cp-field">
+          <label for="area">Area</label>
+          <select class="cp-input" id="area" name="area">
+            <option value="">Select area…</option>
+            <option>Branch</option>
+            <option>PNC</option>
+            <option>Wealth</option>
+            <option>Payments</option>
+            <option>Digital</option>
+            <option>Operations</option>
+          </select>
+          <span class="cp-hint">Business area or product line.</span>
+        </div>
+
+        <div class="cp-field">
+          <label for="environment">Environment</label>
+          <select class="cp-input" id="environment" name="environment">
+            <option value="">Select environment…</option>
+            <option>DEV</option>
+            <option>QA</option>
+            <option>UAT</option>
+            <option>PROD</option>
+          </select>
+          <span class="cp-hint">Target deployment environment for testing.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="cp-actions">
+      <a class="cp-btn-cancel" href="{{ url_for('web.home') }}">Cancel</a>
+      <button class="cp-btn-create" type="submit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Project
+      </button>
+    </div>
+
+  </form>
+
 </div>
+
 {% endblock %}
