@@ -29,35 +29,39 @@
   </div>
 </div>
 
-<!-- KPI stat row -->
+<!-- Project-wide stat cards -->
 <div class="ov-kpi-row">
-  <div class="ov-kpi ov-kpi-red">
-    <div class="ov-kpi-label">Errors</div>
-    <div class="ov-kpi-num">{{ last_summary.errors }}</div>
-    {% if last_summary.run_id %}
-    <div class="ov-kpi-sub">Run #{{ last_summary.run_id }}</div>
-    {% endif %}
+  <div class="ov-kpi ov-kpi-blue">
+    <div class="ov-kpi-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="ov-kpi-num">{{ form_count }}</div>
+    <div class="ov-kpi-label">Forms Uploaded</div>
+    <div class="ov-kpi-sub">PDF forms in this project</div>
   </div>
   <div class="ov-kpi ov-kpi-amber">
-    <div class="ov-kpi-label">Warnings</div>
-    <div class="ov-kpi-num">{{ last_summary.warnings }}</div>
-    {% if last_summary.run_id %}
-    <div class="ov-kpi-sub">Last run</div>
-    {% endif %}
+    <div class="ov-kpi-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    </div>
+    <div class="ov-kpi-num">{{ test_case_count }}</div>
+    <div class="ov-kpi-label">Test Cases</div>
+    <div class="ov-kpi-sub">Defined validation rules</div>
+  </div>
+  <div class="ov-kpi ov-kpi-red">
+    <div class="ov-kpi-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    </div>
+    <div class="ov-kpi-num">{{ total_run_count }}</div>
+    <div class="ov-kpi-label">Total Runs</div>
+    <div class="ov-kpi-sub">All-time executions</div>
   </div>
   <div class="ov-kpi ov-kpi-green">
-    <div class="ov-kpi-label">Passed</div>
-    <div class="ov-kpi-num">{{ last_summary.passed }}</div>
-    {% if last_summary.run_id %}
-    <div class="ov-kpi-sub">
-      {% if last_summary.created_at %}{{ last_summary.created_at.strftime("%b %d, %H:%M") }}{% endif %}
+    <div class="ov-kpi-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     </div>
-    {% endif %}
-  </div>
-  <div class="ov-kpi ov-kpi-blue">
-    <div class="ov-kpi-label">Total Runs</div>
-    <div class="ov-kpi-num">{{ recent_runs | length if recent_runs else 0 }}</div>
-    <div class="ov-kpi-sub">Recent history</div>
+    <div class="ov-kpi-num">{{ pass_rate }}<span class="ov-kpi-unit">%</span></div>
+    <div class="ov-kpi-label">Pass Rate</div>
+    <div class="ov-kpi-sub">Across all runs</div>
   </div>
 </div>
 

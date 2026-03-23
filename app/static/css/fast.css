@@ -236,12 +236,11 @@ body {
 
 .sidebar-section-label {
   font-size: 10px;
-  font-weight: 600;
-  color: var(--sidebar-text);
+  font-weight: 700;
+  color: #4a5568;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 10px 8px 4px;
-  opacity: 0.6;
+  letter-spacing: 0.1em;
+  padding: 14px 10px 4px;
 }
 
 .nav { display: flex; flex-direction: column; gap: 1px; }
@@ -249,26 +248,26 @@ body {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--sidebar-text);
+  color: #8896a8;
   text-decoration: none;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   transition: all 0.15s;
   white-space: nowrap;
 }
-.nav-item:hover { background: var(--sidebar-hover); color: var(--sidebar-text-active); }
+.nav-item:hover { background: var(--sidebar-hover); color: #d1dae6; }
 .nav-item.active {
-  background: var(--sidebar-active);
+  background: rgba(227,24,55,0.12);
   color: #fff;
   font-weight: 600;
   border-left: 2px solid var(--cgi-red);
   padding-left: 8px;
 }
 
-.nav-item-icon { font-size: 14px; width: 18px; text-align: center; opacity: 0.8; }
+.nav-item-icon { font-size: 14px; width: 18px; text-align: center; }
 
 /* ============================================================
    MAIN CONTENT
@@ -1167,3 +1166,28 @@ body.landing-body {
 .stat-pill-amber   { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
 .stat-pill-green   { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
 .stat-pill-neutral { background: var(--surface-2);  color: var(--text-muted); border: 1px solid var(--border); }
+
+/* KPI icon and unit */
+.ov-kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.ov-kpi-icon svg { width: 18px; height: 18px; }
+
+.ov-kpi-red   .ov-kpi-icon { background: var(--danger-bg);  color: var(--danger);  }
+.ov-kpi-amber .ov-kpi-icon { background: var(--warning-bg); color: var(--warning); }
+.ov-kpi-green .ov-kpi-icon { background: var(--success-bg); color: var(--success); }
+.ov-kpi-blue  .ov-kpi-icon { background: #eff6ff;           color: var(--cgi-blue);}
+
+.ov-kpi-unit {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-left: 2px;
+  opacity: 0.7;
+}

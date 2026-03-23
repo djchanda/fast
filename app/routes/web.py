@@ -256,6 +256,15 @@ def project_overview(project_id: int):
         .all()
     )
 
+    form_count = Form.query.filter_by(project_id=project_id).count()
+    test_case_count = TestCase.query.filter_by(project_id=project_id).count()
+    total_run_count = Run.query.filter_by(project_id=project_id).count()
+
+    all_runs = Run.query.filter_by(project_id=project_id).all()
+    total_checks = sum((r.passed or 0) + (r.errors or 0) for r in all_runs)
+    total_passed = sum(r.passed or 0 for r in all_runs)
+    pass_rate = round((total_passed / total_checks) * 100) if total_checks > 0 else 0
+
     return render_template(
         "project_overview.html",
         page_title=f"FAST | {project.name}",
@@ -263,6 +272,10 @@ def project_overview(project_id: int):
         last_run=last_run,
         last_summary=last_summary,
         recent_runs=recent_runs,
+        form_count=form_count,
+        test_case_count=test_case_count,
+        total_run_count=total_run_count,
+        pass_rate=pass_rate,
         user=session.get("user"),
     )
 
