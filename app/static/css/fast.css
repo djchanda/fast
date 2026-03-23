@@ -85,7 +85,7 @@ body {
 
 .brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 
-.logo { height: 30px; width: auto; filter: brightness(0) invert(1); opacity: 0.9; }
+.logo { height: 30px; width: auto; filter: invert(1); mix-blend-mode: screen; }
 
 .brand-divider {
   width: 1px;
@@ -663,7 +663,7 @@ body.landing-body {
   margin-bottom: 40px;
 }
 
-.landing-logo { height: 34px; filter: brightness(0) invert(1); }
+.landing-logo { height: 34px; filter: invert(1); mix-blend-mode: screen; }
 
 .landing-brand {
   font-size: 16px;
