@@ -76,11 +76,17 @@
       padding-right: 72px;
     }
 
-    .cgi-logo {
-      height: 36px;
-      filter: brightness(0) invert(1);
-      opacity: 0.9;
+    .cgi-logo-wrap {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 8px 14px;
       margin-bottom: 36px;
+    }
+    .cgi-logo {
+      height: 30px;
       display: block;
     }
 
@@ -185,12 +191,7 @@
       font-size: 22px;
       font-weight: 700;
       color: #f1f5f9;
-      margin-bottom: 4px;
-    }
-    .card-sub {
-      font-size: 13px;
-      color: #64748b;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
     .form-group {
@@ -302,7 +303,9 @@
 
     <!-- LEFT: Branding -->
     <div class="left">
-      <img class="cgi-logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
+      <div class="cgi-logo-wrap">
+        <img class="cgi-logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
+      </div>
 
       <div class="eyebrow">
         <span class="eyebrow-line"></span>
@@ -320,38 +323,51 @@
         <div class="feature">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
-              <path d="M12 8v4l3 3"/>
+              <rect x="9" y="9" width="6" height="6" rx="1"/>
+              <path d="M4 9h1M4 12h1M4 15h1M19 9h1M19 12h1M19 15h1M9 4v1M12 4v1M15 4v1M9 19v1M12 19v1M15 19v1"/>
+              <rect x="6" y="6" width="12" height="12" rx="2"/>
             </svg>
           </div>
           <div class="feature-text">
-            <strong>AI-Powered Analysis</strong>
-            <span>Basic / Specific / Benchmark validation with strict JSON output</span>
+            <strong>Multi-Model AI</strong>
+            <span>Gemini, GPT-4o, or Claude — your choice</span>
           </div>
         </div>
         <div class="feature">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
             </svg>
           </div>
           <div class="feature-text">
-            <strong>Evidence Bundles</strong>
-            <span>Annotated PDFs + audit trail ready for sign-off</span>
+            <strong>Visual Diff Engine</strong>
+            <span>Page-by-page comparison with signature detection</span>
           </div>
         </div>
         <div class="feature">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
             </svg>
           </div>
           <div class="feature-text">
-            <strong>Carry Rules Forward</strong>
-            <span>DEV → UAT → PROD with identical test case logic</span>
+            <strong>Review Workflow</strong>
+            <span>Assign, resolve, approve with full audit trail</span>
+          </div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>
+          </div>
+          <div class="feature-text">
+            <strong>API-First</strong>
+            <span>Integrate into CI/CD pipelines via REST API</span>
           </div>
         </div>
       </div>
@@ -361,7 +377,6 @@
     <div class="right">
       <div class="login-card">
         <div class="card-title">Sign in to FAST</div>
-        <div class="card-sub">Use your CGI credentials</div>
 
         {% with messages = get_flashed_messages(with_categories=True) %}
           {% if messages %}
