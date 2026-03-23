@@ -672,6 +672,30 @@ body.landing-body {
 }
 .landing-brand span { display: block; font-size: 11px; font-weight: 400; color: #94a3b8; }
 
+/* Big bold FAST wordmark */
+.landing-wordmark {
+  font-size: 80px;
+  font-weight: 800;
+  color: var(--cgi-red);
+  letter-spacing: -3px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.landing-wordmark-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.landing-divider {
+  width: 52px;
+  height: 3px;
+  background: var(--cgi-red);
+  border-radius: 2px;
+  margin: 22px 0 28px;
+}
+
 .landing-hero-title {
   font-size: 38px;
   font-weight: 800;
@@ -703,16 +727,20 @@ body.landing-body {
 }
 
 .landing-feature-icon {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  background: rgba(227,24,55,0.15);
-  border: 1px solid rgba(227,24,55,0.25);
+  background: rgba(227,24,55,0.12);
+  border: 1px solid rgba(227,24,55,0.22);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
   flex-shrink: 0;
+  color: var(--cgi-red);
+}
+.landing-feature-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .landing-feature-text strong { display: block; font-size: 13px; font-weight: 600; color: #f1f5f9; }

@@ -8,12 +8,11 @@
     <!-- LEFT: Branding & features -->
     <div class="landing-left">
       <div>
-        <div class="landing-logo-row">
-          <img class="landing-logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
-          <div>
-            <div class="landing-brand">FAST <span>AI Assisted Forms Testing</span></div>
-          </div>
-        </div>
+        <!-- FAST wordmark -->
+        <div class="landing-wordmark">FAST</div>
+        <div class="landing-wordmark-sub">AI Assisted Forms Testing</div>
+
+        <div class="landing-divider"></div>
 
         <div class="landing-hero-title">
           Validate forms<br>with <span class="accent-red">AI precision.</span>
@@ -27,28 +26,54 @@
 
         <div class="landing-features">
           <div class="landing-feature">
-            <div class="landing-feature-icon">🤖</div>
+            <div class="landing-feature-icon">
+              <!-- CPU / AI chip icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="6" height="6" rx="1"/>
+                <path d="M4 9h1M4 12h1M4 15h1M19 9h1M19 12h1M19 15h1M9 4v1M12 4v1M15 4v1M9 19v1M12 19v1M15 19v1"/>
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+              </svg>
+            </div>
             <div class="landing-feature-text">
               <strong>Multi-Model AI</strong>
               <span>Gemini, GPT-4o, or Claude — your choice</span>
             </div>
           </div>
           <div class="landing-feature">
-            <div class="landing-feature-icon">📊</div>
+            <div class="landing-feature-icon">
+              <!-- Diff / layers icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
             <div class="landing-feature-text">
               <strong>Visual Diff Engine</strong>
               <span>Page-by-page comparison with signature detection</span>
             </div>
           </div>
           <div class="landing-feature">
-            <div class="landing-feature-icon">✅</div>
+            <div class="landing-feature-icon">
+              <!-- Checklist / review icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
             <div class="landing-feature-text">
               <strong>Review Workflow</strong>
               <span>Assign, resolve, approve with full audit trail</span>
             </div>
           </div>
           <div class="landing-feature">
-            <div class="landing-feature-icon">🔗</div>
+            <div class="landing-feature-icon">
+              <!-- API / code icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 18 22 12 16 6"/>
+                <polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </div>
             <div class="landing-feature-text">
               <strong>API-First</strong>
               <span>Integrate into CI/CD pipelines via REST API</span>
