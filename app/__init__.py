@@ -61,6 +61,9 @@ def create_app():
             pass
         db.create_all()
 
+        # Run lightweight column migrations for existing DBs
+        _run_migrations()
+
         # Seed default compliance standards if none exist
         _seed_compliance_standards()
 
@@ -72,6 +75,25 @@ def create_app():
     init_scheduler(app)
 
     return app
+
+
+def _run_migrations():
+    """Apply additive column migrations that db.create_all() won't handle."""
+    from sqlalchemy import text, inspect
+    engine = db.engine
+    inspector = inspect(engine)
+
+    # projects: add account, area, environment
+    existing = {c["name"] for c in inspector.get_columns("projects")}
+    with engine.connect() as conn:
+        for col, typedef in [
+            ("account", "VARCHAR(200)"),
+            ("area", "VARCHAR(100)"),
+            ("environment", "VARCHAR(50)"),
+        ]:
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {typedef}"))
+        conn.commit()
 
 
 def _seed_compliance_standards():
