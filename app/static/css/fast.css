@@ -1028,3 +1028,142 @@ body.landing-body {
 
 /* nav-back (legacy) */
 .nav-back { color: var(--sidebar-text); font-size: 12px; }
+
+/* ============================================================
+   PROJECT OVERVIEW
+   ============================================================ */
+.ov-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 24px;
+}
+
+.ov-project-name {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--cgi-red);
+  letter-spacing: -0.6px;
+  margin-bottom: 8px;
+}
+
+.ov-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ov-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.ov-tag-env {
+  background: #eff6ff;
+  color: var(--cgi-blue);
+  border-color: #bfdbfe;
+  font-weight: 600;
+}
+
+.ov-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.ov-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* KPI row */
+.ov-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.ov-kpi {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-top: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.ov-kpi-red   { border-top-color: var(--danger); }
+.ov-kpi-amber { border-top-color: var(--warning); }
+.ov-kpi-green { border-top-color: var(--success); }
+.ov-kpi-blue  { border-top-color: var(--cgi-blue); }
+
+.ov-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ov-kpi-num {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.ov-kpi-red   .ov-kpi-num { color: var(--danger); }
+.ov-kpi-amber .ov-kpi-num { color: var(--warning); }
+.ov-kpi-green .ov-kpi-num { color: var(--success); }
+.ov-kpi-blue  .ov-kpi-num { color: var(--cgi-blue); }
+
+.ov-kpi-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Run badge */
+.run-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, monospace;
+}
+
+/* Stat pills in table */
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-pill-red     { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+.stat-pill-amber   { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+.stat-pill-green   { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+.stat-pill-neutral { background: var(--surface-2);  color: var(--text-muted); border: 1px solid var(--border); }

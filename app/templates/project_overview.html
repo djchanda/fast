@@ -2,96 +2,119 @@
 {% set show_sidebar = True %}
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <h2 class="h2">Project: <span class="accent">{{ project.name }}</span></h2>
-    <div class="muted">Account: {{ project.account or "-" }} | Area: {{ project.area or "-" }} | Env: {{ project.environment or "-" }}</div>
+
+<!-- Page header -->
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
   </div>
-  <div class="header-actions">
-    <a class="btn btn-secondary" href="{{ url_for('web.project_forms', project_id=project.id) }}">Upload Forms</a>
-    <a class="btn btn-secondary" href="{{ url_for('web.project_testcases', project_id=project.id) }}">New Test Case</a>
-    <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">Execute</a>
+  <div class="ov-actions">
+    <a class="btn btn-outline" href="{{ url_for('web.project_forms', project_id=project.id) }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload Forms
+    </a>
+    <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Test Case
+    </a>
+    <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Execute
+    </a>
   </div>
 </div>
 
-<div class="grid-2">
-  <div class="card">
-  <div class="card-title">Last Run Summary</div>
-
-  {% if last_summary.run_id %}
-    <div class="muted" style="margin-bottom:10px;">
-      Run #{{ last_summary.run_id }}
-      {% if last_summary.created_at %} • {{ last_summary.created_at.strftime("%Y-%m-%d %H:%M") }}{% endif %}
-      {% if last_summary.triggered_by %} • by {{ last_summary.triggered_by }}{% endif %}
-    </div>
-  {% else %}
-    <div class="muted" style="margin-bottom:10px;">
-      No runs yet. Execute a test case to generate results.
-    </div>
-  {% endif %}
-
-  <div class="kpi-grid">
-    <div class="kpi">
-      <div class="kpi-num kpi-red">{{ last_summary.errors }}</div>
-      <div class="kpi-label">Errors</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-num kpi-amber">{{ last_summary.warnings }}</div>
-      <div class="kpi-label">Warnings</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-num kpi-green">{{ last_summary.passed }}</div>
-      <div class="kpi-label">Passed</div>
-    </div>
+<!-- KPI stat row -->
+<div class="ov-kpi-row">
+  <div class="ov-kpi ov-kpi-red">
+    <div class="ov-kpi-label">Errors</div>
+    <div class="ov-kpi-num">{{ last_summary.errors }}</div>
+    {% if last_summary.run_id %}
+    <div class="ov-kpi-sub">Run #{{ last_summary.run_id }}</div>
+    {% endif %}
   </div>
-
-  {% if last_summary.run_id %}
-    <div style="margin-top:12px;">
-      <a class="btn btn-light"
-         href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
-        View Run Details
-      </a>
+  <div class="ov-kpi ov-kpi-amber">
+    <div class="ov-kpi-label">Warnings</div>
+    <div class="ov-kpi-num">{{ last_summary.warnings }}</div>
+    {% if last_summary.run_id %}
+    <div class="ov-kpi-sub">Last run</div>
+    {% endif %}
+  </div>
+  <div class="ov-kpi ov-kpi-green">
+    <div class="ov-kpi-label">Passed</div>
+    <div class="ov-kpi-num">{{ last_summary.passed }}</div>
+    {% if last_summary.run_id %}
+    <div class="ov-kpi-sub">
+      {% if last_summary.created_at %}{{ last_summary.created_at.strftime("%b %d, %H:%M") }}{% endif %}
     </div>
-  {% endif %}
+    {% endif %}
+  </div>
+  <div class="ov-kpi ov-kpi-blue">
+    <div class="ov-kpi-label">Total Runs</div>
+    <div class="ov-kpi-num">{{ recent_runs | length if recent_runs else 0 }}</div>
+    <div class="ov-kpi-sub">Recent history</div>
+  </div>
 </div>
 
-  <div class="card">
-    <div class="card-title">Quick Tips</div>
-    <div class="bullets">
-      <div>• Upload forms (max 10) in <b>Forms</b></div>
-      <div>• Create test cases with Basic / Specific / Benchmark</div>
-      <div>• Select multiple test cases in <b>Execute</b> and run together</div>
-    </div>
+<!-- Recent runs -->
+<div class="card">
+  <div class="card-header">
+    <span>Recent Runs</span>
+    {% if last_summary.run_id %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
+      View Latest →
+    </a>
+    {% endif %}
   </div>
-
-    <div class="card" style="margin-top:14px;">
-  <div class="card-title">Recent Runs</div>
 
   {% if recent_runs and recent_runs|length > 0 %}
-  <div class="table-wrap" style="margin-top:10px;">
+  <div class="card-body p0">
     <table class="table">
       <thead>
         <tr>
-          <th style="width:80px;">Run</th>
-          <th style="width:170px;">When</th>
-          <th style="width:130px;">By</th>
-          <th style="width:80px;">Err</th>
-          <th style="width:90px;">Warn</th>
-          <th style="width:90px;">Pass</th>
-          <th style="width:90px;"></th>
+          <th>Run</th>
+          <th>When</th>
+          <th>By</th>
+          <th>Errors</th>
+          <th>Warnings</th>
+          <th>Passed</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for r in recent_runs %}
         <tr>
-          <td>#{{ r.id }}</td>
-          <td class="muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
+          <td><span class="run-badge">#{{ r.id }}</span></td>
+          <td class="text-muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
           <td>{{ r.triggered_by or "—" }}</td>
-          <td>{{ r.errors or 0 }}</td>
-          <td>{{ r.warnings or 0 }}</td>
-          <td>{{ r.passed or 0 }}</td>
           <td>
-            <a class="btn btn-light" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View</a>
+            {% if r.errors %}
+              <span class="stat-pill stat-pill-red">{{ r.errors }}</span>
+            {% else %}
+              <span class="stat-pill stat-pill-neutral">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.warnings %}
+              <span class="stat-pill stat-pill-amber">{{ r.warnings }}</span>
+            {% else %}
+              <span class="stat-pill stat-pill-neutral">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.passed %}
+              <span class="stat-pill stat-pill-green">{{ r.passed }}</span>
+            {% else %}
+              <span class="stat-pill stat-pill-neutral">0</span>
+            {% endif %}
+          </td>
+          <td class="right">
+            <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View →</a>
           </td>
         </tr>
         {% endfor %}
@@ -99,10 +122,13 @@
     </table>
   </div>
   {% else %}
-    <div class="muted" style="margin-top:10px;">No runs yet.</div>
+  <div class="card-body">
+    <div class="empty-state">
+      <p class="empty-title">No runs yet</p>
+      <p class="empty-text">Execute a test case to generate results.</p>
+    </div>
+  </div>
   {% endif %}
 </div>
 
-
-</div>
 {% endblock %}
