@@ -32,6 +32,9 @@ class FindingReview(db.Model):
     # Compliance tag IDs (comma-separated)
     compliance_tags = db.Column(db.Text)
 
+    # Jira defect tracking
+    jira_issue_key = db.Column(db.String(30), nullable=True)  # e.g. "PROJ-42"
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

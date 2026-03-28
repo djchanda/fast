@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% set dark_page = True %}
+{% set show_sidebar = true %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1>Jira Integration</h1>
+    <p class="subtitle">Connect this project to Jira Cloud so reviewers can log defects directly from finding cards.</p>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert-{{ category }}" style="margin-bottom:16px;">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<!-- Configuration form -->
+<div class="card mb-4">
+  <div class="card-header">
+    <!-- Jira-style ticket icon -->
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:-1px"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    Jira Cloud Configuration
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('web.project_jira_settings', project_id=project.id) }}">
+
+      <div class="wh-form-row">
+        <div class="form-group wh-flex-2">
+          <label class="form-label">Jira URL <span style="color:var(--danger)">*</span></label>
+          <input type="url" name="jira_url" class="input"
+                 placeholder="https://yourcompany.atlassian.net"
+                 value="{{ config.jira_url if config else '' }}" required>
+          <div class="form-hint">Your Atlassian Cloud base URL — no trailing slash.</div>
+        </div>
+        <div class="form-group wh-flex-1">
+          <label class="form-label">Project Key <span style="color:var(--danger)">*</span></label>
+          <input type="text" name="jira_project_key" class="input"
+                 placeholder="e.g. QA"
+                 value="{{ config.jira_project_key if config else '' }}"
+                 style="text-transform:uppercase" required>
+          <div class="form-hint">Jira project key where defects will be created.</div>
+        </div>
+      </div>
+
+      <div class="wh-form-row">
+        <div class="form-group wh-flex-1">
+          <label class="form-label">Email <span style="color:var(--danger)">*</span></label>
+          <input type="email" name="email" class="input"
+                 placeholder="you@company.com"
+                 value="{{ config.email if config else '' }}" required>
+          <div class="form-hint">Atlassian account email used to authenticate.</div>
+        </div>
+        <div class="form-group wh-flex-1">
+          <label class="form-label">API Token <span style="color:var(--danger)">*</span></label>
+          <input type="password" name="api_token" class="input"
+                 placeholder="{{ '••••••••  (leave blank to keep current)' if config else 'Atlassian API token' }}"
+                 {% if not config %}required{% endif %}>
+          <div class="form-hint">
+            Generate at
+            <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener" style="color:var(--primary);">
+              Atlassian account settings
+            </a>.
+          </div>
+        </div>
+      </div>
+
+      <div class="wh-form-row">
+        <div class="form-group wh-flex-1">
+          <label class="form-label">Issue Type</label>
+          <input type="text" name="issue_type" class="input"
+                 placeholder="Bug"
+                 value="{{ config.issue_type if config else 'Bug' }}">
+          <div class="form-hint">Jira issue type to create — usually "Bug".</div>
+        </div>
+        <div class="form-group wh-flex-1" style="display:flex;align-items:center;gap:10px;padding-top:28px;">
+          <label class="form-label" style="margin:0;cursor:pointer;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" name="is_active" value="1"
+                   {% if not config or config.is_active %}checked{% endif %}
+                   style="width:16px;height:16px;accent-color:var(--primary);">
+            Enable Jira integration
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if config %}
+<!-- Test connection -->
+<div class="card mb-4">
+  <div class="card-header">Test Connection</div>
+  <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <p class="text-muted" style="margin:0;flex:1;">
+      Verify that FAST can authenticate with your Jira instance using the saved credentials.
+    </p>
+    <form method="POST" action="{{ url_for('web.test_jira_connection', project_id=project.id) }}">
+      <button type="submit" class="btn btn-outline">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Test Connection
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Current configuration summary -->
+<div class="card">
+  <div class="card-header">Current Configuration</div>
+  <div class="card-body p0">
+    <table class="fast-table">
+      <tbody>
+        <tr>
+          <td style="width:160px;color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Jira URL</td>
+          <td><a href="{{ config.jira_url }}" target="_blank" rel="noopener" style="color:var(--primary);">{{ config.jira_url }}</a></td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Email</td>
+          <td>{{ config.email }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Project Key</td>
+          <td><code>{{ config.jira_project_key }}</code></td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Issue Type</td>
+          <td>{{ config.issue_type }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Status</td>
+          <td>
+            {% if config.is_active %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-secondary">Disabled</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% if config.created_by %}
+        <tr>
+          <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Configured by</td>
+          <td>{{ config.created_by }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

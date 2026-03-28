@@ -90,7 +90,7 @@
 {% set item = f.item %}
 {% set review = f.review %}
 {% set status = review.status if review else 'open' %}
-<div class="finding-card finding-{{ item.severity | default('low') }} finding-status-{{ status }}">
+<div id="finding-{{ f.index }}" class="finding-card finding-{{ item.severity | default('low') }} finding-status-{{ status }}">
   <div class="finding-header">
     <span class="badge badge-sev-{{ item.severity | default('low') }}">{{ item.severity | default('low') | upper }}</span>
     <span class="badge badge-cat">{{ f.category.replace('_', ' ').title() }}</span>
@@ -176,6 +176,30 @@
         <button type="submit" class="btn btn-sm btn-primary">Post Comment</button>
       </form>
     </details>
+    {% endif %}
+
+    {% if jira_config and user_role in ('admin', 'reviewer') %}
+      {% if review and review.jira_issue_key %}
+        <a class="btn btn-sm btn-jira"
+           href="{{ jira_config.issue_url(review.jira_issue_key) }}"
+           target="_blank" rel="noopener"
+           title="View Jira defect {{ review.jira_issue_key }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          {{ review.jira_issue_key }}
+        </a>
+      {% else %}
+        <form method="POST"
+              action="{{ url_for('web.log_jira_defect', project_id=project.id, result_id=rr.id) }}"
+              style="display:inline">
+          <input type="hidden" name="finding_index" value="{{ f.index }}">
+          <input type="hidden" name="finding_category" value="{{ f.category }}">
+          <button type="submit" class="btn btn-sm btn-jira"
+                  title="Create a Jira defect for this finding">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Log Defect
+          </button>
+        </form>
+      {% endif %}
     {% endif %}
   </div>
   {% else %}

@@ -62,6 +62,7 @@ def create_app():
 
     # Import models only after init_app (safe)
     from app import models  # noqa: F401
+    from app.models.jira_config import JiraConfig  # noqa: F401
 
     # Register blueprints
     from app.routes.web import web_bp
@@ -111,6 +112,14 @@ def _run_migrations():
             if col not in existing:
                 conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {typedef}"))
         conn.commit()
+
+    # finding_reviews: add jira_issue_key
+    if inspector.has_table("finding_reviews"):
+        fr_existing = {c["name"] for c in inspector.get_columns("finding_reviews")}
+        if "jira_issue_key" not in fr_existing:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE finding_reviews ADD COLUMN jira_issue_key VARCHAR(30)"))
+                conn.commit()
 
 
 def _seed_compliance_standards():

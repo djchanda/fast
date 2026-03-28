@@ -90,6 +90,10 @@
              href="{{ url_for('web.project_webhooks', project_id=project.id) }}">
             <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span> Webhooks
           </a>
+          <a class="nav-item {% if active == 'jira' %}active{% endif %}"
+             href="{{ url_for('web.project_jira_settings', project_id=project.id) }}">
+            <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span> Jira
+          </a>
           <a class="nav-item {% if active == 'schedules' %}active{% endif %}"
              href="{{ url_for('web.project_schedules', project_id=project.id) }}">
             <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Schedules

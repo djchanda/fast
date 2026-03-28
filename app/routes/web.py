@@ -37,8 +37,10 @@ from app.models.compliance_standard import ComplianceStandard, ComplianceRequire
 from app.models.false_positive import FalsePositive
 from app.models.field_inventory import FieldInventory
 from app.models.api_key import ApiKey
+from app.models.jira_config import JiraConfig
 from app.services.runner import run_testcase
 from app.services.audit import log_action
+from app.services import jira_client
 
 
 web_bp = Blueprint("web", __name__)
@@ -895,6 +897,8 @@ def result_reviews(project_id: int, result_id: int):
     prev_result_id = run_result_ids[current_pos - 1] if current_pos > 0 else None
     next_result_id = run_result_ids[current_pos + 1] if current_pos >= 0 and current_pos < len(run_result_ids) - 1 else None
 
+    jira_config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
+
     return render_template(
         "finding_reviews.html",
         page_title=f"FAST | Review Findings",
@@ -904,6 +908,7 @@ def result_reviews(project_id: int, result_id: int):
         findings=findings,
         reviewers=reviewers,
         compliance_standards=compliance_standards,
+        jira_config=jira_config,
         prev_result_id=prev_result_id,
         next_result_id=next_result_id,
         current_pos=current_pos + 1,
@@ -1037,6 +1042,126 @@ def add_finding_comment(project_id: int, result_id: int):
     db.session.commit()
     flash("Comment added.", "success")
     return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/reviews/log-jira", methods=["POST"])
+def log_jira_defect(project_id: int, result_id: int):
+    """One-click: create a Jira Cloud defect from a finding and save the issue key."""
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("reviewer")
+    if role_check:
+        return role_check
+
+    jira_config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
+    if not jira_config:
+        flash("Jira integration is not configured for this project.", "error")
+        return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
+
+    finding_index = int(request.form.get("finding_index", 0))
+    finding_category = request.form.get("finding_category", "")
+
+    rr = RunResult.query.get_or_404(result_id)
+    tc = TestCase.query.filter_by(id=rr.test_case_id, project_id=project_id).first()
+
+    # Resolve the form filename for the defect description
+    form_filename = "Unknown Form"
+    if tc and tc.form_id:
+        form_obj = Form.query.get(tc.form_id)
+        if form_obj:
+            form_filename = form_obj.original_filename or form_obj.name
+
+    # Get the specific finding item from result_json
+    item = {}
+    if rr.result_json:
+        try:
+            result_obj = json.loads(rr.result_json)
+            flat_index = 0
+            categories = [
+                "spelling_errors", "format_issues", "value_mismatches",
+                "missing_content", "extra_content", "layout_anomalies",
+                "compliance_issues", "visual_mismatches",
+            ]
+            for cat in categories:
+                for entry in result_obj.get(cat, []):
+                    if flat_index == finding_index:
+                        item = entry
+                        break
+                    flat_index += 1
+                if item:
+                    break
+        except Exception:
+            pass
+
+    # Create or get FindingReview record
+    review = FindingReview.query.filter_by(
+        run_result_id=result_id, finding_index=finding_index
+    ).first()
+    if review is None:
+        review = FindingReview(
+            run_result_id=result_id,
+            project_id=project_id,
+            finding_index=finding_index,
+            finding_category=finding_category,
+            finding_description=item.get("description", ""),
+        )
+        db.session.add(review)
+        db.session.flush()
+
+    # Idempotent: if already logged, just redirect
+    if review.jira_issue_key:
+        flash(f"Defect already logged: {review.jira_issue_key}", "info")
+        return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id)
+                        + f"#finding-{finding_index}")
+
+    # Build Jira issue content
+    page = item.get("page", "?")
+    severity = item.get("severity", "unknown")
+    category_display = finding_category.replace("_", " ").title()
+    description_text = item.get("description", "No description available.")
+    evidence_text = item.get("evidence", "")
+
+    summary = f"[FAST] {category_display} \u2013 {form_filename} (Page {page})"
+
+    description_lines = [
+        f"Form: {form_filename}",
+        f"Page: {page}  |  Severity: {severity}",
+        f"Category: {category_display}",
+        "",
+        "Description:",
+        description_text,
+    ]
+    if evidence_text:
+        description_lines += ["", "Evidence:", evidence_text]
+    tc_name = tc.name if tc else f"Test Case #{rr.test_case_id}"
+    description_lines += [
+        "",
+        f"Run #{rr.run_id} | Test Case: {tc_name} | Mode: {rr.mode}",
+    ]
+    description_body = "\n".join(description_lines)
+
+    try:
+        issue_key = jira_client.create_issue(jira_config, summary, description_body)
+    except Exception as exc:
+        flash(f"Failed to create Jira issue: {exc}", "error")
+        return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id)
+                        + f"#finding-{finding_index}")
+
+    review.jira_issue_key = issue_key
+    db.session.commit()
+
+    log_action(
+        action="jira.defect_created",
+        resource=f"finding_review#{review.id}",
+        detail=f"Jira issue {issue_key} created for finding {finding_index} in result {result_id}",
+        project_id=project_id,
+        user=session.get("user"),
+    )
+
+    flash(f"Jira defect created: {issue_key}", "success")
+    return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id)
+                    + f"#finding-{finding_index}")
 
 
 # -----------------------
@@ -1320,6 +1445,90 @@ def delete_webhook(project_id: int, webhook_id: int):
     db.session.commit()
     flash("Webhook deleted.", "success")
     return redirect(url_for("web.project_webhooks", project_id=project_id))
+
+
+# -----------------------
+# Jira Integration Settings
+# -----------------------
+
+@web_bp.route("/projects/<int:project_id>/jira", methods=["GET", "POST"])
+def project_jira_settings(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("reviewer")
+    if role_check:
+        return role_check
+
+    project = Project.query.get_or_404(project_id)
+    config = JiraConfig.query.filter_by(project_id=project_id).first()
+
+    if request.method == "POST":
+        jira_url = request.form.get("jira_url", "").strip().rstrip("/")
+        email = request.form.get("email", "").strip()
+        api_token = request.form.get("api_token", "").strip()
+        jira_project_key = request.form.get("jira_project_key", "").strip().upper()
+        issue_type = request.form.get("issue_type", "Bug").strip() or "Bug"
+        is_active = request.form.get("is_active") == "1"
+
+        if not jira_url or not email or not jira_project_key:
+            flash("Jira URL, email, and project key are required.", "error")
+        else:
+            if config is None:
+                config = JiraConfig(
+                    project_id=project_id,
+                    created_by=session.get("user"),
+                )
+                db.session.add(config)
+
+            config.jira_url = jira_url
+            config.email = email
+            if api_token:  # Only update token if a new one was entered
+                config.api_token = api_token
+            config.jira_project_key = jira_project_key
+            config.issue_type = issue_type
+            config.is_active = is_active
+            db.session.commit()
+
+            log_action(
+                action="jira.config_saved",
+                resource=f"project#{project_id}",
+                detail=f"Jira config saved: {jira_url} / {jira_project_key}",
+                project_id=project_id,
+                user=session.get("user"),
+            )
+            flash("Jira settings saved.", "success")
+
+        return redirect(url_for("web.project_jira_settings", project_id=project_id))
+
+    return render_template(
+        "jira_settings.html",
+        page_title="FAST | Jira Integration",
+        project=project,
+        config=config,
+        active="jira",
+        user=session.get("user"),
+        user_role=session.get("role", "viewer"),
+    )
+
+
+@web_bp.route("/projects/<int:project_id>/jira/test", methods=["POST"])
+def test_jira_connection(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("reviewer")
+    if role_check:
+        return role_check
+
+    config = JiraConfig.query.filter_by(project_id=project_id).first()
+    if not config:
+        flash("No Jira configuration saved yet.", "error")
+        return redirect(url_for("web.project_jira_settings", project_id=project_id))
+
+    success, message = jira_client.test_connection(config)
+    flash(message, "success" if success else "error")
+    return redirect(url_for("web.project_jira_settings", project_id=project_id))
 
 
 # -----------------------

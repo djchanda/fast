@@ -458,6 +458,11 @@ body {
 .btn-success { background: var(--success); color: #fff; }
 .btn-success:hover { background: #15803d; }
 
+/* Jira brand blue */
+.btn-jira { background: #0052CC; color: #fff; border-color: #0052CC; }
+.btn-jira:hover { background: #0747A6; border-color: #0747A6; color: #fff; }
+.btn-jira:visited { color: #fff; }
+
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-lg { padding: 11px 22px; font-size: 15px; }
 .btn-wide { width: 100%; }
