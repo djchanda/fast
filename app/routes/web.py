@@ -1153,10 +1153,11 @@ def log_jira_defect(project_id: int, result_id: int):
 
     log_action(
         action="jira.defect_created",
-        resource=f"finding_review#{review.id}",
-        detail=f"Jira issue {issue_key} created for finding {finding_index} in result {result_id}",
+        resource_type="finding_review",
+        resource_id=review.id,
+        detail={"issue_key": issue_key, "finding_index": finding_index, "result_id": result_id},
         project_id=project_id,
-        user=session.get("user"),
+        username=session.get("user"),
     )
 
     flash(f"Jira defect created: {issue_key}", "success")
@@ -1492,10 +1493,11 @@ def project_jira_settings(project_id: int):
 
             log_action(
                 action="jira.config_saved",
-                resource=f"project#{project_id}",
-                detail=f"Jira config saved: {jira_url} / {jira_project_key}",
+                resource_type="jira_config",
+                resource_id=config.id,
+                detail={"jira_url": jira_url, "jira_project_key": jira_project_key},
                 project_id=project_id,
-                user=session.get("user"),
+                username=session.get("user"),
             )
             flash("Jira settings saved.", "success")
 
