@@ -1503,11 +1503,20 @@ def project_jira_settings(project_id: int):
 
         return redirect(url_for("web.project_jira_settings", project_id=project_id))
 
+    # Fetch available issue types from Jira so the template can show a dropdown
+    issue_types = []
+    if config and config.is_active:
+        try:
+            issue_types = jira_client.fetch_issue_types(config)
+        except Exception:
+            pass
+
     return render_template(
         "jira_settings.html",
         page_title="FAST | Jira Integration",
         project=project,
         config=config,
+        issue_types=issue_types,
         active="jira",
         user=session.get("user"),
         user_role=session.get("role", "viewer"),

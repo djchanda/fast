@@ -69,10 +69,24 @@
       <div class="wh-form-row">
         <div class="form-group wh-flex-1">
           <label class="form-label">Issue Type</label>
-          <input type="text" name="issue_type" class="input"
-                 placeholder="Bug"
-                 value="{{ config.issue_type if config else 'Bug' }}">
-          <div class="form-hint">Jira issue type to create — usually "Bug".</div>
+          {% if issue_types %}
+            <select name="issue_type" class="input">
+              {% for t in issue_types %}
+                <option value="{{ t }}" {% if (config and config.issue_type == t) or (not config and t == 'Bug') %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-hint">
+              Available types in project <strong>{{ config.jira_project_key }}</strong> — loaded from Jira.
+            </div>
+          {% else %}
+            <input type="text" name="issue_type" class="input"
+                   placeholder="Bug"
+                   value="{{ config.issue_type if config else 'Bug' }}">
+            <div class="form-hint">
+              Jira issue type name — must match exactly.
+              {% if config %}Save settings then reload to auto-load available types.{% endif %}
+            </div>
+          {% endif %}
         </div>
         <div class="form-group wh-flex-1" style="display:flex;align-items:center;gap:10px;padding-top:28px;">
           <label class="form-label" style="margin:0;cursor:pointer;display:flex;align-items:center;gap:8px;">
@@ -128,7 +142,14 @@
         </tr>
         <tr>
           <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Issue Type</td>
-          <td>{{ config.issue_type }}</td>
+          <td>
+            {{ config.issue_type }}
+            {% if issue_types %}
+              <span style="color:var(--text-muted);font-size:11px;margin-left:8px;">
+                (available: {{ issue_types | join(', ') }})
+              </span>
+            {% endif %}
+          </td>
         </tr>
         <tr>
           <td style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;">Status</td>

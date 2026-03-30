@@ -96,3 +96,23 @@ def test_connection(config) -> tuple[bool, str]:
         return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
     except requests.RequestException as exc:
         return False, str(exc)
+
+
+def fetch_issue_types(config) -> list:
+    """Return available issue type names for the configured Jira project.
+
+    Calls GET /rest/api/3/project/{key} and extracts issueTypes[].name,
+    excluding subtask types. Returns empty list on any failure.
+    """
+    try:
+        resp = requests.get(
+            f"{config.jira_url.rstrip('/')}/rest/api/3/project/{config.jira_project_key}",
+            headers=_headers(config),
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            types = resp.json().get("issueTypes", [])
+            return [t["name"] for t in types if not t.get("subtask", False)]
+    except Exception:
+        pass
+    return []
