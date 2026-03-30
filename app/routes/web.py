@@ -1300,7 +1300,8 @@ def review_approval_gate(project_id: int, run_id: int):
     }, project_id)
 
     log_action(f"gate.{decision}", resource_type="approval_gate", resource_id=approval.id,
-               project_id=project_id, run_id=run_id)
+               project_id=project_id, detail={"run_id": run_id, "decision": decision},
+               username=session.get("user"))
     flash(f"Run #{run_id} {decision}.", "success" if decision == "approved" else "error")
     return redirect(url_for("web.run_approval_gate", project_id=project_id, run_id=run_id))
 
