@@ -1121,24 +1121,93 @@ def log_jira_defect(project_id: int, result_id: int):
     category_display = finding_category.replace("_", " ").title()
     description_text = item.get("description", "No description available.")
     evidence_text = item.get("evidence", "")
+    field_name = item.get("field_name", "")
+    suggestion_text = item.get("suggestion", "")
 
     summary = f"[FAST] {category_display} \u2013 {form_filename} (Page {page})"
 
+    # Project context
+    project_obj = Project.query.get(project_id)
+    proj_name = project_obj.name if project_obj else f"Project #{project_id}"
+    proj_env = (project_obj.environment or "").strip() if project_obj else ""
+    proj_account = (project_obj.account or "").strip() if project_obj else ""
+
+    # Benchmark form (benchmark mode only)
+    benchmark_filename = None
+    if tc and tc.benchmark_form_id:
+        bench_form = Form.query.get(tc.benchmark_form_id)
+        if bench_form:
+            benchmark_filename = bench_form.original_filename or bench_form.name
+
+    # Run date in ET
+    run_date_str = ""
+    if rr.created_at:
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import timezone as _tz
+            dt = rr.created_at.replace(tzinfo=_tz.utc)
+            run_date_str = dt.astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d at %H:%M ET")
+        except Exception:
+            run_date_str = rr.created_at.strftime("%Y-%m-%d at %H:%M UTC")
+
+    tc_name = tc.name if tc else f"Test Case #{rr.test_case_id}"
+
     description_lines = [
-        f"Form: {form_filename}",
-        f"Page: {page}  |  Severity: {severity}",
-        f"Category: {category_display}",
+        "\u2501" * 38,
+        "FAST AI Forms Testing \u2014 Defect Report",
+        "\u2501" * 38,
         "",
-        "Description:",
+        "PROJECT CONTEXT",
+        f"Project:     {proj_name}",
+    ]
+    if proj_env:
+        description_lines.append(f"Environment: {proj_env}")
+    if proj_account:
+        description_lines.append(f"Account:     {proj_account}")
+
+    description_lines += [
+        "",
+        "FORMS TESTED",
+        f"Current Form:  {form_filename}",
+    ]
+    if benchmark_filename:
+        description_lines.append(f"Benchmark Form: {benchmark_filename}")
+    description_lines += [
+        f"Test Mode:     {rr.mode}",
+        f"Test Case:     {tc_name}",
+        "",
+        "ANOMALY DETAILS",
+        f"Severity:  {severity.upper()}",
+        f"Category:  {category_display}",
+        f"Page:      {page}",
+    ]
+    if field_name:
+        description_lines.append(f"Field:     {field_name}")
+
+    description_lines += [
+        "",
+        "DESCRIPTION",
         description_text,
     ]
     if evidence_text:
-        description_lines += ["", "Evidence:", evidence_text]
-    tc_name = tc.name if tc else f"Test Case #{rr.test_case_id}"
+        description_lines += ["", "EVIDENCE", evidence_text]
+    if suggestion_text:
+        description_lines += ["", "SUGGESTION", suggestion_text]
+
     description_lines += [
         "",
-        f"Run #{rr.run_id} | Test Case: {tc_name} | Mode: {rr.mode}",
+        "RUN CONTEXT",
+        f"Run:      #{rr.run_id}  (Result #{rr.id})",
     ]
+    if run_date_str:
+        description_lines.append(f"Run Date: {run_date_str}")
+    description_lines += [
+        f"Health:   {rr.errors or 0} errors | {rr.warnings or 0} warnings | {rr.passed or 0} passed",
+        "",
+        "\u2501" * 38,
+        "Logged by FAST \u2013 AI Assisted Forms Testing",
+    ]
+
     description_body = "\n".join(description_lines)
 
     try:
