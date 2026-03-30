@@ -28,20 +28,24 @@ def create_issue(config, summary: str, description_text: str) -> str:
     Uses Atlassian Document Format (ADF) for the description body, which is
     required by the Jira Cloud REST API v3.
 
-    Raises requests.HTTPError on non-2xx responses.
+    Raises RuntimeError with a human-readable message on failure.
     """
-    # Build ADF description — each line as a separate paragraph for readability
+    # Build ADF description — skip empty lines (whitespace-only text nodes are rejected by Jira)
     paragraphs = []
     for line in description_text.split("\n"):
-        paragraphs.append({
-            "type": "paragraph",
-            "content": [{"type": "text", "text": line if line else " "}],
-        })
+        if line.strip():
+            paragraphs.append({
+                "type": "paragraph",
+                "content": [{"type": "text", "text": line}],
+            })
+        else:
+            # empty paragraph for blank lines — valid ADF, no text node
+            paragraphs.append({"type": "paragraph", "content": []})
 
     payload = {
         "fields": {
             "project": {"key": config.jira_project_key},
-            "summary": summary,
+            "summary": summary[:255],  # Jira enforces 255-char limit
             "description": {
                 "type": "doc",
                 "version": 1,
@@ -57,10 +61,22 @@ def create_issue(config, summary: str, description_text: str) -> str:
         headers=_headers(config),
         timeout=15,
     )
-    resp.raise_for_status()
-    issue_key = resp.json()["key"]
-    logger.info("Jira issue created: %s", issue_key)
-    return issue_key
+
+    if resp.status_code == 201:
+        issue_key = resp.json()["key"]
+        logger.info("Jira issue created: %s", issue_key)
+        return issue_key
+
+    # Extract Jira's detailed error message from the response body
+    try:
+        err = resp.json()
+        msgs = err.get("errorMessages", [])
+        field_errs = list(err.get("errors", {}).values())
+        detail = "; ".join(msgs + field_errs) or f"HTTP {resp.status_code}"
+    except Exception:
+        detail = resp.text[:300] or f"HTTP {resp.status_code}"
+
+    raise RuntimeError(f"Jira API error ({resp.status_code}): {detail}")
 
 
 def test_connection(config) -> tuple[bool, str]:
