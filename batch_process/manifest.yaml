@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# FAST Batch Process — Manifest File
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# HOW TO USE:
+#   1. Drop your PDFs in the forms/current/ and forms/benchmark/ folders.
+#   2. Edit the tests section below to point to your files.
+#   3. Run:  python run_batch.py
+#
+# MODES:
+#   benchmark  — Compare current form against a known-good baseline (golden copy).
+#                Both 'current' and 'benchmark' PDFs are required.
+#   basic      — Standalone AI inspection with no baseline. Only 'current' needed.
+#   specific   — Like basic, but driven by your custom 'prompt' validation rules.
+# ─────────────────────────────────────────────────────────────────────────────
+
+project:
+  name: "FAST Batch Run"       # Display name shown in reports
+  environment: ""              # e.g. QA, UAT, Production
+  account: ""                  # e.g. Liberty Mutual, BMO
+
+settings:
+  mode: benchmark              # Default mode for all tests (can override per test)
+  llm_provider: gemini         # gemini | openai | claude
+  output_dir: ./reports        # Where HTML reports are saved (relative to this file)
+  fail_on_critical: true       # Exit code 1 if any test has CRITICAL/FAIL findings
+
+tests:
+
+  # ── Example 1: Benchmark comparison ────────────────────────────────────────
+  # Compare an updated form against its baseline to catch unintended changes.
+  - name: "Policy Form — Version Comparison"
+    current:   current/policy_form_v2.pdf      # Updated / new version
+    benchmark: benchmark/policy_form_v1.pdf    # Baseline / golden copy
+    mode: benchmark
+
+  # ── Example 2: Standalone AI inspection ────────────────────────────────────
+  # Run general AI quality checks on a single form with no baseline.
+  - name: "Application Form — Quality Check"
+    current: current/application_form.pdf
+    mode: basic
+
+  # ── Example 3: Custom rule-based validation ─────────────────────────────────
+  # Drive the analysis with your own validation rules.
+  - name: "Claim Form — Specific Rules"
+    current: current/claim_form.pdf
+    mode: specific
+    prompt: |
+      Verify the following rules:
+      1. All dollar amounts use two decimal places (e.g., $1,000.00).
+      2. All dates are formatted as YYYY-MM-DD.
+      3. The insured name field is present and not blank.
+      4. Coverage limits match the schedule of insurance on page 1.
+      5. No mandatory fields are left empty.
