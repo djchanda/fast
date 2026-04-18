@@ -56,8 +56,17 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             if removed_texts:
                 parts.append("REMOVED TEXT: " + ", ".join(repr(t) for t in removed_texts[:8]))
 
-        # ── Formatting diff ───────────────────────────────────────────────
-        if formatting_summary:
+        # ── Formatting diff (granular) ────────────────────────────────────
+        bold_changed = v.get("bold_changed", [])
+        size_changed = v.get("size_changed", [])
+        list_align = v.get("list_alignment_shifted", [])
+        if bold_changed:
+            parts.append("BOLD CHANGED: " + ", ".join(repr(t) for t in bold_changed[:6]))
+        if size_changed:
+            parts.append("FONT SIZE CHANGED: " + ", ".join(size_changed[:6]))
+        if list_align:
+            parts.append("LIST ALIGNMENT SHIFTED: " + ", ".join(repr(t) for t in list_align[:6]))
+        elif formatting_summary and not bold_changed and not size_changed and not list_align:
             parts.append(f"FORMATTING CHANGES: {formatting_summary}")
 
         if sig_candidate:
@@ -127,13 +136,18 @@ def build_prompt(
             "- Similarly, if the same artifact pattern repeats identically across all pages "
             "(e.g., same scattered characters on every page), it is a single document-level "
             "artefact — report once, not per page.\n\n"
-            "FORMATTING CHANGES (bold / alignment):\n"
-            "- If a page shows FORMATTING CHANGES: 'Text became bold: ...', report each bolded term "
-            "as a format_issue. Severity depends on context: if it is a heading, section title, or "
-            "legal term, use 'medium'; if it is in running body text, use 'low'.\n"
-            "- If a page shows FORMATTING CHANGES: 'X text element(s) indented further right/left', "
-            "report as a layout_anomaly. List / bullet alignment changes in legal documents are "
-            "'medium' severity; minor shifts in paragraph text are 'low'.\n"
+            "FORMATTING CHANGES (bold / font-size / alignment):\n"
+            "- BOLD CHANGED: text that flipped between bold and non-bold. Report each term as a "
+            "format_issue. Severity: 'medium' if it is a heading, section title, or legal keyword; "
+            "'low' if it is running body text.\n"
+            "- FONT SIZE CHANGED: text whose point size changed. Report as format_issue if the change "
+            "is meaningful (e.g. a heading shrank, a clause became smaller). Severity: 'medium' for "
+            "headings/titles, 'low' for body text.\n"
+            "- LIST ALIGNMENT SHIFTED: list markers like (a), (b), 1., i. that moved horizontally. "
+            "These are ALWAYS medium-severity layout_anomaly findings in legal/insurance documents "
+            "because they indicate structural indentation changes. Report each shifted marker with "
+            "its surrounding context.\n"
+            "- Body-text alignment shifts (≥3 words): report as low-severity layout_anomaly.\n"
             "- Do NOT conflate formatting changes with content changes — report them in separate "
             "format_issues / layout_anomalies entries.\n\n"
             "TEXT DIFF — the authoritative accuracy signal (read this first):\n"

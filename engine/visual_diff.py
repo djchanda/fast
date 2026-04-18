@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pdfplumber
 from pdf2image import convert_from_path
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -307,9 +308,10 @@ class VisualDiff:
                         )
 
                 # Annotate actual panel:
-                #   green  = words added in current version
-                #   orange = font-weight changed (bold added or removed)
-                #   blue   = horizontal alignment / indentation shifted
+                #   green      = words added in current version
+                #   orange     = font-weight changed (bold added or removed)
+                #   yellow-org = font size changed
+                #   blue       = horizontal alignment / indentation shifted
                 act_annotated = act.copy()
                 draw_a = ImageDraw.Draw(act_annotated)
 
@@ -326,20 +328,40 @@ class VisualDiff:
                     draw_a.rectangle(
                         [max(0, x0 - 2), max(0, y0 - 2),
                          min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
-                        outline=(255, 140, 0), width=2,   # orange
+                        outline=(255, 140, 0), width=2,   # orange — bold changed
                     )
 
-                for region in text_diff.get("alignment_shifted_regions", [])[:30]:
+                for region in text_diff.get("size_changed_regions", [])[:20]:
                     x0, y0, x1, y1 = region["bbox_act"]
                     draw_a.rectangle(
                         [max(0, x0 - 2), max(0, y0 - 2),
                          min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
-                        outline=(80, 160, 255), width=2,  # blue
+                        outline=(255, 210, 0), width=2,   # yellow — font size changed
                     )
+
+                for region in text_diff.get("alignment_shifted_regions", [])[:30]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    # List markers get a thicker border to call attention
+                    border_w = 3 if region.get("is_list_marker") else 2
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(80, 160, 255), width=border_w,  # blue — alignment shifted
+                    )
+
+                # Diff count summary for header
+                diff_counts = {
+                    "added": len(text_diff["added_texts"]),
+                    "removed": len(text_diff["removed_texts"]),
+                    "bold": len(text_diff.get("bold_changed_regions", [])),
+                    "size": len(text_diff.get("size_changed_regions", [])),
+                    "align": len(text_diff.get("alignment_shifted_regions", [])),
+                }
 
                 panel = self._build_three_panel(
                     exp_annotated, act_annotated, mask,
                     diff_regions, zone_analysis, signature_candidate,
+                    diff_counts=diff_counts,
                 )
                 out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
@@ -369,6 +391,15 @@ class VisualDiff:
                     "has_text_changes": text_diff["has_text_changes"],
                     "has_formatting_changes": text_diff.get("has_formatting_changes", False),
                     "formatting_summary": text_diff.get("formatting_summary", ""),
+                    "bold_changed": [r["text"] for r in text_diff.get("bold_changed_regions", [])],
+                    "size_changed": [
+                        f"{r['text']} ({r['exp_size']}pt→{r['act_size']}pt)"
+                        for r in text_diff.get("size_changed_regions", [])
+                    ],
+                    "list_alignment_shifted": [
+                        r["text"] for r in text_diff.get("alignment_shifted_regions", [])
+                        if r.get("is_list_marker")
+                    ],
                 })
 
             return rows
@@ -874,6 +905,16 @@ class VisualDiff:
         "CONFIDENTIAL", "DUPLICATE", "CANCELLED", "CANCELED", "SUPERSEDED",
     })
 
+    # List/bullet marker pattern — these have tighter alignment tolerance
+    _LIST_MARKER_RE = re.compile(
+        r'^(\([a-zA-Z0-9]\)|[a-zA-Z]\.|[0-9]+\.|'
+        r'\([ivxIVX]+\)|[ivxIVX]+\.|[\u2022\u2023\u25e6\u2043\u2219•\-–])$'
+    )
+
+    @staticmethod
+    def _is_list_marker(text: str) -> bool:
+        return bool(VisualDiff._LIST_MARKER_RE.match(text.strip()))
+
     def _build_text_diff_annotations(
         self,
         expected_pdf_path: str,
@@ -883,21 +924,24 @@ class VisualDiff:
         image_size: Tuple[int, int],
     ) -> Dict[str, Any]:
         """
-        Word-level comparison of two PDF pages covering three change types:
+        Word-level comparison of two PDF pages covering four change types:
 
-        1. Content changes  — words added or removed (green / red boxes).
+        1. Content changes    — words added or removed (green / red boxes).
         2. Font-weight changes — same word flipped between bold and non-bold
            (orange boxes on the actual panel).
-        3. Alignment shifts — same word moved horizontally by more than a
-           threshold, indicating indentation or list-alignment changes
-           (blue boxes on the actual panel).
+        3. Font-size changes  — same word rendered at a different size (yellow-orange boxes).
+        4. Alignment shifts   — same word moved horizontally by more than a
+           threshold; list markers use a tight tolerance of 5 pt while body
+           text uses 15 pt (blue boxes on the actual panel).
 
-        Uses pdfplumber's extra_attrs to get fontname per word.
+        Uses pdfplumber's extra_attrs to get fontname + size per word.
         Falls back gracefully if the PDF has no embedded text.
         """
-        _ALIGN_TOLERANCE_PTS = 15.0  # points — shifts smaller than this are acceptable (raised from 8 to suppress minor noise)
-        _MIN_ALIGN_WORDS = 3          # require at least this many words shifted before reporting alignment changes
-        _MIN_WORD_LEN = 2             # ignore single chars
+        _ALIGN_TOLERANCE_BODY = 15.0   # points — body text; shifts below this are acceptable
+        _ALIGN_TOLERANCE_LIST = 5.0    # points — list/bullet markers need tighter detection
+        _MIN_ALIGN_WORDS_BODY = 3      # require ≥3 shifted body words before reporting
+        _SIZE_TOLERANCE = 1.2          # points — font size diff above this is a finding
+        _MIN_WORD_LEN = 2              # ignore single chars
 
         def _extract(pdf_path: str, page_num: int):
             try:
@@ -938,7 +982,13 @@ class VisualDiff:
 
         def _is_bold(word: dict) -> bool:
             fname = str(word.get("fontname", "") or "").lower()
-            return "bold" in fname or "heavy" in fname or ",b" in fname
+            return "bold" in fname or "heavy" in fname or ",b" in fname or "-bd" in fname
+
+        def _font_size(word: dict) -> float:
+            try:
+                return float(word.get("size", 0) or 0)
+            except Exception:
+                return 0.0
 
         # ── 1. Content diff (added / removed words) ────────────────────────
         exp_set = _clean_set(exp_words)
@@ -958,7 +1008,7 @@ class VisualDiff:
             if txt in removed_texts:
                 removed_regions.append({"text": txt, "bbox": _scale(w, exp_sx, exp_sy)})
 
-        # ── 2 & 3. Formatting diff (bold changes + alignment shifts) ────────
+        # ── 2, 3, 4. Formatting diff (bold / size / alignment) ──────────────
         # Build first-occurrence lookup for words present in BOTH pages.
         common_texts = (exp_set & act_set) - added_texts - removed_texts
 
@@ -975,7 +1025,9 @@ class VisualDiff:
                 act_by_text[txt] = w
 
         bold_changed_regions: List[Dict] = []
-        alignment_shifted_regions: List[Dict] = []
+        size_changed_regions: List[Dict] = []
+        alignment_shifted_list: List[Dict] = []    # list markers (always reported ≥1)
+        alignment_shifted_body: List[Dict] = []    # body text (need ≥3)
 
         for txt in common_texts:
             ew = exp_by_text.get(txt)
@@ -985,6 +1037,9 @@ class VisualDiff:
 
             exp_bold = _is_bold(ew)
             act_bold = _is_bold(aw)
+            exp_size = _font_size(ew)
+            act_size = _font_size(aw)
+            is_marker = self._is_list_marker(txt)
 
             # Font-weight change
             if exp_bold != act_bold:
@@ -997,46 +1052,73 @@ class VisualDiff:
                     "bbox_act": _scale(aw, act_sx, act_sy),
                 })
 
-            # Horizontal alignment shift
-            x_shift = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
-            if abs(x_shift) > _ALIGN_TOLERANCE_PTS:
-                alignment_shifted_regions.append({
+            # Font-size change (separate from bold; catches heading-level changes)
+            elif (
+                exp_size > 0
+                and act_size > 0
+                and abs(act_size - exp_size) > _SIZE_TOLERANCE
+            ):
+                size_changed_regions.append({
                     "text": txt,
-                    "x_shift_pts": round(x_shift, 1),
-                    "direction": "right" if x_shift > 0 else "left",
+                    "exp_size": round(exp_size, 1),
+                    "act_size": round(act_size, 1),
+                    "change": "larger" if act_size > exp_size else "smaller",
                     "bbox_exp": _scale(ew, exp_sx, exp_sy),
                     "bbox_act": _scale(aw, act_sx, act_sy),
                 })
 
+            # Horizontal alignment shift — separate tolerance for list markers
+            x_shift = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
+            tolerance = _ALIGN_TOLERANCE_LIST if is_marker else _ALIGN_TOLERANCE_BODY
+            if abs(x_shift) > tolerance:
+                record = {
+                    "text": txt,
+                    "x_shift_pts": round(x_shift, 1),
+                    "direction": "right" if x_shift > 0 else "left",
+                    "is_list_marker": is_marker,
+                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
+                    "bbox_act": _scale(aw, act_sx, act_sy),
+                }
+                if is_marker:
+                    alignment_shifted_list.append(record)
+                else:
+                    alignment_shifted_body.append(record)
+
+        # List-marker alignment always reportable (even 1 shift is a real defect)
+        # Body alignment only reportable when ≥_MIN_ALIGN_WORDS_BODY words shifted
+        reportable_align_list = alignment_shifted_list
+        reportable_align_body = alignment_shifted_body if len(alignment_shifted_body) >= _MIN_ALIGN_WORDS_BODY else []
+        alignment_shifted_regions = reportable_align_list + reportable_align_body
+
         # ── Build summaries ─────────────────────────────────────────────────
         has_text_changes = bool(added_texts or removed_texts)
-        # Only count alignment as a real formatting change when enough words are affected
-        reportable_alignment = len(alignment_shifted_regions) >= _MIN_ALIGN_WORDS
-        has_fmt_changes = bool(bold_changed_regions or reportable_alignment)
+        has_fmt_changes = bool(bold_changed_regions or size_changed_regions or alignment_shifted_regions)
 
         fmt_parts: List[str] = []
         if bold_changed_regions:
             b_add = [r for r in bold_changed_regions if r["change"] == "bold_added"]
             b_rem = [r for r in bold_changed_regions if r["change"] == "bold_removed"]
             if b_add:
-                fmt_parts.append(
-                    "Text became bold: " + ", ".join(repr(r["text"]) for r in b_add[:5])
-                )
+                fmt_parts.append("Text became bold: " + ", ".join(repr(r["text"]) for r in b_add[:5]))
             if b_rem:
-                fmt_parts.append(
-                    "Text lost bold: " + ", ".join(repr(r["text"]) for r in b_rem[:5])
+                fmt_parts.append("Text lost bold: " + ", ".join(repr(r["text"]) for r in b_rem[:5]))
+        if size_changed_regions:
+            fmt_parts.append(
+                "Font size changed: " + ", ".join(
+                    f"{repr(r['text'])} ({r['exp_size']}pt→{r['act_size']}pt)"
+                    for r in size_changed_regions[:5]
                 )
-        if len(alignment_shifted_regions) >= _MIN_ALIGN_WORDS:
-            right_n = sum(1 for r in alignment_shifted_regions if r["direction"] == "right")
-            left_n  = sum(1 for r in alignment_shifted_regions if r["direction"] == "left")
+            )
+        if reportable_align_list:
+            markers = ", ".join(repr(r["text"]) for r in reportable_align_list[:5])
+            fmt_parts.append(f"List marker(s) alignment shifted: {markers}")
+        if reportable_align_body:
+            right_n = sum(1 for r in reportable_align_body if r["direction"] == "right")
+            left_n  = sum(1 for r in reportable_align_body if r["direction"] == "left")
             if right_n:
-                fmt_parts.append(
-                    f"{right_n} text element(s) indented further right in current version"
-                )
+                fmt_parts.append(f"{right_n} text element(s) indented further right")
             if left_n:
-                fmt_parts.append(
-                    f"{left_n} text element(s) indented further left (de-indented) in current version"
-                )
+                fmt_parts.append(f"{left_n} text element(s) indented further left")
         formatting_summary = " | ".join(fmt_parts)
 
         content_parts: List[str] = []
@@ -1047,15 +1129,15 @@ class VisualDiff:
         if formatting_summary:
             content_parts.append("Formatting: " + formatting_summary)
 
-        if content_parts:
-            summary = " | ".join(content_parts)
-        else:
-            summary = "Text content identical — visual differences are rendering/watermark noise only."
+        summary = " | ".join(content_parts) if content_parts else (
+            "Text content identical — visual differences are rendering/watermark noise only."
+        )
 
         return {
             "added_regions": added_regions,
             "removed_regions": removed_regions,
             "bold_changed_regions": bold_changed_regions[:30],
+            "size_changed_regions": size_changed_regions[:30],
             "alignment_shifted_regions": alignment_shifted_regions[:30],
             "added_texts": sorted(added_texts),
             "removed_texts": sorted(removed_texts),
@@ -1088,6 +1170,26 @@ class VisualDiff:
         pattern = (zone_analysis or {}).get("change_pattern", "")
         return self._PATTERN_COLORS.get(pattern, self._DEFAULT_DIFF_COLOR)
 
+    # Try to load a small font for labels; fall back to PIL default bitmap font
+    @staticmethod
+    def _get_small_font(size: int = 11):
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "C:/Windows/Fonts/arial.ttf",
+        ]
+        for path in candidates:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        try:
+            return ImageFont.load_default()
+        except Exception:
+            return None
+
     def _build_three_panel(
         self,
         expected: Image.Image,
@@ -1096,15 +1198,25 @@ class VisualDiff:
         diff_regions: Optional[List[Tuple[int, int, int, int]]] = None,
         zone_analysis: Optional[Dict[str, Any]] = None,
         signature_candidate: bool = False,
+        diff_counts: Optional[Dict[str, int]] = None,
     ) -> Image.Image:
         """
-        Build three-panel comparison image.
-        Diff panel uses a pattern-specific color:
+        Build three-panel comparison image with color legend strip.
+        Diff panel overlay color:
           gray   = rendering / watermark noise
           red    = value / header field change
           orange = body content change
           purple = footer / signature area
           yellow = partial / mixed change
+
+        Box colors on EXPECTED panel (left):
+          red border = text removed from baseline
+
+        Box colors on ACTUAL panel (middle):
+          green  = text added in current version
+          orange = bold formatting changed
+          yellow = font size changed
+          blue   = horizontal alignment / indentation shifted
         """
         rgb, alpha, diff_label = self._resolve_diff_color(zone_analysis, signature_candidate)
         r, g, b = rgb
@@ -1132,13 +1244,46 @@ class VisualDiff:
                 )
 
         w, h = actual.size
+
+        # ── Build the three-panel composite ────────────────────────────────
         out = Image.new("RGB", (w * 3, h), (0, 0, 0))
         out.paste(expected, (0, 0))
         out.paste(actual, (w, 0))
         out.paste(diff_panel, (w * 2, 0))
 
-        out = self._add_headers(out, w, diff_label=diff_label, diff_header_color=rgb)
-        return out
+        out = self._add_headers(out, w, diff_label=diff_label, diff_header_color=rgb,
+                                diff_counts=diff_counts)
+
+        # ── Append color-coded legend strip ────────────────────────────────
+        legend = self._build_legend(w * 3)
+        final = Image.new("RGB", (w * 3, out.height + legend.height), (10, 10, 10))
+        final.paste(out, (0, 0))
+        final.paste(legend, (0, out.height))
+        return final
+
+    def _build_legend(self, total_width: int) -> Image.Image:
+        """Return a horizontal legend strip explaining the box colors."""
+        legend_h = 36
+        img = Image.new("RGB", (total_width, legend_h), (15, 15, 15))
+        draw = ImageDraw.Draw(img)
+        font = self._get_small_font(11)
+
+        entries = [
+            ((220, 50,  50),  "◼ Removed text (left panel)"),
+            ((50,  200, 80),  "◼ Added text"),
+            ((255, 140, 0),   "◼ Bold changed"),
+            ((255, 210, 0),   "◼ Font size changed"),
+            ((80,  160, 255), "◼ Alignment shifted"),
+            ((180, 60,  220), "◼ Signature / footer"),
+        ]
+
+        x = 10
+        y = 10
+        gap = total_width // len(entries)
+        for i, (color, label) in enumerate(entries):
+            draw.text((x + i * gap, y), label, fill=color, font=font)
+
+        return img
 
     def _add_headers(
         self,
@@ -1146,17 +1291,38 @@ class VisualDiff:
         w: int,
         diff_label: str = "DIFF (HIGHLIGHTED)",
         diff_header_color: tuple = (240, 240, 240),
+        diff_counts: Optional[Dict[str, int]] = None,
     ) -> Image.Image:
+        font = self._get_small_font(12)
         draw = ImageDraw.Draw(img)
-        header_h = 40
+        header_h = 46
         draw.rectangle([0, 0, w * 3, header_h], fill=(20, 20, 20))
 
+        # Build count summary for the diff panel header
+        if diff_counts and any(diff_counts.values()):
+            parts = []
+            if diff_counts.get("added"):
+                parts.append(f"+{diff_counts['added']} added")
+            if diff_counts.get("removed"):
+                parts.append(f"-{diff_counts['removed']} removed")
+            if diff_counts.get("bold"):
+                parts.append(f"{diff_counts['bold']} bold")
+            if diff_counts.get("size"):
+                parts.append(f"{diff_counts['size']} size")
+            if diff_counts.get("align"):
+                parts.append(f"{diff_counts['align']} align")
+            count_str = "  |  " + "  ·  ".join(parts) if parts else ""
+        else:
+            count_str = ""
+
         labels = [
-            ("EXPECTED (BASELINE)", (200, 200, 200)),
-            ("ACTUAL (CURRENT)",    (200, 200, 200)),
-            (f"DIFF — {diff_label}", diff_header_color),
+            ("EXPECTED (BASELINE)", (200, 200, 200), ""),
+            ("ACTUAL (CURRENT)",    (200, 200, 200), ""),
+            (f"DIFF — {diff_label}", diff_header_color, count_str),
         ]
-        for idx, (text, color) in enumerate(labels):
-            draw.text((idx * w + 12, 10), text, fill=color)
+        for idx, (text, color, suffix) in enumerate(labels):
+            draw.text((idx * w + 12, 8),  text,   fill=color,        font=font)
+            if suffix:
+                draw.text((idx * w + 12, 26), suffix, fill=(180, 180, 180), font=font)
 
         return img
