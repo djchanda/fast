@@ -1540,4 +1540,92 @@ class VisualDiff:
             if suffix:
                 draw.text((idx * w + 12, 26), suffix, fill=(180, 180, 180), font=font)
 
+    # ---------------------------------------------------
+    # Document-level comparison helpers
+    # ---------------------------------------------------
+
+    def compare_documents_metadata(self, expected_path: str, actual_path: str) -> Dict[str, Any]:
+        """Compare PDF document-level metadata (title, author, subject, keywords, producer)."""
+        result: Dict[str, Any] = {"changed": {}, "has_metadata_changes": False, "summary": ""}
+        try:
+            exp_meta: Dict[str, str] = {}
+            act_meta: Dict[str, str] = {}
+            with pdfplumber.open(expected_path) as pdf:
+                exp_meta = {k: str(v or "") for k, v in (pdf.metadata or {}).items()}
+            with pdfplumber.open(actual_path) as pdf:
+                act_meta = {k: str(v or "") for k, v in (pdf.metadata or {}).items()}
+
+            all_keys = set(exp_meta) | set(act_meta)
+            for k in sorted(all_keys):
+                ev = exp_meta.get(k, "")
+                av = act_meta.get(k, "")
+                if ev != av:
+                    result["changed"][k] = {"expected": ev, "actual": av}
+
+            result["has_metadata_changes"] = bool(result["changed"])
+            if result["changed"]:
+                parts = [f"{k}: '{v['expected']}' → '{v['actual']}'" for k, v in result["changed"].items()]
+                result["summary"] = "Metadata changed: " + "; ".join(parts[:5])
+        except Exception as e:
+            logger.debug("Metadata comparison failed: %s", e)
+        return result
+
+    def compare_form_field_structure(self, expected_path: str, actual_path: str) -> Dict[str, Any]:
+        """Compare AcroForm field names and types between two PDFs.
+
+        Returns added_fields, removed_fields, changed_fields lists so the LLM
+        can report structural field additions/removals without relying on visual
+        pixel comparison alone.
+        """
+        result: Dict[str, Any] = {
+            "added_fields": [],
+            "removed_fields": [],
+            "changed_fields": [],
+            "has_structural_changes": False,
+            "summary": "",
+        }
+        try:
+            def _extract_fields(path: str) -> Dict[str, str]:
+                fields: Dict[str, str] = {}
+                with pdfplumber.open(path) as pdf:
+                    for page in pdf.pages:
+                        for annot in (page.annots or []):
+                            data = annot.get("data") or {}
+                            fname = data.get("T") or data.get("TU")
+                            ftype = data.get("FT")
+                            if fname:
+                                fields[str(fname)] = str(ftype or "unknown")
+                return fields
+
+            exp_f = _extract_fields(expected_path)
+            act_f = _extract_fields(actual_path)
+            exp_names = set(exp_f)
+            act_names = set(act_f)
+
+            result["removed_fields"] = sorted(exp_names - act_names)
+            result["added_fields"] = sorted(act_names - exp_names)
+            for name in sorted(exp_names & act_names):
+                if exp_f[name] != act_f[name]:
+                    result["changed_fields"].append({
+                        "name": name,
+                        "expected_type": exp_f[name],
+                        "actual_type": act_f[name],
+                    })
+
+            result["has_structural_changes"] = bool(
+                result["added_fields"] or result["removed_fields"] or result["changed_fields"]
+            )
+            if result["has_structural_changes"]:
+                parts = []
+                if result["removed_fields"]:
+                    parts.append(f"Removed fields: {', '.join(result['removed_fields'][:5])}")
+                if result["added_fields"]:
+                    parts.append(f"Added fields: {', '.join(result['added_fields'][:5])}")
+                if result["changed_fields"]:
+                    parts.append(f"Type changes: {len(result['changed_fields'])} field(s)")
+                result["summary"] = "; ".join(parts)
+        except Exception as e:
+            logger.debug("Form field structure comparison failed: %s", e)
+        return result
+
         return img
