@@ -3,6 +3,61 @@ from typing import Optional, Literal, Dict, Any, List
 ValidationMode = Literal["basic", "specific", "benchmark"]
 
 
+def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
+    """Format visual diff rows into a readable summary for the LLM."""
+    if not visual_diffs:
+        return "No visual diff data available."
+    lines = []
+    for v in visual_diffs:
+        page = v.get("page", "?")
+        sim = v.get("similarity", 1.0)
+        diff_pct = v.get("diff_pixels_pct", 0.0)
+        op = v.get("alignment_op", "matched")
+        sig_candidate = v.get("signature_candidate", False)
+        sig_label = v.get("signature_label", "")
+        zone = v.get("zone_analysis") or {}
+        changed_zones = zone.get("changed_zones", [])
+        change_pattern = zone.get("change_pattern", "")
+        change_hint = zone.get("change_hint", "")
+
+        if op == "deleted":
+            lines.append(
+                f"  Page {page}: DELETED — entire page removed from current PDF."
+            )
+            continue
+        if op == "inserted":
+            lines.append(
+                f"  Page {page}: INSERTED — new page in current PDF with no baseline counterpart."
+            )
+            continue
+
+        status = "MAJOR" if v.get("major") else ("WARN" if v.get("warn") else "OK")
+        parts = [f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"]
+
+        if sig_candidate:
+            parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
+
+        if changed_zones:
+            parts.append(f"zones changed: {', '.join(changed_zones)}")
+
+        if change_pattern:
+            pattern_guidance = {
+                "page_wide": "LIKELY RENDERING/FONT NOISE — use low severity unless text also differs",
+                "header_only": "HEADER CHANGE — check policy number, date, named insured",
+                "header_and_fields": "HEADER + FIELD VALUES — check populated/changed fields",
+                "body_content": "BODY CONTENT CHANGE — compare text for specific clause/value changes",
+                "footer_area": "FOOTER/SIGNATURE AREA — check signature blocks and footer text",
+                "no_change": "NO SIGNIFICANT CHANGE",
+            }.get(change_pattern, "")
+            if pattern_guidance:
+                parts.append(f"[{pattern_guidance}]")
+        elif change_hint:
+            parts.append(f"[{change_hint}]")
+
+        lines.append(" | ".join(parts))
+    return "\n".join(lines)
+
+
 def build_prompt(
     mode: ValidationMode,
     current_doc: Dict[str, Any],
@@ -43,20 +98,27 @@ def build_prompt(
             "You are an expert PDF form validator.\n"
             "You ALWAYS return STRICT JSON with the schema requested.\n"
             "Do not include any commentary outside JSON.\n\n"
-            "Important:\n"
+            "General rules:\n"
             "- Some PDFs are scanned/printed forms; extracted text may come from OCR.\n"
             "- OCR text can contain noise (spacing, minor typos). Use best judgment.\n"
             "- Prefer form fields where available; otherwise rely on extracted text.\n"
-            "- If per-page text is provided, you MUST use it for correct page numbers.\n"
-            "- If visual_diffs are provided, you MUST use them as evidence.\n"
-            "- Never ignore a page only because similarity is still high. A page can be materially different even at 99.800% similarity.\n"
-            "- If a visual diff row has signature_candidate=true, you MUST report that page as a likely signature or approval-block issue.\n"
-            "- If a visual diff row has warn=true or major=true and similarity <= 0.9985, you MUST classify that page unless there is strong evidence it is harmless formatting noise.\n"
-            "- visual_diff rows may contain an 'alignment_op' field:\n"
-            "    'matched'  = pages were correctly paired by the sequence-alignment engine.\n"
-            "    'deleted'  = this page exists in the expected PDF but is MISSING from the actual PDF (page was removed). Always report as a critical missing_content finding.\n"
-            "    'inserted' = this page exists in the actual PDF but has NO counterpart in the expected PDF (extra page added). Always report as a critical extra_content finding.\n"
-            "- When alignment_op is 'deleted' or 'inserted', expected_page_num and actual_page_num in the diff row tell you the exact page numbers involved.\n\n"
+            "- If per-page text is provided, you MUST use it for correct page numbers.\n\n"
+            "Visual diff interpretation rules:\n"
+            "- Visual diff rows include a 'change_pattern' hint that tells you WHERE the pixel differences are.\n"
+            "- change_pattern='page_wide': differences span the whole page — this is almost always a "
+            "rendering/font/watermark difference, NOT a real content change. "
+            "Report as layout_anomaly with LOW severity ONLY if the page text also shows differences. "
+            "Do NOT report as value_mismatch or missing_content based on visual alone.\n"
+            "- change_pattern='header_only': only the header changed — check policy number, date, named insured, logo.\n"
+            "- change_pattern='header_and_fields': header and upper fields changed — identify which fields were populated or modified.\n"
+            "- change_pattern='body_content': main body changed — compare per-page text to identify specific clauses or values.\n"
+            "- change_pattern='footer_area': footer/signature area changed — check signature blocks and footer content.\n"
+            "- change_pattern='no_change': no meaningful difference despite similarity < 1.0 — ignore this page.\n"
+            "- If signature_candidate=true, always report as missing_content or visual_mismatches with category 'Signature / approval block'.\n"
+            "- alignment_op='deleted': page removed from actual PDF — always critical missing_content.\n"
+            "- alignment_op='inserted': page added to actual PDF — always critical extra_content.\n"
+            "- NEVER write 'Significant visual difference detected (Similarity: X.XXX)' as a finding description. "
+            "Always describe WHAT specifically appears to have changed based on the text comparison and zone pattern.\n\n"
             "Deterministic reporting rules:\n"
             "1) Populate every top-level list even if empty.\n"
             "2) summary_counts must equal the exact lengths of the arrays.\n"
@@ -214,50 +276,47 @@ Current PDF visual diffs (optional):
 {base_schema}
 """
     else:
+        formatted_visual_diffs = _format_visual_diffs_for_llm(current_visual_diffs)
         user_content = f"""
 Perform BENCHMARK validation comparing a GOLDEN benchmark PDF and a CURRENT PDF.
 
 Benchmark rules:
 - Compare page by page using per-page text.
 - Use benchmark fields as expected values when present.
-- Use visual_diffs as evidence for visual differences.
-- If visual_diffs show signature_candidate=true on a page, report that page in missing_content and/or visual_mismatches.
-- If visual_diffs show warn=true or major=true and similarity <= 0.9985, do not ignore that page unless it is clearly harmless formatting noise.
-- Your job is to identify actual actionable differences, not noise.
-- Focus on real business changes: signatures, declarations, premium values, coverage limits, content updates, added/removed sections.
+- Use the visual diff summary below as evidence, guided by the change_pattern hints.
+- Your job is to identify actual actionable differences, not rendering noise.
+- Focus on real business changes: field values populated/changed, signatures, declarations,
+  premium values, coverage limits, content updates, added/removed sections.
+- For pages where change_pattern='page_wide' and the text shows no meaningful difference,
+  do NOT add a finding — this is rendering noise.
+- For pages where change_pattern='page_wide' but the text DOES show differences,
+  describe the specific text change, not the visual similarity score.
 
 User-provided additional instructions:
 {base_prompt}
 
-Benchmark PDF extraction meta:
-{benchmark_meta}
-
-Benchmark PDF text:
+--- BASELINE (GOLDEN) PDF ---
+Extraction meta: {benchmark_meta}
+Full text:
 {benchmark_text}
 
-Benchmark PDF per-page text:
+Per-page text:
 {benchmark_pages}
 
-Benchmark PDF form fields:
-{benchmark_fields}
+Form fields: {benchmark_fields}
 
-Benchmark PDF visual diffs (optional):
-{benchmark_visual_diffs}
-
-Current PDF extraction meta:
-{current_meta}
-
-Current PDF text:
+--- CURRENT PDF ---
+Extraction meta: {current_meta}
+Full text:
 {current_text}
 
-Current PDF per-page text:
+Per-page text:
 {current_pages}
 
-Current PDF form fields:
-{current_fields}
+Form fields: {current_fields}
 
-Current PDF visual diffs:
-{current_visual_diffs}
+--- VISUAL DIFF SUMMARY (page-by-page, with zone analysis) ---
+{formatted_visual_diffs}
 
 {summary_enforcement}
 

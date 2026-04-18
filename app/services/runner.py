@@ -267,19 +267,60 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             and not page_items
             and not has_real_business_issue
         ):
+            zone = v.get("zone_analysis") or {}
+            change_pattern = zone.get("change_pattern", "")
+            change_hint = zone.get("change_hint", "")
+            changed_zones = zone.get("changed_zones", [])
+
+            # Page-wide diff at this similarity almost always means rendering/font noise
+            if change_pattern == "page_wide":
+                severity = "low"
+                description = (
+                    f"Page-wide rendering difference (similarity={sim:.3f}, "
+                    f"{v.get('diff_pixels_pct', 0):.1f}% pixels differ). "
+                    "Changes are spread across the entire page, which typically indicates "
+                    "a font rendering, watermark, or DPI difference rather than a content change. "
+                    "Review the visual snapshot to confirm."
+                )
+            elif change_pattern == "header_only":
+                severity = "medium"
+                description = (
+                    f"Header area changed (similarity={sim:.3f}). "
+                    "Check policy number, effective date, named insured, or logo in the page header."
+                )
+            elif change_pattern == "footer_area":
+                severity = "high"
+                description = (
+                    f"Footer/signature area changed (similarity={sim:.3f}). "
+                    "Check signature blocks, footer dates, and footer text."
+                )
+            elif changed_zones:
+                severity = "medium" if v.get("warn") else "high"
+                description = (
+                    f"Visual difference in {', '.join(changed_zones)} "
+                    f"(similarity={sim:.3f}). {change_hint}"
+                ).strip()
+            else:
+                severity = "medium" if v.get("warn") else "high"
+                description = v.get("note") or f"Visual difference detected (similarity={sim:.3f})."
+
             result_json["visual_mismatches"].append(
                 {
                     "page": p,
-                    "severity": "medium" if v.get("warn") else "high",
+                    "severity": severity,
                     "category": "Visual difference",
-                    "description": v.get("note") or "Visual difference detected.",
-                    "evidence": f"similarity={v.get('similarity')}, diff_pixels_pct={v.get('diff_pixels_pct')}",
+                    "description": description,
+                    "evidence": (
+                        f"similarity={v.get('similarity')}, "
+                        f"diff_pixels_pct={v.get('diff_pixels_pct')}, "
+                        f"zones={', '.join(changed_zones) if changed_zones else 'unknown'}"
+                    ),
                 }
             )
             existing_by_page.setdefault(p, []).append(
                 {
                     "page": p,
-                    "description": v.get("note") or "Visual difference detected.",
+                    "description": description,
                     "_bucket": "visual_mismatches",
                 }
             )

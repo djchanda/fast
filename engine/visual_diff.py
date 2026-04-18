@@ -217,11 +217,11 @@ class VisualDiff:
                 major = diff_pct >= 2.0
                 warn = (diff_pct >= 0.10) and not major
 
-                note = "No material visual differences detected."
-                if major:
-                    note = "Significant content-level visual differences detected."
-                elif warn:
-                    note = "Minor visual differences detected."
+                # Zone-aware semantic analysis
+                zone_analysis = self._analyze_diff_zones(mask, diff_pct)
+                diff_regions = self._extract_top_diff_regions(mask) if (major or warn) else []
+
+                note = self._generate_semantic_note(diff_pct, zone_analysis, major, warn)
 
                 # Annotate when pages were re-ordered / shifted
                 if exp_idx != act_idx:
@@ -258,7 +258,7 @@ class VisualDiff:
                         else:
                             note = "Possible signature-region change detected."
 
-                panel = self._build_three_panel(exp, act, mask)
+                panel = self._build_three_panel(exp, act, mask, diff_regions)
                 out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
 
@@ -279,6 +279,8 @@ class VisualDiff:
                     "signature_label": signature_label,
                     "signature_reason": signature_reason,
                     "signature_confidence": signature_confidence,
+                    "zone_analysis": zone_analysis,
+                    "diff_regions": diff_regions,
                 })
 
             return rows
@@ -620,17 +622,187 @@ class VisualDiff:
             "confidence": confidence,
         }
 
-    def _build_three_panel(self, expected: Image.Image, actual: Image.Image, mask: Image.Image) -> Image.Image:
-        red = Image.new("RGB", actual.size, (255, 0, 0))
-        overlay = Image.composite(red, actual, mask)
-        overlay = ImageEnhance.Brightness(overlay).enhance(1.05)
+    def _analyze_diff_zones(
+        self,
+        mask: Image.Image,
+        diff_pct: float,
+    ) -> Dict[str, Any]:
+        """Analyze which page zones contain differences and classify the change pattern."""
+        w, h = mask.size
+        zone_bounds = {
+            "header":      (0, 0,            w, int(h * 0.12)),
+            "upper_body":  (0, int(h * 0.12), w, int(h * 0.42)),
+            "middle_body": (0, int(h * 0.42), w, int(h * 0.72)),
+            "lower_body":  (0, int(h * 0.72), w, int(h * 0.87)),
+            "footer":      (0, int(h * 0.87), w, h),
+        }
+        zone_pcts: Dict[str, float] = {}
+        for name, bbox in zone_bounds.items():
+            cropped = mask.crop(bbox)
+            pixels = list(cropped.getdata())
+            if pixels:
+                diff = sum(1 for p in pixels if p > 0)
+                zone_pcts[name] = round((diff / len(pixels)) * 100.0, 2)
+            else:
+                zone_pcts[name] = 0.0
+
+        SIG = 1.5
+        changed_zones = [name for name, pct in zone_pcts.items() if pct > SIG]
+
+        if not changed_zones:
+            pattern = "no_change"
+            hint = "No significant visual differences detected."
+        elif len(changed_zones) >= 4:
+            pattern = "page_wide"
+            hint = (
+                "Changes are spread across the entire page. "
+                "This is likely a rendering, font, watermark, or DPI difference "
+                "rather than specific content changes."
+            )
+        elif changed_zones == ["header"]:
+            pattern = "header_only"
+            hint = "Change confined to page header — check policy number, date, logo, or named insured field."
+        elif set(changed_zones) <= {"header", "upper_body"}:
+            pattern = "header_and_fields"
+            hint = "Changes in header and upper body — likely field values were populated or modified."
+        elif set(changed_zones) <= {"upper_body", "middle_body", "lower_body"}:
+            pattern = "body_content"
+            hint = "Changes in the main body — check for text updates, inserted/deleted clauses, or field values."
+        elif "lower_body" in changed_zones or "footer" in changed_zones:
+            pattern = "footer_area"
+            hint = "Changes near the footer/signature area — check signature blocks, dates, and footer text."
+        else:
+            pattern = "partial"
+            hint = f"Changes detected in: {', '.join(changed_zones)}."
+
+        return {
+            "zone_diff_pcts": zone_pcts,
+            "changed_zones": changed_zones,
+            "change_pattern": pattern,
+            "change_hint": hint,
+        }
+
+    def _extract_top_diff_regions(
+        self,
+        mask: Image.Image,
+        grid_cols: int = 8,
+        grid_rows: int = 14,
+        min_cell_diff_pct: float = 8.0,
+        max_regions: int = 8,
+    ) -> List[Tuple[int, int, int, int]]:
+        """Extract bounding boxes of the most significant diff regions via grid sampling."""
+        w, h = mask.size
+        cell_w = max(1, w // grid_cols)
+        cell_h = max(1, h // grid_rows)
+
+        hot_cells: List[Tuple[int, int, int, int]] = []
+        for row in range(grid_rows):
+            for col in range(grid_cols):
+                x0 = col * cell_w
+                y0 = row * cell_h
+                x1 = min(x0 + cell_w, w)
+                y1 = min(y0 + cell_h, h)
+                cell = mask.crop((x0, y0, x1, y1))
+                pixels = list(cell.getdata())
+                if not pixels:
+                    continue
+                diff_count = sum(1 for p in pixels if p > 0)
+                if (diff_count / len(pixels)) * 100.0 >= min_cell_diff_pct:
+                    hot_cells.append((x0, y0, x1, y1))
+
+        if not hot_cells:
+            return []
+
+        merged = self._merge_boxes(hot_cells, padding=cell_w)
+        merged.sort(key=lambda b: (b[2] - b[0]) * (b[3] - b[1]), reverse=True)
+        return merged[:max_regions]
+
+    def _merge_boxes(
+        self,
+        boxes: List[Tuple[int, int, int, int]],
+        padding: int = 5,
+    ) -> List[Tuple[int, int, int, int]]:
+        """Merge overlapping or adjacent bounding boxes."""
+        if not boxes:
+            return []
+        changed = True
+        result = list(boxes)
+        while changed:
+            changed = False
+            new_result: List[Tuple[int, int, int, int]] = []
+            used = [False] * len(result)
+            for i in range(len(result)):
+                if used[i]:
+                    continue
+                x0, y0, x1, y1 = result[i]
+                for j in range(i + 1, len(result)):
+                    if used[j]:
+                        continue
+                    bx0, by0, bx1, by1 = result[j]
+                    if not (x1 + padding < bx0 or bx1 + padding < x0 or
+                            y1 + padding < by0 or by1 + padding < y0):
+                        x0 = min(x0, bx0)
+                        y0 = min(y0, by0)
+                        x1 = max(x1, bx1)
+                        y1 = max(y1, by1)
+                        used[j] = True
+                        changed = True
+                new_result.append((x0, y0, x1, y1))
+            result = new_result
+        return result
+
+    def _generate_semantic_note(
+        self,
+        diff_pct: float,
+        zone_analysis: Dict[str, Any],
+        major: bool,
+        warn: bool,
+    ) -> str:
+        """Generate a human-readable description of the visual difference."""
+        if not major and not warn:
+            return "No material visual differences detected."
+        hint = zone_analysis.get("change_hint", "")
+        if major:
+            base = f"Significant visual differences detected ({diff_pct:.1f}% of pixels differ)."
+        else:
+            base = f"Minor visual differences detected ({diff_pct:.2f}% of pixels differ)."
+        return f"{base} {hint}".strip() if hint else base
+
+    def _build_three_panel(
+        self,
+        expected: Image.Image,
+        actual: Image.Image,
+        mask: Image.Image,
+        diff_regions: Optional[List[Tuple[int, int, int, int]]] = None,
+    ) -> Image.Image:
+        """Build three-panel comparison image with translucent overlay and region boxes."""
+        # Translucent red overlay so original content stays visible
+        actual_rgba = actual.convert("RGBA")
+        overlay = Image.new("RGBA", actual.size, (255, 40, 40, 0))
+        alpha = mask.point(lambda x: 150 if x > 0 else 0)
+        overlay.putalpha(alpha)
+        diff_panel = Image.alpha_composite(actual_rgba, overlay).convert("RGB")
+
+        # Draw bounding boxes around the most significant changed regions
+        if diff_regions:
+            draw = ImageDraw.Draw(diff_panel)
+            for x0, y0, x1, y1 in diff_regions[:8]:
+                draw.rectangle(
+                    [
+                        max(0, x0 - 2),
+                        max(0, y0 - 2),
+                        min(actual.width - 1, x1 + 2),
+                        min(actual.height - 1, y1 + 2),
+                    ],
+                    outline=(255, 30, 30),
+                    width=3,
+                )
 
         w, h = actual.size
         out = Image.new("RGB", (w * 3, h), (0, 0, 0))
-
         out.paste(expected, (0, 0))
         out.paste(actual, (w, 0))
-        out.paste(overlay, (w * 2, 0))
+        out.paste(diff_panel, (w * 2, 0))
 
         out = self._add_headers(out, w)
         return out
