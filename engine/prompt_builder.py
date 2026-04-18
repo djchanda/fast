@@ -38,28 +38,42 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
                 )
             continue
 
-        added_texts = v.get("added_texts", [])
-        removed_texts = v.get("removed_texts", [])
         has_text_changes = v.get("has_text_changes", False)
-        formatting_summary = v.get("formatting_summary", "")
         has_fmt = v.get("has_formatting_changes", False)
+        formatting_summary = v.get("formatting_summary", "")
+        line_changes = v.get("changes", [])
 
         status = "MAJOR" if v.get("major") else ("WARN" if v.get("warn") else "OK")
-        parts = [f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"]
+        header = f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"
+        parts = [header]
 
-        # ── Content diff ──────────────────────────────────────────────────
-        if not has_text_changes and not has_fmt and (v.get("major") or v.get("warn")):
-            parts.append("TEXT DIFF: Content identical — pixel differences are rendering/watermark noise only")
-        else:
-            if added_texts:
-                parts.append("ADDED TEXT: " + ", ".join(repr(t) for t in added_texts[:8]))
-            if removed_texts:
-                parts.append("REMOVED TEXT: " + ", ".join(repr(t) for t in removed_texts[:8]))
+        # ── Line-level diff (primary signal) ─────────────────────────────
+        if line_changes:
+            parts.append("LINE DIFF (line-by-line comparison):")
+            for c in line_changes[:20]:
+                ct = c.get("type", "")
+                if ct == "deleted":
+                    parts.append(f'    REMOVED: "{c["exp_text"][:120]}"')
+                elif ct == "inserted":
+                    parts.append(f'    ADDED:   "{c["act_text"][:120]}"')
+                elif ct == "modified":
+                    parts.append(
+                        f'    CHANGED: was="{c["exp_text"][:80]}"'
+                        f'\n             now="{c["act_text"][:80]}"'
+                    )
+                elif ct == "replaced_block":
+                    parts.append(
+                        f'    BLOCK WAS: "{c["exp_text"][:100]}"'
+                        f'\n    BLOCK NOW: "{c["act_text"][:100]}"'
+                    )
+        elif not has_text_changes and not has_fmt:
+            if v.get("major") or v.get("warn"):
+                parts.append("TEXT DIFF: Content identical — pixel differences are visual/graphical noise")
 
-        # ── Formatting diff (granular) ────────────────────────────────────
+        # ── Formatting diff (bold / size / alignment) ─────────────────────
         bold_changed = v.get("bold_changed", [])
         size_changed = v.get("size_changed", [])
-        list_align = v.get("list_alignment_shifted", [])
+        list_align   = v.get("list_alignment_shifted", [])
         if bold_changed:
             parts.append("BOLD CHANGED: " + ", ".join(repr(t) for t in bold_changed[:6]))
         if size_changed:
@@ -67,7 +81,7 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
         if list_align:
             parts.append("LIST ALIGNMENT SHIFTED: " + ", ".join(repr(t) for t in list_align[:6]))
         elif formatting_summary and not bold_changed and not size_changed and not list_align:
-            parts.append(f"FORMATTING CHANGES: {formatting_summary}")
+            parts.append(f"FORMATTING: {formatting_summary}")
 
         graphics_diff = v.get("graphics_diff", "")
         if graphics_diff:
@@ -76,8 +90,8 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
         if sig_candidate:
             parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
 
-        lines.append(" | ".join(parts))
-    return "\n".join(lines)
+        lines.append("\n".join(parts))
+    return "\n\n".join(lines)
 
 
 def build_prompt(
@@ -154,20 +168,22 @@ def build_prompt(
             "- Body-text alignment shifts (≥3 words): report as low-severity layout_anomaly.\n"
             "- Do NOT conflate formatting changes with content changes — report them in separate "
             "format_issues / layout_anomalies entries.\n\n"
-            "TEXT DIFF — the authoritative accuracy signal (read this first):\n"
-            "- Each visual diff row now includes TEXT DIFF: which compares the actual words extracted "
-            "from both PDFs at the page level.\n"
-            "- If TEXT DIFF says 'Content identical' or 'Text content identical': "
-            "there are NO real content differences on that page. "
-            "Do NOT report any spelling_errors, value_mismatches, or missing_content for that page. "
-            "Any visual pixel differences are purely rendering/watermark noise. "
-            "At most, note once as a low-severity layout_anomaly only if it seems significant.\n"
-            "- If TEXT DIFF shows ADDED TEXT: those are words/values that appear in the current PDF "
-            "but not in the baseline — these are real changes. Report what was added and where.\n"
-            "- If TEXT DIFF shows REMOVED TEXT: those are words/values present in the baseline but "
-            "missing from the current — these are real changes. Report what is missing.\n"
-            "- ADDED TEXT containing dates, names, dollar amounts, or policy numbers = field values "
-            "were populated — report as value_mismatches or format_issues as appropriate.\n\n"
+            "LINE DIFF — the authoritative accuracy signal (read this first):\n"
+            "- Each visual diff row includes LINE DIFF showing the exact line-by-line changes:\n"
+            "    REMOVED: the complete line text that exists in baseline but not in current PDF.\n"
+            "    ADDED:   the complete line text that exists in current PDF but not in baseline.\n"
+            "    CHANGED: was='...' now='...' — a line that changed; shows both versions.\n"
+            "- These are produced by a sequence diff algorithm equivalent to `git diff`. "
+            "They are exact, not approximate.\n"
+            "- For CHANGED lines: the exact old value is in 'was=', the new value is in 'now='. "
+            "Always report value changes in this format: "
+            "\"Value changed from '<was>' to '<now>'\" in the description.\n"
+            "- If LINE DIFF is absent or shows 'Content identical': "
+            "there are NO real text changes on that page. Do NOT report spelling_errors or "
+            "value_mismatches. Only report graphics/visual changes if GRAPHICS CHANGE is present.\n"
+            "- If a CHANGED line contains dates, dollar amounts, names, policy numbers: "
+            "these are field value changes — report as value_mismatches with "
+            "expected=<was value> and actual=<now value>.\n\n"
             "TESTER PERSPECTIVE — how a real form validator reads results:\n"
             "- A real tester cares about business defects: wrong values, missing clauses, missing signatures.\n"
             "- Minor layout shifts (a line slightly left or right) are NOT defects unless they affect readability.\n"

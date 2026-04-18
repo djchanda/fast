@@ -321,32 +321,38 @@ class VisualDiff:
                         else:
                             note = "Possible signature-region change detected."
 
-                # Annotate expected panel: red boxes on words present in baseline but gone
+                # ── Annotate EXPECTED panel ──────────────────────────────────
+                # Line-level removed: thick 3px red border around the whole line
+                # Word-level removed: thinner 2px red border around the word
                 exp_annotated = exp.copy()
-                if text_diff["removed_regions"]:
-                    draw_e = ImageDraw.Draw(exp_annotated)
-                    for region in text_diff["removed_regions"][:40]:
-                        x0, y0, x1, y1 = region["bbox"]
-                        draw_e.rectangle(
-                            [max(0, x0 - 1), max(0, y0 - 1),
-                             min(exp.width - 1, x1 + 1), min(exp.height - 1, y1 + 1)],
-                            outline=(220, 50, 50), width=2,
-                        )
+                draw_e = ImageDraw.Draw(exp_annotated)
+                font_e = self._get_small_font(10)
+                for region in text_diff["removed_regions"][:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    bw = 3 if region.get("line_level") else 2
+                    pad = 2 if region.get("line_level") else 1
+                    draw_e.rectangle(
+                        [max(0, x0 - pad), max(0, y0 - pad),
+                         min(exp.width - 1, x1 + pad), min(exp.height - 1, y1 + pad)],
+                        outline=(220, 40, 40), width=bw,
+                    )
 
-                # Annotate actual panel:
-                #   green      = words added in current version
-                #   orange     = font-weight changed (bold added or removed)
-                #   yellow-org = font size changed
-                #   blue       = horizontal alignment / indentation shifted
+                # ── Annotate ACTUAL panel ────────────────────────────────────
+                # Line-level added: thick 3px green border
+                # Word-level added: thinner 2px green border
+                # Orange = bold changed  |  Yellow = font size changed  |  Blue = alignment shifted
                 act_annotated = act.copy()
                 draw_a = ImageDraw.Draw(act_annotated)
+                font_a = self._get_small_font(10)
 
-                for region in text_diff["added_regions"][:40]:
+                for region in text_diff["added_regions"][:50]:
                     x0, y0, x1, y1 = region["bbox"]
+                    bw = 3 if region.get("line_level") else 2
+                    pad = 2 if region.get("line_level") else 1
                     draw_a.rectangle(
-                        [max(0, x0 - 1), max(0, y0 - 1),
-                         min(act.width - 1, x1 + 1), min(act.height - 1, y1 + 1)],
-                        outline=(50, 200, 80), width=2,
+                        [max(0, x0 - pad), max(0, y0 - pad),
+                         min(act.width - 1, x1 + pad), min(act.height - 1, y1 + pad)],
+                        outline=(40, 200, 70), width=bw,
                     )
 
                 for region in text_diff.get("bold_changed_regions", [])[:30]:
@@ -1036,175 +1042,268 @@ class VisualDiff:
         image_size: Tuple[int, int],
     ) -> Dict[str, Any]:
         """
-        Word-level comparison of two PDF pages covering four change types:
+        Line-level comparison engine — the primary diff signal.
 
-        1. Content changes    — words added or removed (green / red boxes).
-        2. Font-weight changes — same word flipped between bold and non-bold
-           (orange boxes on the actual panel).
-        3. Font-size changes  — same word rendered at a different size (yellow-orange boxes).
-        4. Alignment shifts   — same word moved horizontally by more than a
-           threshold; list markers use a tight tolerance of 5 pt while body
-           text uses 15 pt (blue boxes on the actual panel).
+        Algorithm:
+        1. Extract words from both pages with position + font attributes.
+        2. Cluster words into text lines by Y-band (words within 4pt Y-distance
+           share a line).  Within each line, sort words left-to-right.
+        3. Run difflib.SequenceMatcher on the ordered line-text sequences — this
+           is equivalent to running `diff` on the page text, line by line.
+        4. For 1-to-1 line replacements: run a second SequenceMatcher on the
+           word tokens within the line to pinpoint exactly which words changed.
+        5. For equal lines: compare font-weight, font-size, and x-position to
+           detect bold changes, size changes, and alignment shifts.
 
-        Uses pdfplumber's extra_attrs to get fontname + size per word.
-        Falls back gracefully if the PDF has no embedded text.
+        This eliminates the core weakness of the old word-SET approach (which
+        lost all positional context and could not detect reworded sentences).
         """
-        _ALIGN_TOLERANCE_BODY = 15.0   # points — body text; shifts below this are acceptable
-        _ALIGN_TOLERANCE_LIST = 5.0    # points — list/bullet markers need tighter detection
-        _MIN_ALIGN_WORDS_BODY = 3      # require ≥3 shifted body words before reporting
-        _SIZE_TOLERANCE = 1.2          # points — font size diff above this is a finding
-        _MIN_WORD_LEN = 2              # ignore single chars
+        import difflib
 
-        def _extract(pdf_path: str, page_num: int):
+        _ALIGN_TOLERANCE_BODY = 15.0
+        _ALIGN_TOLERANCE_LIST = 5.0
+        _MIN_ALIGN_WORDS_BODY = 3
+        _SIZE_TOLERANCE = 1.2
+        _Y_TOLERANCE = 4.0   # points — words within this band share a line
+
+        # ── Helpers ──────────────────────────────────────────────────────────
+        def _extract_lines(pdf_path: str, page_num: int):
+            """Extract words, cluster into lines, return (lines, page_w, page_h)."""
             try:
                 with pdfplumber.open(pdf_path) as pdf:
                     if not (1 <= page_num <= len(pdf.pages)):
                         return [], 612.0, 792.0
                     page = pdf.pages[page_num - 1]
                     try:
-                        words = page.extract_words(extra_attrs=["fontname", "size"]) or []
+                        words = page.extract_words(
+                            extra_attrs=["fontname", "size"],
+                            x_tolerance=3, y_tolerance=3
+                        ) or []
                     except Exception:
                         words = page.extract_words() or []
-                    return words, float(page.width or 612.0), float(page.height or 792.0)
+                    pw = float(page.width or 612.0)
+                    ph = float(page.height or 792.0)
             except Exception:
                 return [], 612.0, 792.0
 
-        exp_words, exp_pw, exp_ph = _extract(expected_pdf_path, expected_page_num)
-        act_words, act_pw, act_ph = _extract(actual_pdf_path, actual_page_num)
+            # Filter watermarks and single-char noise
+            words = [
+                w for w in words
+                if len(w.get("text", "").strip()) >= 1
+                and w.get("text", "").strip().upper() not in self._WATERMARK_WORDS
+            ]
+            if not words:
+                return [], pw, ph
 
+            # Cluster into lines by Y-band
+            words = sorted(words, key=lambda w: float(w.get("top", 0)))
+            lines: List[List[dict]] = []
+            cur: List[dict] = [words[0]]
+            cur_y = float(words[0].get("top", 0))
+            for w in words[1:]:
+                wy = float(w.get("top", 0))
+                if abs(wy - cur_y) <= _Y_TOLERANCE:
+                    cur.append(w)
+                else:
+                    cur.sort(key=lambda x: float(x.get("x0", 0)))
+                    lines.append(cur)
+                    cur = [w]
+                    cur_y = wy
+            if cur:
+                cur.sort(key=lambda x: float(x.get("x0", 0)))
+                lines.append(cur)
+            return lines, pw, ph
+
+        def _line_text(lw: List[dict]) -> str:
+            return " ".join(w.get("text", "") for w in lw)
+
+        def _scale_word(w: dict, sx: float, sy: float) -> Tuple[int, int, int, int]:
+            return (
+                int(float(w.get("x0", 0)) * sx),
+                int(float(w.get("top", 0)) * sy),
+                int(float(w.get("x1", 0)) * sx),
+                int(float(w.get("bottom", 0)) * sy),
+            )
+
+        def _line_bbox(lw: List[dict], sx: float, sy: float) -> Tuple[int, int, int, int]:
+            return (
+                int(min(float(w.get("x0", 0)) for w in lw) * sx),
+                int(min(float(w.get("top", 0)) for w in lw) * sy),
+                int(max(float(w.get("x1", 0)) for w in lw) * sx),
+                int(max(float(w.get("bottom", 0)) for w in lw) * sy),
+            )
+
+        def _is_bold(w: dict) -> bool:
+            fname = str(w.get("fontname", "") or "").lower()
+            return "bold" in fname or "heavy" in fname or ",b" in fname or "-bd" in fname
+
+        # ── Extract and cluster lines ─────────────────────────────────────
         img_w, img_h = image_size
+        exp_lines, exp_pw, exp_ph = _extract_lines(expected_pdf_path, expected_page_num)
+        act_lines, act_pw, act_ph = _extract_lines(actual_pdf_path, actual_page_num)
         exp_sx, exp_sy = img_w / exp_pw, img_h / exp_ph
         act_sx, act_sy = img_w / act_pw, img_h / act_ph
 
-        def _scale(word: dict, sx: float, sy: float) -> Tuple[int, int, int, int]:
-            return (
-                int(float(word.get("x0", 0)) * sx),
-                int(float(word.get("top", 0)) * sy),
-                int(float(word.get("x1", 0)) * sx),
-                int(float(word.get("bottom", 0)) * sy),
-            )
+        exp_texts = [_line_text(l) for l in exp_lines]
+        act_texts = [_line_text(l) for l in act_lines]
 
-        def _clean_set(words):
-            return {
-                w["text"].strip()
-                for w in words
-                if len(w.get("text", "").strip()) >= _MIN_WORD_LEN
-                and w["text"].strip().upper() not in self._WATERMARK_WORDS
-            }
+        # ── Sequence diff on line sequences (Myers-equivalent) ────────────
+        matcher = difflib.SequenceMatcher(None, exp_texts, act_texts, autojunk=False)
+        opcodes = matcher.get_opcodes()
 
-        def _is_bold(word: dict) -> bool:
-            fname = str(word.get("fontname", "") or "").lower()
-            return "bold" in fname or "heavy" in fname or ",b" in fname or "-bd" in fname
-
-        def _font_size(word: dict) -> float:
-            try:
-                return float(word.get("size", 0) or 0)
-            except Exception:
-                return 0.0
-
-        # ── 1. Content diff (added / removed words) ────────────────────────
-        exp_set = _clean_set(exp_words)
-        act_set = _clean_set(act_words)
-        added_texts = act_set - exp_set
-        removed_texts = exp_set - act_set
-
-        added_regions: List[Dict] = []
-        for w in act_words:
-            txt = w.get("text", "").strip()
-            if txt in added_texts:
-                added_regions.append({"text": txt, "bbox": _scale(w, act_sx, act_sy)})
-
+        changes: List[Dict] = []
+        added_regions:   List[Dict] = []
         removed_regions: List[Dict] = []
-        for w in exp_words:
-            txt = w.get("text", "").strip()
-            if txt in removed_texts:
-                removed_regions.append({"text": txt, "bbox": _scale(w, exp_sx, exp_sy)})
+        raw_added:   List[str] = []
+        raw_removed: List[str] = []
 
-        # ── 2, 3, 4. Formatting diff (bold / size / alignment) ──────────────
-        # Build first-occurrence lookup for words present in BOTH pages.
-        common_texts = (exp_set & act_set) - added_texts - removed_texts
-
-        exp_by_text: Dict[str, dict] = {}
-        for w in exp_words:
-            txt = w.get("text", "").strip()
-            if txt in common_texts and txt not in exp_by_text:
-                exp_by_text[txt] = w
-
-        act_by_text: Dict[str, dict] = {}
-        for w in act_words:
-            txt = w.get("text", "").strip()
-            if txt in common_texts and txt not in act_by_text:
-                act_by_text[txt] = w
-
-        bold_changed_regions: List[Dict] = []
-        size_changed_regions: List[Dict] = []
-        alignment_shifted_list: List[Dict] = []    # list markers (always reported ≥1)
-        alignment_shifted_body: List[Dict] = []    # body text (need ≥3)
-
-        for txt in common_texts:
-            ew = exp_by_text.get(txt)
-            aw = act_by_text.get(txt)
-            if not ew or not aw:
+        for tag, i1, i2, j1, j2 in opcodes:
+            if tag == "equal":
                 continue
 
-            exp_bold = _is_bold(ew)
-            act_bold = _is_bold(aw)
-            exp_size = _font_size(ew)
-            act_size = _font_size(aw)
-            is_marker = self._is_list_marker(txt)
+            exp_chunk = exp_lines[i1:i2]
+            act_chunk = act_lines[j1:j2]
 
-            # Font-weight change
-            if exp_bold != act_bold:
-                bold_changed_regions.append({
-                    "text": txt,
-                    "change": "bold_added" if act_bold else "bold_removed",
-                    "exp_font": ew.get("fontname", "?"),
-                    "act_font": aw.get("fontname", "?"),
-                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
-                    "bbox_act": _scale(aw, act_sx, act_sy),
+            if tag == "delete":
+                for lw in exp_chunk:
+                    txt = _line_text(lw)
+                    removed_regions.append({
+                        "text": txt, "bbox": _line_bbox(lw, exp_sx, exp_sy), "line_level": True,
+                    })
+                    raw_removed.append(txt)
+                changes.append({
+                    "type": "deleted",
+                    "exp_text": "\n".join(_line_text(l) for l in exp_chunk),
+                    "act_text": "",
                 })
 
-            # Font-size change (separate from bold; catches heading-level changes)
-            elif (
-                exp_size > 0
-                and act_size > 0
-                and abs(act_size - exp_size) > _SIZE_TOLERANCE
-            ):
-                size_changed_regions.append({
-                    "text": txt,
-                    "exp_size": round(exp_size, 1),
-                    "act_size": round(act_size, 1),
-                    "change": "larger" if act_size > exp_size else "smaller",
-                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
-                    "bbox_act": _scale(aw, act_sx, act_sy),
+            elif tag == "insert":
+                for lw in act_chunk:
+                    txt = _line_text(lw)
+                    added_regions.append({
+                        "text": txt, "bbox": _line_bbox(lw, act_sx, act_sy), "line_level": True,
+                    })
+                    raw_added.append(txt)
+                changes.append({
+                    "type": "inserted",
+                    "exp_text": "",
+                    "act_text": "\n".join(_line_text(l) for l in act_chunk),
                 })
 
-            # Horizontal alignment shift — separate tolerance for list markers
-            x_shift = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
-            tolerance = _ALIGN_TOLERANCE_LIST if is_marker else _ALIGN_TOLERANCE_BODY
-            if abs(x_shift) > tolerance:
-                record = {
-                    "text": txt,
-                    "x_shift_pts": round(x_shift, 1),
-                    "direction": "right" if x_shift > 0 else "left",
-                    "is_list_marker": is_marker,
-                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
-                    "bbox_act": _scale(aw, act_sx, act_sy),
-                }
-                if is_marker:
-                    alignment_shifted_list.append(record)
+            elif tag == "replace":
+                if len(exp_chunk) == len(act_chunk) == 1:
+                    # 1-to-1: word-level diff within the line
+                    exp_lw, act_lw = exp_chunk[0], act_chunk[0]
+                    exp_toks = [w.get("text", "") for w in exp_lw]
+                    act_toks = [w.get("text", "") for w in act_lw]
+                    wm = difflib.SequenceMatcher(None, exp_toks, act_toks, autojunk=False)
+                    for wtag, wi1, wi2, wj1, wj2 in wm.get_opcodes():
+                        if wtag == "equal":
+                            continue
+                        if wtag in ("delete", "replace"):
+                            for w in exp_lw[wi1:wi2]:
+                                removed_regions.append({
+                                    "text": w.get("text", ""),
+                                    "bbox": _scale_word(w, exp_sx, exp_sy),
+                                    "line_level": False,
+                                })
+                                raw_removed.append(w.get("text", ""))
+                        if wtag in ("insert", "replace"):
+                            for w in act_lw[wj1:wj2]:
+                                added_regions.append({
+                                    "text": w.get("text", ""),
+                                    "bbox": _scale_word(w, act_sx, act_sy),
+                                    "line_level": False,
+                                })
+                                raw_added.append(w.get("text", ""))
+                    changes.append({
+                        "type": "modified",
+                        "exp_text": _line_text(exp_lw),
+                        "act_text": _line_text(act_lw),
+                        "exp_bbox": _line_bbox(exp_lw, exp_sx, exp_sy),
+                        "act_bbox": _line_bbox(act_lw, act_sx, act_sy),
+                    })
                 else:
-                    alignment_shifted_body.append(record)
+                    # Multi-line block replacement
+                    for lw in exp_chunk:
+                        txt = _line_text(lw)
+                        removed_regions.append({
+                            "text": txt, "bbox": _line_bbox(lw, exp_sx, exp_sy), "line_level": True,
+                        })
+                        raw_removed.append(txt)
+                    for lw in act_chunk:
+                        txt = _line_text(lw)
+                        added_regions.append({
+                            "text": txt, "bbox": _line_bbox(lw, act_sx, act_sy), "line_level": True,
+                        })
+                        raw_added.append(txt)
+                    changes.append({
+                        "type": "replaced_block",
+                        "exp_text": "\n".join(_line_text(l) for l in exp_chunk),
+                        "act_text": "\n".join(_line_text(l) for l in act_chunk),
+                    })
 
-        # List-marker alignment always reportable (even 1 shift is a real defect)
-        # Body alignment only reportable when ≥_MIN_ALIGN_WORDS_BODY words shifted
+        # ── Formatting diff on EQUAL lines (bold / size / alignment) ─────
+        bold_changed_regions:       List[Dict] = []
+        size_changed_regions:       List[Dict] = []
+        alignment_shifted_list:     List[Dict] = []
+        alignment_shifted_body:     List[Dict] = []
+
+        for tag, i1, i2, j1, j2 in opcodes:
+            if tag != "equal":
+                continue
+            for exp_lw, act_lw in zip(exp_lines[i1:i2], act_lines[j1:j2]):
+                # Build lookup by word text for matching within the same line
+                exp_by = {w.get("text", "").strip(): w for w in reversed(exp_lw)}
+                for aw in act_lw:
+                    txt = aw.get("text", "").strip()
+                    ew = exp_by.get(txt)
+                    if not ew:
+                        continue
+                    is_marker = self._is_list_marker(txt)
+
+                    exp_bold = _is_bold(ew)
+                    act_bold = _is_bold(aw)
+                    if exp_bold != act_bold:
+                        bold_changed_regions.append({
+                            "text": txt,
+                            "change": "bold_added" if act_bold else "bold_removed",
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        })
+                    else:
+                        es = float(ew.get("size", 0) or 0)
+                        as_ = float(aw.get("size", 0) or 0)
+                        if es > 0 and as_ > 0 and abs(as_ - es) > _SIZE_TOLERANCE:
+                            size_changed_regions.append({
+                                "text": txt,
+                                "exp_size": round(es, 1), "act_size": round(as_, 1),
+                                "change": "larger" if as_ > es else "smaller",
+                                "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                                "bbox_act": _scale_word(aw, act_sx, act_sy),
+                            })
+
+                    x_shift = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
+                    tol = _ALIGN_TOLERANCE_LIST if is_marker else _ALIGN_TOLERANCE_BODY
+                    if abs(x_shift) > tol:
+                        rec = {
+                            "text": txt, "x_shift_pts": round(x_shift, 1),
+                            "direction": "right" if x_shift > 0 else "left",
+                            "is_list_marker": is_marker,
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        }
+                        (alignment_shifted_list if is_marker else alignment_shifted_body).append(rec)
+
         reportable_align_list = alignment_shifted_list
-        reportable_align_body = alignment_shifted_body if len(alignment_shifted_body) >= _MIN_ALIGN_WORDS_BODY else []
+        reportable_align_body = (
+            alignment_shifted_body if len(alignment_shifted_body) >= _MIN_ALIGN_WORDS_BODY else []
+        )
         alignment_shifted_regions = reportable_align_list + reportable_align_body
 
-        # ── Build summaries ─────────────────────────────────────────────────
-        has_text_changes = bool(added_texts or removed_texts)
-        has_fmt_changes = bool(bold_changed_regions or size_changed_regions or alignment_shifted_regions)
+        # ── Build summaries ───────────────────────────────────────────────
+        has_text_changes  = bool(changes)
+        has_fmt_changes   = bool(bold_changed_regions or size_changed_regions or alignment_shifted_regions)
 
         fmt_parts: List[str] = []
         if bold_changed_regions:
@@ -1215,45 +1314,61 @@ class VisualDiff:
             if b_rem:
                 fmt_parts.append("Text lost bold: " + ", ".join(repr(r["text"]) for r in b_rem[:5]))
         if size_changed_regions:
-            fmt_parts.append(
-                "Font size changed: " + ", ".join(
-                    f"{repr(r['text'])} ({r['exp_size']}pt→{r['act_size']}pt)"
-                    for r in size_changed_regions[:5]
-                )
-            )
+            fmt_parts.append("Font size changed: " + ", ".join(
+                f"{repr(r['text'])} ({r['exp_size']}pt→{r['act_size']}pt)" for r in size_changed_regions[:5]
+            ))
         if reportable_align_list:
-            markers = ", ".join(repr(r["text"]) for r in reportable_align_list[:5])
-            fmt_parts.append(f"List marker(s) alignment shifted: {markers}")
+            fmt_parts.append("List marker(s) alignment shifted: " +
+                             ", ".join(repr(r["text"]) for r in reportable_align_list[:5]))
         if reportable_align_body:
-            right_n = sum(1 for r in reportable_align_body if r["direction"] == "right")
-            left_n  = sum(1 for r in reportable_align_body if r["direction"] == "left")
-            if right_n:
-                fmt_parts.append(f"{right_n} text element(s) indented further right")
-            if left_n:
-                fmt_parts.append(f"{left_n} text element(s) indented further left")
+            r_n = sum(1 for r in reportable_align_body if r["direction"] == "right")
+            l_n = sum(1 for r in reportable_align_body if r["direction"] == "left")
+            if r_n: fmt_parts.append(f"{r_n} body text element(s) indented right")
+            if l_n: fmt_parts.append(f"{l_n} body text element(s) indented left")
         formatting_summary = " | ".join(fmt_parts)
 
-        content_parts: List[str] = []
-        if added_texts:
-            content_parts.append("Added: " + ", ".join(repr(t) for t in sorted(added_texts)[:10]))
-        if removed_texts:
-            content_parts.append("Removed: " + ", ".join(repr(t) for t in sorted(removed_texts)[:10]))
-        if formatting_summary:
-            content_parts.append("Formatting: " + formatting_summary)
+        # Human-readable line-diff summary (passed to LLM)
+        change_lines: List[str] = []
+        for c in changes[:25]:
+            ct = c["type"]
+            if ct == "deleted":
+                change_lines.append(f'  REMOVED: "{c["exp_text"][:120]}"')
+            elif ct == "inserted":
+                change_lines.append(f'  ADDED:   "{c["act_text"][:120]}"')
+            elif ct == "modified":
+                change_lines.append(
+                    f'  CHANGED: "{c["exp_text"][:80]}"'
+                    f'\n        →  "{c["act_text"][:80]}"'
+                )
+            elif ct == "replaced_block":
+                change_lines.append(
+                    f'  BLOCK WAS: "{c["exp_text"][:100]}"\n'
+                    f'  BLOCK NOW: "{c["act_text"][:100]}"'
+                )
 
-        summary = " | ".join(content_parts) if content_parts else (
-            "Text content identical — visual differences are rendering/watermark noise only."
-        )
+        if change_lines:
+            summary = "\n".join(change_lines)
+            if formatting_summary:
+                summary += "\n  FORMATTING: " + formatting_summary
+        elif formatting_summary:
+            summary = "FORMATTING: " + formatting_summary
+        else:
+            summary = "Text content identical — visual differences are rendering/watermark noise only."
+
+        # Deduplicated flat lists for backward-compat fields
+        added_texts_flat  = sorted(set(t.strip() for t in raw_added  if t.strip()))[:25]
+        removed_texts_flat = sorted(set(t.strip() for t in raw_removed if t.strip()))[:25]
 
         return {
-            "added_regions": added_regions,
+            "changes": changes,
+            "added_regions":   added_regions,
             "removed_regions": removed_regions,
-            "bold_changed_regions": bold_changed_regions[:30],
-            "size_changed_regions": size_changed_regions[:30],
+            "bold_changed_regions":     bold_changed_regions[:30],
+            "size_changed_regions":     size_changed_regions[:30],
             "alignment_shifted_regions": alignment_shifted_regions[:30],
-            "added_texts": sorted(added_texts),
-            "removed_texts": sorted(removed_texts),
-            "has_text_changes": has_text_changes,
+            "added_texts":   added_texts_flat,
+            "removed_texts": removed_texts_flat,
+            "has_text_changes":      has_text_changes,
             "has_formatting_changes": has_fmt_changes,
             "formatting_summary": formatting_summary,
             "summary": summary,
