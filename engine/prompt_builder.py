@@ -3,11 +3,13 @@ from typing import Optional, Literal, Dict, Any, List
 ValidationMode = Literal["basic", "specific", "benchmark"]
 
 
-def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
-    """Format visual diff rows into a readable summary for the LLM."""
-    if not visual_diffs:
+def _format_visual_diffs_for_llm(visual_diffs: list, extra_context: Optional[Dict[str, Any]] = None) -> str:
+    """Format visual diff rows plus document-level signals into a readable LLM prompt block."""
+    if not visual_diffs and not extra_context:
         return "No visual diff data available."
+
     lines = []
+
     for v in visual_diffs:
         page = v.get("page", "?")
         sim = v.get("similarity", 1.0)
@@ -21,20 +23,18 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
         change_hint = zone.get("change_hint", "")
 
         if op == "deleted":
-            lines.append(
-                f"  Page {page}: DELETED — entire page removed from current PDF."
-            )
+            lines.append(f"  Page {page}: DELETED — entire page removed from current PDF.")
             continue
         if op == "inserted":
             is_blank = v.get("is_blank_page", False)
             if is_blank:
                 lines.append(
-                    f"  Page {page}: INSERTED (is_blank_page=true) — blank/empty page added in current PDF. "
+                    f"  Page {page}: INSERTED (is_blank_page=true) — blank/empty page added. "
                     f"Likely an intentional separator. Low severity."
                 )
             else:
                 lines.append(
-                    f"  Page {page}: INSERTED (is_blank_page=false) — new content page in current PDF with no baseline counterpart."
+                    f"  Page {page}: INSERTED (is_blank_page=false) — new content page with no baseline counterpart."
                 )
             continue
 
@@ -47,7 +47,6 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
         header = f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"
         parts = [header]
 
-        # ── Line-level diff (primary signal) ─────────────────────────────
         if line_changes:
             parts.append("LINE DIFF (line-by-line comparison):")
             for c in line_changes[:20]:
@@ -70,10 +69,9 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             if v.get("major") or v.get("warn"):
                 parts.append("TEXT DIFF: Content identical — pixel differences are visual/graphical noise")
 
-        # ── Formatting diff (bold / size / alignment) ─────────────────────
         bold_changed = v.get("bold_changed", [])
         size_changed = v.get("size_changed", [])
-        list_align   = v.get("list_alignment_shifted", [])
+        list_align = v.get("list_alignment_shifted", [])
         if bold_changed:
             parts.append("BOLD CHANGED: " + ", ".join(repr(t) for t in bold_changed[:6]))
         if size_changed:
@@ -91,7 +89,35 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
 
         lines.append("\n".join(parts))
-    return "\n\n".join(lines)
+
+    # Document-level signals from metadata and field structure comparison
+    if extra_context:
+        metadata_diff = extra_context.get("metadata_diff") or {}
+        field_diff = extra_context.get("field_diff") or {}
+
+        doc_parts = []
+        if metadata_diff.get("has_metadata_changes"):
+            doc_parts.append("METADATA CHANGES (document properties):")
+            for k, v in (metadata_diff.get("changed") or {}).items():
+                doc_parts.append(f"  {k}: '{v['expected']}' → '{v['actual']}'")
+
+        if field_diff.get("has_structural_changes"):
+            doc_parts.append("FORM FIELD STRUCTURE CHANGES:")
+            if field_diff.get("removed_fields"):
+                doc_parts.append("  REMOVED FIELDS: " + ", ".join(field_diff["removed_fields"]))
+            if field_diff.get("added_fields"):
+                doc_parts.append("  ADDED FIELDS: " + ", ".join(field_diff["added_fields"]))
+            if field_diff.get("changed_fields"):
+                for cf in field_diff["changed_fields"][:5]:
+                    doc_parts.append(
+                        f"  FIELD TYPE CHANGED: '{cf['name']}' "
+                        f"{cf['expected_type']} → {cf['actual_type']}"
+                    )
+
+        if doc_parts:
+            lines.append("\nDOCUMENT-LEVEL CHANGES:\n" + "\n".join(doc_parts))
+
+    return "\n\n".join(lines) if lines else "No visual diff data available."
 
 
 def build_prompt(
@@ -99,14 +125,13 @@ def build_prompt(
     current_doc: Dict[str, Any],
     benchmark_doc: Optional[Dict[str, Any]],
     base_prompt: str,
+    extra_context: Optional[Dict[str, Any]] = None,
 ) -> List[dict]:
     """
     Returns messages list suitable for OpenAI-style chat format.
 
-    Notes:
-    - Supports scanned PDFs via OCR text in current_doc["text"] and current_doc["pages"].
-    - Includes visual diff evidence if present.
-    - Keeps STRICT JSON output requirement.
+    Supports all three validation modes with comprehensive mode-specific
+    validation rules covering the full FAST feature specification.
     """
 
     current_text = current_doc.get("text", "")
@@ -119,104 +144,209 @@ def build_prompt(
     benchmark_fields = {}
     benchmark_pages = []
     benchmark_meta = {}
-    benchmark_visual_diffs = []
 
     if benchmark_doc:
         benchmark_text = benchmark_doc.get("text", "")
         benchmark_fields = benchmark_doc.get("fields", {})
         benchmark_pages = benchmark_doc.get("pages", [])
         benchmark_meta = benchmark_doc.get("meta", {})
-        benchmark_visual_diffs = benchmark_doc.get("visual_diffs", [])
 
     system_msg = {
         "role": "system",
         "content": (
-            "You are an expert PDF form validator.\n"
-            "You ALWAYS return STRICT JSON with the schema requested.\n"
-            "Do not include any commentary outside JSON.\n\n"
-            "General rules:\n"
-            "- Some PDFs are scanned/printed forms; extracted text may come from OCR.\n"
-            "- OCR text can contain noise (spacing, minor typos). Use best judgment.\n"
+            "You are an expert PDF form validator for financial and insurance documents.\n"
+            "You ALWAYS return STRICT JSON with the schema requested. No commentary outside JSON.\n\n"
+
+            # ── OCR & watermark rules (unchanged) ──────────────────────────
+            "GENERAL RULES:\n"
+            "- Some PDFs are scanned; extracted text may come from OCR. OCR can introduce noise.\n"
             "- Prefer form fields where available; otherwise rely on extracted text.\n"
-            "- If per-page text is provided, you MUST use it for correct page numbers.\n\n"
-            "WATERMARK / SPECIMEN ARTIFACT DETECTION (critical for accuracy):\n"
-            "- Insurance and legal forms frequently carry diagonal 'SAMPLE', 'SPECIMEN', 'DRAFT', "
-            "or 'VOID' watermark stamps.\n"
-            "- When OCR text contains scattered isolated single characters throughout a page "
-            "(e.g., individual letters like 'n e m i c e p S', 'S p e c i m e n', or any "
-            "short sequence that spells a watermark word), this is an OCR watermark artifact — "
-            "NOT a typo, spelling error, or data entry issue.\n"
-            "- Do NOT report scattered single-character OCR noise as spelling_errors or format_issues.\n"
-            "- If a watermark artifact pattern is detected, report it ONCE per run as a single "
-            "format_issue with severity='low' and description like: "
-            "'SPECIMEN/watermark stamp detected in OCR output — not a real content error.'\n"
-            "- Do NOT create one finding per page for the same watermark artifact.\n"
-            "- Similarly, if the same artifact pattern repeats identically across all pages "
-            "(e.g., same scattered characters on every page), it is a single document-level "
-            "artefact — report once, not per page.\n\n"
-            "FORMATTING CHANGES (bold / font-size / alignment):\n"
-            "- BOLD CHANGED: text that flipped between bold and non-bold. Report each term as a "
-            "format_issue. Severity: 'medium' if it is a heading, section title, or legal keyword; "
-            "'low' if it is running body text.\n"
-            "- FONT SIZE CHANGED: text whose point size changed. Report as format_issue if the change "
-            "is meaningful (e.g. a heading shrank, a clause became smaller). Severity: 'medium' for "
-            "headings/titles, 'low' for body text.\n"
-            "- LIST ALIGNMENT SHIFTED: list markers like (a), (b), 1., i. that moved horizontally. "
-            "These are ALWAYS medium-severity layout_anomaly findings in legal/insurance documents "
-            "because they indicate structural indentation changes. Report each shifted marker with "
-            "its surrounding context.\n"
-            "- Body-text alignment shifts (≥3 words): report as low-severity layout_anomaly.\n"
-            "- Do NOT conflate formatting changes with content changes — report them in separate "
-            "format_issues / layout_anomalies entries.\n\n"
+            "- If per-page text is provided, use it for correct page numbers.\n\n"
+
+            "WATERMARK / SPECIMEN ARTIFACT DETECTION:\n"
+            "- Insurance forms frequently carry diagonal 'SAMPLE', 'SPECIMEN', 'DRAFT', 'VOID' stamps.\n"
+            "- Scattered isolated single characters spelling a watermark word are OCR artifacts — "
+            "NOT typos or data errors.\n"
+            "- Do NOT report watermark artifacts as spelling_errors. Report once as a single "
+            "format_issue with severity='low'.\n"
+            "- If the same artifact repeats across all pages, report it once, not per page.\n\n"
+
+            # ── MODE 1 — BASIC validation rules ───────────────────────────
+            "MODE 1 — BASIC VALIDATION TARGETS:\n\n"
+
+            "SPELLING & LANGUAGE (report as spelling_errors or format_issues):\n"
+            "- Spell-check ALL visible text: field labels, section headers, instructions, "
+            "helper text, footer text, legal disclaimers, placeholder text, button labels.\n"
+            "- Detect placeholder text left in production: patterns like 'Enter…', 'Type here…', "
+            "'Lorem ipsum', 'TBD', 'Sample', 'Test', 'N/A' in unexpected locations → "
+            "format_issue severity=high.\n"
+            "- Detect duplicate field labels on the same page → format_issue severity=medium.\n"
+            "- Detect inconsistent capitalization: Title Case vs ALL CAPS vs Sentence case "
+            "within the same label category → format_issue severity=low.\n"
+            "- Detect inconsistent punctuation on labels: 'First Name:' vs 'Last Name' (colon "
+            "missing) within the same form → format_issue severity=low.\n"
+            "- Detect truncated text cut off at field boundaries → layout_anomaly severity=medium.\n"
+            "- Detect field number sequences that skip values (e.g. 4 → 6) → format_issue severity=low.\n\n"
+
+            "TYPOGRAPHY CONSISTENCY (report as typography_issues or layout_anomalies):\n"
+            "- Detect field labels using a font size >2pt different from the majority → "
+            "typography_issue severity=medium, property=font_size.\n"
+            "- Detect field labels using a different font family than all other labels → "
+            "typography_issue severity=high, property=font_family.\n"
+            "- Detect section headers not bold when all other headers are bold → "
+            "typography_issue severity=medium, property=bold.\n"
+            "- Detect body text that is bold when no other body text is bold → "
+            "typography_issue severity=low, property=bold.\n"
+            "- Detect italic or underline usage inconsistent within a text category → "
+            "typography_issue severity=low.\n"
+            "- Flag text below 8pt as readability concern → compliance_issue severity=low, "
+            "standard='WCAG21 1.4.4'.\n"
+            "- Flag text below 6pt as critical readability issue → compliance_issue severity=high.\n\n"
+
+            "LAYOUT & SPATIAL CONSISTENCY (report as layout_anomalies):\n"
+            "- Detect fields visually misaligned relative to their row/column group → "
+            "layout_anomaly severity=medium.\n"
+            "- Detect fields significantly wider/narrower than similar fields (>15% deviation) → "
+            "layout_anomaly severity=low.\n"
+            "- Detect elements that appear to overlap → layout_anomaly severity=high.\n"
+            "- Detect elements extending beyond page margin → layout_anomaly severity=medium.\n"
+            "- Detect header/footer elements that shift position across pages → "
+            "layout_anomaly severity=medium.\n"
+            "- Detect uneven vertical spacing between sections → layout_anomaly severity=low.\n\n"
+
+            "FORM COMPLETENESS (report as missing_content):\n"
+            "- Detect required fields (asterisk or 'Required' label) that appear empty → "
+            "missing_content severity=critical.\n"
+            "- Detect form sections referencing attachments/exhibits not present → "
+            "missing_content severity=high.\n"
+            "- Detect broken or missing page number sequence → missing_content severity=medium.\n"
+            "- Detect missing form version number or revision date in footer → "
+            "missing_content severity=low.\n"
+            "- Detect missing form title on page 1 → missing_content severity=medium.\n"
+            "- Detect missing legal disclaimer or consent block when expected for the form type → "
+            "missing_content severity=high.\n"
+            "- Detect empty signature block in a form that appears to be filled → "
+            "missing_content severity=critical.\n"
+            "- Detect empty date field adjacent to a signature block → "
+            "missing_content severity=high.\n\n"
+
+            "ACCESSIBILITY & USABILITY (report as accessibility_issues or compliance_issues):\n"
+            "- Detect apparent low contrast (very light text on light background) → "
+            "compliance_issue severity=medium, standard='WCAG21 1.4.3'.\n"
+            "- Detect form fields with no visible label (orphan inputs) → "
+            "accessibility_issue severity=high, type='missing_label'.\n"
+            "- Detect interactive groups (radio, checkbox) with no group label → "
+            "accessibility_issue severity=medium.\n"
+            "- Detect tables with no visible column headers → "
+            "accessibility_issue severity=medium.\n"
+            "- Detect color used as the only means to convey information → "
+            "compliance_issue severity=medium, standard='WCAG21 1.4.1'.\n"
+            "- Detect form sections with no header or section label → "
+            "accessibility_issue severity=low.\n\n"
+
+            # ── MODE 2 — SPECIFIC assertion rules ────────────────────────
+            "MODE 2 — SPECIFIC VALIDATION — ASSERTION TYPES:\n"
+            "Execute each user-provided assertion and place results in the appropriate category.\n\n"
+            "- EXACT VALUE: field must match expected string exactly → "
+            "value_mismatch if fail (set expected= and actual= fields).\n"
+            "- PATTERN/FORMAT: field must match date format (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD etc.), "
+            "regex, email, phone, postal code, or currency → format_issue if fail.\n"
+            "- DATE RANGE: date must be within specified range → format_issue if fail.\n"
+            "- SIGNATURE: block must be signed / non-empty / have date → missing_content if fail.\n"
+            "- CHECKBOX/SELECTION: specific box must be checked/unchecked; dropdown must match → "
+            "value_mismatch if fail.\n"
+            "- CONDITIONAL: IF field A = X THEN field B must be Y → compliance_issue if fail.\n"
+            "- CALCULATION: field must equal computed formula (sum, product, percentage) → "
+            "value_mismatch if fail (show expected=calculated and actual=found).\n"
+            "- Report each failed assertion as a separate finding. For PASSES with high business "
+            "importance, add a low-severity format_issue noting pass so the tester has a full audit trail.\n\n"
+
+            # ── MODE 3 — BENCHMARK change categories ─────────────────────
+            "MODE 3 — BENCHMARK VALIDATION — CHANGE CATEGORIES:\n\n"
+
+            "CONTENT CHANGES (value_mismatches / missing_content / extra_content):\n"
+            "- Any word or phrase changed in labels, headers, instructions, legal text → "
+            "value_mismatch severity=high (show was/now).\n"
+            "- Entire line of text added → extra_content.\n"
+            "- Entire line of text removed → missing_content.\n"
+            "- Field label or section title renamed → value_mismatch severity=high.\n"
+            "- Footer text changed (version number, date, org name) → format_issue severity=medium.\n\n"
+
+            "TYPOGRAPHY CHANGES (typography_issues / format_issues):\n"
+            "- Font size changed on any element → typography_issue severity=medium, "
+            "property=font_size (show old_pt → new_pt).\n"
+            "- Font family changed → typography_issue severity=high, property=font_family.\n"
+            "- Bold added or removed → typography_issue severity=medium, property=bold.\n"
+            "- Italic/underline/strikethrough toggled → typography_issue severity=low.\n"
+            "- Text color changed → typography_issue severity=medium, property=color.\n"
+            "- Text alignment changed (left→center etc.) → layout_anomaly severity=medium.\n\n"
+
+            "STRUCTURAL CHANGES — use FORM FIELD STRUCTURE signal (missing_content / extra_content):\n"
+            "- REMOVED FIELDS in signal → missing_content severity=critical for each.\n"
+            "- ADDED FIELDS in signal → extra_content severity=high for each.\n"
+            "- Field type changed (editable→read-only or vice versa) → "
+            "visual_mismatch severity=high, category='Field property'.\n"
+            "- Section added → extra_content severity=critical.\n"
+            "- Section removed → missing_content severity=critical.\n"
+            "- Required field indicator added/removed → format_issue severity=high.\n"
+            "- Signature block added/removed → extra_content/missing_content severity=critical.\n\n"
+
+            "METADATA & INVISIBLE CHANGES — use METADATA signal (format_issues / visual_mismatches):\n"
+            "- Form version or revision date in footer changed → format_issue severity=medium.\n"
+            "- PDF metadata (Title, Author, Subject, Keywords) changed → "
+            "visual_mismatch severity=low, category='Metadata'.\n"
+            "- PDF security settings changed → visual_mismatch severity=medium, category='Metadata'.\n\n"
+
+            "FORMATTING & STYLE CHANGES (visual_mismatches):\n"
+            "- Field border style/weight/color changed → visual_mismatch severity=low.\n"
+            "- Background color changed → visual_mismatch severity=medium.\n"
+            "- Logo image replaced or resized → visual_mismatch severity=high.\n"
+            "- Watermark added, removed, or changed → visual_mismatch severity=medium.\n\n"
+
+            "BENCHMARK SEVERITY TABLE:\n"
+            "- Field/section/page removed: critical\n"
+            "- Field/section/page added: high\n"
+            "- Content changed (value, label, clause): high\n"
+            "- Typography changed (font, bold, size): medium\n"
+            "- Style changed (border, color, logo): low\n"
+            "- Metadata changed: low–medium\n\n"
+
+            # ── Formatting diff signal (unchanged) ────────────────────────
+            "FORMATTING CHANGES FROM VISUAL DIFF SIGNALS:\n"
+            "- BOLD CHANGED: text that flipped between bold and non-bold → format_issue. "
+            "Severity: 'medium' for headings/titles, 'low' for body text.\n"
+            "- FONT SIZE CHANGED: text whose point size changed → format_issue or typography_issue.\n"
+            "- LIST ALIGNMENT SHIFTED: list markers (a), (b), 1., i. that moved → "
+            "ALWAYS medium-severity layout_anomaly in legal/insurance documents.\n\n"
+
             "LINE DIFF — the authoritative accuracy signal (read this first):\n"
-            "- Each visual diff row includes LINE DIFF showing the exact line-by-line changes:\n"
-            "    REMOVED: the complete line text that exists in baseline but not in current PDF.\n"
-            "    ADDED:   the complete line text that exists in current PDF but not in baseline.\n"
-            "    CHANGED: was='...' now='...' — a line that changed; shows both versions.\n"
-            "- These are produced by a sequence diff algorithm equivalent to `git diff`. "
-            "They are exact, not approximate.\n"
-            "- For CHANGED lines: the exact old value is in 'was=', the new value is in 'now='. "
-            "Always report value changes in this format: "
-            "\"Value changed from '<was>' to '<now>'\" in the description.\n"
-            "- If LINE DIFF is absent or shows 'Content identical': "
-            "there are NO real text changes on that page. Do NOT report spelling_errors or "
-            "value_mismatches. Only report graphics/visual changes if GRAPHICS CHANGE is present.\n"
-            "- If a CHANGED line contains dates, dollar amounts, names, policy numbers: "
-            "these are field value changes — report as value_mismatches with "
-            "expected=<was value> and actual=<now value>.\n\n"
-            "TESTER PERSPECTIVE — how a real form validator reads results:\n"
-            "- A real tester cares about business defects: wrong values, missing clauses, missing signatures.\n"
-            "- Minor layout shifts (a line slightly left or right) are NOT defects unless they affect readability.\n"
-            "- Blank pages added between sections are often intentional separators — NOT critical defects.\n"
-            "- Rendering differences (DPI, font hinting, watermarks) are noise — do NOT report them.\n"
-            "- Only report alignment changes when they are visually obvious and affect ≥ 3 text elements.\n\n"
+            "- REMOVED: line exists in baseline but not in current.\n"
+            "- ADDED: line exists in current but not in baseline.\n"
+            "- CHANGED: was='...' now='...' — always report as: "
+            "\"Value changed from '<was>' to '<now>'\".\n"
+            "- If LINE DIFF is absent and text is identical: no text changes. "
+            "Only report visual/graphics changes if GRAPHICS CHANGE is present.\n"
+            "- Dates, amounts, names, policy numbers in CHANGED lines → value_mismatches.\n\n"
+
+            "TESTER PERSPECTIVE:\n"
+            "- Real defects: wrong values, missing clauses, missing signatures, structural removals.\n"
+            "- Not defects: minor layout pixel shifts, DPI noise, watermark rendering artefacts.\n"
+            "- Only report alignment changes affecting ≥3 elements that are visually obvious.\n\n"
+
             "VALUE CHANGE FORMAT (critical rule):\n"
-            "- Whenever a value has changed, you MUST show it as: 'Changed from \"OLD VALUE\" to \"NEW VALUE\"'.\n"
-            "- Use REMOVED TEXT as the old value and ADDED TEXT as the new value when they are related.\n"
-            "- Example: if REMOVED TEXT has '$1,000' and ADDED TEXT has '$2,000', report: "
-            "\"Coverage limit changed from \\\"$1,000\\\" to \\\"$2,000\\\".\"\n"
-            "- For value_mismatches, always populate 'expected' with the old value and 'actual' with the new value.\n\n"
+            "- Always: 'Changed from \"OLD\" to \"NEW\"' with exact quoted values.\n"
+            "- For value_mismatches: expected=old value, actual=new value.\n\n"
+
             "BLANK / EMPTY INSERTED PAGES:\n"
-            "- If alignment_op='inserted' AND is_blank_page=true: this is a blank separator page.\n"
-            "  Report it as a single low-severity extra_content item with description: "
-            "'Blank page inserted — likely an intentional separator/placeholder. Validation continues from next page.'\n"
-            "  Do NOT mark it critical. Do NOT block validation.\n"
-            "- If alignment_op='inserted' AND is_blank_page=false: this is a real content addition. "
-            "Report as medium or high extra_content depending on significance.\n\n"
-            "Visual diff interpretation rules:\n"
-            "- If signature_candidate=true, always report as missing_content or visual_mismatches "
-            "with category 'Signature / approval block'.\n"
-            "- alignment_op='deleted': page removed from actual PDF — always critical missing_content.\n"
-            "- alignment_op='inserted' with is_blank_page=true: low-severity blank separator — see above.\n"
-            "- alignment_op='inserted' with is_blank_page=false: real inserted page — report accordingly.\n"
-            "- NEVER write 'Significant visual difference detected (Similarity: X.XXX)' as a finding. "
-            "Always describe the specific text that changed based on the TEXT DIFF data.\n\n"
-            "Deterministic reporting rules:\n"
+            "- is_blank_page=true → low-severity extra_content, likely separator. Not critical.\n"
+            "- is_blank_page=false → real content addition, medium/high.\n\n"
+
+            "DETERMINISTIC REPORTING:\n"
             "1) Populate every top-level list even if empty.\n"
-            "2) summary_counts must equal the exact lengths of the arrays.\n"
-            "3) pages_impacted must be the sorted unique set of page numbers from all findings.\n"
-            "4) top_findings must contain up to 5 strongest findings.\n"
-            "5) overall_summary must be based only on the findings you output.\n"
+            "2) summary_counts must equal exact lengths of the arrays.\n"
+            "3) pages_impacted = sorted unique page numbers from all findings.\n"
+            "4) top_findings = up to 5 strongest findings.\n"
+            "5) overall_summary based only on findings you output.\n"
             "6) Never say 'no differences' if any issue list has items.\n"
         ),
     }
@@ -236,19 +366,27 @@ Return ONLY valid JSON with this structure:
   ],
 
   "value_mismatches": [
-    {"page": 1, "severity": "critical", "field_name": "premium_amount", "expected": "100.00", "actual": "90.00", "description": "Value changed"}
+    {"page": 1, "severity": "critical", "field_name": "premium_amount", "expected": "100.00", "actual": "90.00", "description": "Value changed from \"100.00\" to \"90.00\""}
   ],
 
   "missing_content": [
-    {"page": 3, "severity": "high", "field_name": "president_signature", "description": "President signature missing"}
+    {"page": 3, "severity": "high", "field_name": "president_signature", "description": "President signature missing", "category": "Signature / approval block"}
   ],
 
   "extra_content": [
-    {"page": 2, "severity": "medium", "field_name": "unexpected_section", "description": "Unexpected section present"}
+    {"page": 2, "severity": "medium", "field_name": "unexpected_section", "description": "Unexpected section present", "category": "Inserted content"}
   ],
 
   "layout_anomalies": [
-    {"page": 2, "severity": "medium", "description": "Layout shifted or misaligned"}
+    {"page": 2, "severity": "medium", "description": "Field misaligned or spacing inconsistent"}
+  ],
+
+  "typography_issues": [
+    {"page": 1, "severity": "medium", "element": "Section header", "property": "font_size", "expected": "12pt", "actual": "8pt", "description": "Font size changed from 12pt to 8pt"}
+  ],
+
+  "structural_changes": [
+    {"page": null, "severity": "critical", "element_type": "field", "change_type": "removed", "element_name": "EmergencyContactPhone", "description": "Form field 'EmergencyContactPhone' was removed"}
   ],
 
   "visual_mismatches": [
@@ -257,8 +395,16 @@ Return ONLY valid JSON with this structure:
       "severity": "high",
       "category": "Signature / approval block",
       "description": "Possible missing or changed signature near PRESIDENT",
-      "evidence": "Visual diff says signature_candidate=true near PRESIDENT"
+      "evidence": "signature_candidate=true near PRESIDENT"
     }
+  ],
+
+  "compliance_issues": [
+    {"page": 1, "severity": "medium", "standard": "WCAG21 1.4.3", "requirement": "Contrast ratio", "description": "Text contrast below 4.5:1"}
+  ],
+
+  "accessibility_issues": [
+    {"page": 1, "severity": "high", "type": "missing_label", "field_name": "field_x", "description": "Form field has no accessible label"}
   ],
 
   "summary_counts": {
@@ -268,11 +414,15 @@ Return ONLY valid JSON with this structure:
     "missing_content": 0,
     "extra_content": 0,
     "layout_anomalies": 0,
+    "typography_issues": 0,
+    "structural_changes": 0,
     "visual_mismatches": 0,
+    "compliance_issues": 0,
+    "accessibility_issues": 0,
     "total": 0
   },
 
-  "pages_impacted": [1,2,3],
+  "pages_impacted": [1, 2, 3],
 
   "top_findings": [
     {"severity": "critical", "page": 4, "category": "Value", "short": "Minimum premium changed from 1000 to 0"}
@@ -280,14 +430,6 @@ Return ONLY valid JSON with this structure:
 
   "overall_summary": "Found <total> issue(s) across <n> page(s).",
   "accuracy_score": 0,
-
-  "compliance_issues": [
-    {"page": 1, "severity": "high", "standard": "WCAG21", "requirement": "1.1.1", "description": "Image missing alt text"}
-  ],
-
-  "accessibility_issues": [
-    {"page": 1, "severity": "medium", "type": "missing_label", "field_name": "field_x", "description": "Form field has no accessible label"}
-  ],
 
   "confidence_scores": {
     "spelling_errors": 0.95,
@@ -304,21 +446,24 @@ Return ONLY valid JSON with this structure:
 
     summary_enforcement = """
 Before writing the final JSON:
-- Compute summary_counts from the exact lengths of the arrays.
-- Build pages_impacted from all page numbers found in the findings.
-- Build top_findings using the strongest findings first.
+- Compute summary_counts from the exact lengths of all arrays.
+- Build pages_impacted from all page numbers found in all finding arrays.
+- Build top_findings using the strongest findings first (critical > high > medium > low).
 - Write overall_summary LAST.
 """
 
     if mode == "basic":
         user_content = f"""
-Perform BASIC validation on the following PDF.
+Perform BASIC VALIDATION on the following PDF form.
 
-Scope:
-- Check spelling and obvious typos.
-- Check simple formatting issues (dates, currency, capitalization).
-- Identify obviously missing standard fields based only on document content.
-- There is NO benchmark document in this mode.
+Apply ALL five validation categories from the system rules:
+1. SPELLING & LANGUAGE — spell-check all text; detect placeholders, duplicate labels, capitalization/punctuation inconsistencies, truncated text.
+2. TYPOGRAPHY CONSISTENCY — detect font size outliers, font family deviations, bold/italic inconsistencies, text below minimum readable size.
+3. LAYOUT & SPATIAL CONSISTENCY — detect field misalignment, overlapping elements, margin violations, header/footer shifts.
+4. FORM COMPLETENESS — detect empty required fields, missing form title/version, missing signature/date blocks, missing legal disclaimers.
+5. ACCESSIBILITY & USABILITY — detect low contrast, orphan input fields, tables without headers, color-only indicators.
+
+There is NO benchmark document in this mode — validate the form against itself.
 
 Current PDF extraction meta:
 {current_meta}
@@ -332,21 +477,22 @@ Current PDF per-page text:
 Current PDF form fields:
 {current_fields}
 
-Current PDF visual diffs (optional):
-{current_visual_diffs}
-
 {summary_enforcement}
 
 {base_schema}
 """
+
     elif mode == "specific":
         user_content = f"""
-Perform SPECIFIC validation according to the user's rules.
+Perform SPECIFIC VALIDATION according to the user's rules.
 
 User-provided validation instructions:
 {base_prompt}
 
-Apply those rules to the following PDF.
+Execute each assertion using the assertion types from the system rules:
+- Exact Value, Pattern/Format, Date Range, Signature, Checkbox/Selection, Conditional, Calculation.
+- Map each failed assertion to the appropriate finding category.
+- For high-importance assertions that PASS, add a low-severity format_issue noting the pass for the audit trail.
 
 Current PDF extraction meta:
 {current_meta}
@@ -360,29 +506,41 @@ Current PDF per-page text:
 Current PDF form fields:
 {current_fields}
 
-Current PDF visual diffs (optional):
-{current_visual_diffs}
-
 {summary_enforcement}
 
 {base_schema}
 """
-    else:
-        formatted_visual_diffs = _format_visual_diffs_for_llm(current_visual_diffs)
-        user_content = f"""
-Perform BENCHMARK validation comparing a GOLDEN benchmark PDF and a CURRENT PDF.
 
-Benchmark rules:
-- Compare page by page using per-page text.
-- Use benchmark fields as expected values when present.
-- Use the visual diff summary below as evidence, guided by the change_pattern hints.
-- Your job is to identify actual actionable differences, not rendering noise.
-- Focus on real business changes: field values populated/changed, signatures, declarations,
-  premium values, coverage limits, content updates, added/removed sections.
-- For pages where change_pattern='page_wide' and the text shows no meaningful difference,
-  do NOT add a finding — this is rendering noise.
-- For pages where change_pattern='page_wide' but the text DOES show differences,
-  describe the specific text change, not the visual similarity score.
+    else:
+        # benchmark mode
+        formatted_visual_diffs = _format_visual_diffs_for_llm(current_visual_diffs, extra_context)
+
+        # Build extra context narrative
+        doc_level_note = ""
+        if extra_context:
+            md = extra_context.get("metadata_diff") or {}
+            fd = extra_context.get("field_diff") or {}
+            if md.get("has_metadata_changes"):
+                doc_level_note += "\nMETADATA CHANGES detected — see DOCUMENT-LEVEL CHANGES section in visual diff."
+            if fd.get("has_structural_changes"):
+                doc_level_note += "\nFIELD STRUCTURE CHANGES detected — removed/added fields listed in DOCUMENT-LEVEL CHANGES."
+
+        user_content = f"""
+Perform BENCHMARK VALIDATION comparing a GOLDEN baseline PDF against a CURRENT PDF.
+
+Apply ALL six change categories from the system rules:
+1. CONTENT CHANGES — word/phrase changes, line additions/removals, label renames.
+2. TYPOGRAPHY CHANGES — font size/family changes, bold/italic/underline toggles, color changes.
+3. LAYOUT & POSITIONAL CHANGES — field movement/resizing, reflow cascades (group by root cause).
+4. STRUCTURAL CHANGES — use FORM FIELD STRUCTURE signal for added/removed fields; section/page additions/removals.
+5. METADATA & INVISIBLE CHANGES — use METADATA signal for document properties and field type changes.
+6. FORMATTING & STYLE CHANGES — border/color/logo/watermark changes.
+
+Use the LINE DIFF as the primary accuracy signal.
+For CHANGED lines: report "Changed from '<was>' to '<now>'".
+For STRUCTURAL and METADATA signals: translate each entry into a finding in the appropriate category.
+Group reflow cascades as a single finding with affected element count and root cause.
+{doc_level_note}
 
 User-provided additional instructions:
 {base_prompt}
@@ -407,7 +565,7 @@ Per-page text:
 
 Form fields: {current_fields}
 
---- VISUAL DIFF SUMMARY (page-by-page, with zone analysis) ---
+--- VISUAL DIFF SUMMARY (page-by-page + document-level signals) ---
 {formatted_visual_diffs}
 
 {summary_enforcement}

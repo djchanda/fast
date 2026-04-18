@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Dict, Optional
 
@@ -13,6 +14,8 @@ from engine.prompt_builder import build_prompt
 from engine.llm_client import run_validation
 
 from app.reporting.html_report import write_cli_style_report
+
+logger = logging.getLogger(__name__)
 
 
 VISUAL_REVIEW_SIMILARITY_THRESHOLD = 0.9985  # 99.85%
@@ -52,8 +55,11 @@ def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
         "missing_content": [],
         "extra_content": [],
         "layout_anomalies": [],
+        "typography_issues": [],
+        "structural_changes": [],
         "compliance_issues": [],
         "visual_mismatches": [],
+        "accessibility_issues": [],
         "summary_counts": {},
         "pages_impacted": [],
         "top_findings": [],
@@ -75,8 +81,11 @@ def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
         "missing_content",
         "extra_content",
         "layout_anomalies",
+        "typography_issues",
+        "structural_changes",
         "compliance_issues",
         "visual_mismatches",
+        "accessibility_issues",
         "pages_impacted",
         "top_findings",
         "visual_validation",
@@ -157,19 +166,72 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
     """
     Precision-first deterministic reconciliation.
 
-    Rules:
-    - If signature_candidate is true and similarity is below a tighter threshold,
-      add it as missing_content so the page is treated as a real defect.
-    - Do NOT flood visual_mismatches with every warned page.
-    - Only add generic visual mismatch for strong pages with tighter similarity.
+    - Converts visual diff rows into missing_content / extra_content / visual_mismatches.
+    - Converts field structure changes (added/removed form fields) into findings.
+    - Signature candidates below the tighter threshold become missing_content.
     """
     visual = result_json.get("visual_validation") or []
     if not isinstance(visual, list):
         visual = []
 
+    # Pull and remove transient _field_diff injected by run_testcase
+    field_diff = result_json.pop("_field_diff", {}) or {}
+
     existing_by_page = _index_existing_items_by_page(result_json)
     result_json.setdefault("visual_mismatches", [])
     result_json.setdefault("missing_content", [])
+    result_json.setdefault("extra_content", [])
+    result_json.setdefault("structural_changes", [])
+
+    # ── Field structure changes (removed / added AcroForm fields) ──────────
+    for fname in field_diff.get("removed_fields", []):
+        result_json["missing_content"].append({
+            "page": None,
+            "severity": "critical",
+            "field_name": fname,
+            "category": "Structural change",
+            "description": f"Form field '{fname}' was removed from the document.",
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "critical",
+            "element_type": "field",
+            "change_type": "removed",
+            "element_name": fname,
+            "description": f"Form field '{fname}' was removed.",
+        })
+
+    for fname in field_diff.get("added_fields", []):
+        result_json["extra_content"].append({
+            "page": None,
+            "severity": "high",
+            "field_name": fname,
+            "category": "Structural change",
+            "description": f"New form field '{fname}' was added to the document.",
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "high",
+            "element_type": "field",
+            "change_type": "added",
+            "element_name": fname,
+            "description": f"Form field '{fname}' was added.",
+        })
+
+    for cf in field_diff.get("changed_fields", []):
+        fname = cf.get("name", "")
+        result_json["visual_mismatches"].append({
+            "page": None,
+            "severity": "high",
+            "category": "Field property",
+            "description": (
+                f"Form field '{fname}' changed type from "
+                f"'{cf.get('expected_type')}' to '{cf.get('actual_type')}'."
+            ),
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
 
     for v in visual:
         if not isinstance(v, dict):
@@ -378,6 +440,8 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
         "missing_content",
         "extra_content",
         "layout_anomalies",
+        "typography_issues",
+        "structural_changes",
         "visual_mismatches",
     ]
 
@@ -386,7 +450,7 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
     result_json["summary_counts"] = counts
 
     pages = set()
-    for bucket in buckets + ["compliance_issues"]:
+    for bucket in buckets + ["compliance_issues", "accessibility_issues"]:
         for it in result_json.get(bucket, []) or []:
             if isinstance(it, dict):
                 p = it.get("page")
@@ -434,10 +498,13 @@ def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
         + _count_list(result_json.get("missing_content"))
         + _count_list(result_json.get("compliance_issues"))
         + _count_list(result_json.get("visual_mismatches"))
+        + _count_list(result_json.get("structural_changes"))
     )
     warnings = (
         _count_list(result_json.get("extra_content"))
         + _count_list(result_json.get("layout_anomalies"))
+        + _count_list(result_json.get("typography_issues"))
+        + _count_list(result_json.get("accessibility_issues"))
     )
 
     visual = result_json.get("visual_validation") or []
@@ -551,8 +618,26 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                     expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
                     result_id=f"run{run_id}_rr{rr_id}",
                 ) or []
+
+                # Document-level comparison: metadata and form field structure
+                metadata_diff = {}
+                field_diff = {}
+                try:
+                    metadata_diff = vd.compare_documents_metadata(
+                        expected_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                        actual_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    )
+                    field_diff = vd.compare_form_field_structure(
+                        expected_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                        actual_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    )
+                except Exception as _de:
+                    logger.warning("Document-level comparison failed: %s", _de)
+
             except Exception as e:
                 visual = []
+                metadata_diff = {}
+                field_diff = {}
                 current_doc.setdefault("meta", {})
                 current_doc["meta"]["visual_diff_error"] = str(e)
 
@@ -560,17 +645,26 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
             if benchmark_doc is not None:
                 benchmark_doc["visual_diffs"] = visual
 
+        extra_context = (
+            {"metadata_diff": metadata_diff, "field_diff": field_diff}
+            if effective_mode == "benchmark"
+            else {}
+        )
+
         messages = build_prompt(
             mode=effective_mode,
             current_doc=current_doc,
             benchmark_doc=benchmark_doc,
             base_prompt=rules_text,
+            extra_context=extra_context,
         )
 
         llm_out = run_validation(messages)
         result_json = _ensure_schema_defaults(llm_out, effective_mode)
 
         result_json["visual_validation"] = visual
+        if effective_mode == "benchmark":
+            result_json["_field_diff"] = field_diff
 
         result_json = _reconcile_visual_findings(result_json)
         result_json = _refresh_summary_fields(result_json)
