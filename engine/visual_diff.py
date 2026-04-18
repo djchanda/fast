@@ -236,9 +236,12 @@ class VisualDiff:
                         "summary": "", "has_text_changes": False,
                     }
 
-                # If text is identical, suppress major/warn flags for the diff overlay
-                # (keeps pixel-diff data but marks it as noise)
-                if not text_diff["has_text_changes"] and zone_analysis.get("change_pattern") == "page_wide":
+                # If text AND formatting are identical, suppress noise flags
+                if (
+                    not text_diff["has_text_changes"]
+                    and not text_diff.get("has_formatting_changes")
+                    and zone_analysis.get("change_pattern") == "page_wide"
+                ):
                     major = False
                     warn = False if diff_pct < 20.0 else warn
 
@@ -293,17 +296,36 @@ class VisualDiff:
                             outline=(220, 50, 50), width=2,
                         )
 
-                # Annotate actual panel: green boxes on words added in current
+                # Annotate actual panel:
+                #   green  = words added in current version
+                #   orange = font-weight changed (bold added or removed)
+                #   blue   = horizontal alignment / indentation shifted
                 act_annotated = act.copy()
-                if text_diff["added_regions"]:
-                    draw_a = ImageDraw.Draw(act_annotated)
-                    for region in text_diff["added_regions"][:40]:
-                        x0, y0, x1, y1 = region["bbox"]
-                        draw_a.rectangle(
-                            [max(0, x0 - 1), max(0, y0 - 1),
-                             min(act.width - 1, x1 + 1), min(act.height - 1, y1 + 1)],
-                            outline=(50, 200, 80), width=2,
-                        )
+                draw_a = ImageDraw.Draw(act_annotated)
+
+                for region in text_diff["added_regions"][:40]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    draw_a.rectangle(
+                        [max(0, x0 - 1), max(0, y0 - 1),
+                         min(act.width - 1, x1 + 1), min(act.height - 1, y1 + 1)],
+                        outline=(50, 200, 80), width=2,
+                    )
+
+                for region in text_diff.get("bold_changed_regions", [])[:30]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(255, 140, 0), width=2,   # orange
+                    )
+
+                for region in text_diff.get("alignment_shifted_regions", [])[:30]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(80, 160, 255), width=2,  # blue
+                    )
 
                 panel = self._build_three_panel(
                     exp_annotated, act_annotated, mask,
@@ -335,6 +357,8 @@ class VisualDiff:
                     "added_texts": text_diff["added_texts"],
                     "removed_texts": text_diff["removed_texts"],
                     "has_text_changes": text_diff["has_text_changes"],
+                    "has_formatting_changes": text_diff.get("has_formatting_changes", False),
+                    "formatting_summary": text_diff.get("formatting_summary", ""),
                 })
 
             return rows
@@ -837,20 +861,31 @@ class VisualDiff:
         image_size: Tuple[int, int],
     ) -> Dict[str, Any]:
         """
-        Word-level text comparison between two PDF pages using pdfplumber.
+        Word-level comparison of two PDF pages covering three change types:
 
-        Returns word bounding boxes for added/removed text and a plain-English
-        summary.  The caller annotates the rendered page images with these boxes
-        so the three-panel image explicitly shows WHAT text changed (green =
-        added in current, red = present in baseline but gone in current).
+        1. Content changes  — words added or removed (green / red boxes).
+        2. Font-weight changes — same word flipped between bold and non-bold
+           (orange boxes on the actual panel).
+        3. Alignment shifts — same word moved horizontally by more than a
+           threshold, indicating indentation or list-alignment changes
+           (blue boxes on the actual panel).
+
+        Uses pdfplumber's extra_attrs to get fontname per word.
+        Falls back gracefully if the PDF has no embedded text.
         """
+        _ALIGN_TOLERANCE_PTS = 8.0   # points — shifts smaller than this are acceptable
+        _MIN_WORD_LEN = 2             # ignore single chars
+
         def _extract(pdf_path: str, page_num: int):
             try:
                 with pdfplumber.open(pdf_path) as pdf:
                     if not (1 <= page_num <= len(pdf.pages)):
                         return [], 612.0, 792.0
                     page = pdf.pages[page_num - 1]
-                    words = page.extract_words() or []
+                    try:
+                        words = page.extract_words(extra_attrs=["fontname", "size"]) or []
+                    except Exception:
+                        words = page.extract_words() or []
                     return words, float(page.width or 612.0), float(page.height or 792.0)
             except Exception:
                 return [], 612.0, 792.0
@@ -874,47 +909,135 @@ class VisualDiff:
             return {
                 w["text"].strip()
                 for w in words
-                if len(w.get("text", "").strip()) > 1
+                if len(w.get("text", "").strip()) >= _MIN_WORD_LEN
                 and w["text"].strip().upper() not in self._WATERMARK_WORDS
             }
 
+        def _is_bold(word: dict) -> bool:
+            fname = str(word.get("fontname", "") or "").lower()
+            return "bold" in fname or "heavy" in fname or ",b" in fname
+
+        # ── 1. Content diff (added / removed words) ────────────────────────
         exp_set = _clean_set(exp_words)
         act_set = _clean_set(act_words)
         added_texts = act_set - exp_set
         removed_texts = exp_set - act_set
 
-        # Locate added words in actual image coordinates
         added_regions: List[Dict] = []
         for w in act_words:
             txt = w.get("text", "").strip()
             if txt in added_texts:
                 added_regions.append({"text": txt, "bbox": _scale(w, act_sx, act_sy)})
 
-        # Locate removed words in expected image coordinates
         removed_regions: List[Dict] = []
         for w in exp_words:
             txt = w.get("text", "").strip()
             if txt in removed_texts:
                 removed_regions.append({"text": txt, "bbox": _scale(w, exp_sx, exp_sy)})
 
-        has_changes = bool(added_texts or removed_texts)
-        if not has_changes:
-            summary = "Text content identical — visual differences are rendering/watermark noise only."
+        # ── 2 & 3. Formatting diff (bold changes + alignment shifts) ────────
+        # Build first-occurrence lookup for words present in BOTH pages.
+        common_texts = (exp_set & act_set) - added_texts - removed_texts
+
+        exp_by_text: Dict[str, dict] = {}
+        for w in exp_words:
+            txt = w.get("text", "").strip()
+            if txt in common_texts and txt not in exp_by_text:
+                exp_by_text[txt] = w
+
+        act_by_text: Dict[str, dict] = {}
+        for w in act_words:
+            txt = w.get("text", "").strip()
+            if txt in common_texts and txt not in act_by_text:
+                act_by_text[txt] = w
+
+        bold_changed_regions: List[Dict] = []
+        alignment_shifted_regions: List[Dict] = []
+
+        for txt in common_texts:
+            ew = exp_by_text.get(txt)
+            aw = act_by_text.get(txt)
+            if not ew or not aw:
+                continue
+
+            exp_bold = _is_bold(ew)
+            act_bold = _is_bold(aw)
+
+            # Font-weight change
+            if exp_bold != act_bold:
+                bold_changed_regions.append({
+                    "text": txt,
+                    "change": "bold_added" if act_bold else "bold_removed",
+                    "exp_font": ew.get("fontname", "?"),
+                    "act_font": aw.get("fontname", "?"),
+                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
+                    "bbox_act": _scale(aw, act_sx, act_sy),
+                })
+
+            # Horizontal alignment shift
+            x_shift = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
+            if abs(x_shift) > _ALIGN_TOLERANCE_PTS:
+                alignment_shifted_regions.append({
+                    "text": txt,
+                    "x_shift_pts": round(x_shift, 1),
+                    "direction": "right" if x_shift > 0 else "left",
+                    "bbox_exp": _scale(ew, exp_sx, exp_sy),
+                    "bbox_act": _scale(aw, act_sx, act_sy),
+                })
+
+        # ── Build summaries ─────────────────────────────────────────────────
+        has_text_changes = bool(added_texts or removed_texts)
+        has_fmt_changes = bool(bold_changed_regions or alignment_shifted_regions)
+
+        fmt_parts: List[str] = []
+        if bold_changed_regions:
+            b_add = [r for r in bold_changed_regions if r["change"] == "bold_added"]
+            b_rem = [r for r in bold_changed_regions if r["change"] == "bold_removed"]
+            if b_add:
+                fmt_parts.append(
+                    "Text became bold: " + ", ".join(repr(r["text"]) for r in b_add[:5])
+                )
+            if b_rem:
+                fmt_parts.append(
+                    "Text lost bold: " + ", ".join(repr(r["text"]) for r in b_rem[:5])
+                )
+        if alignment_shifted_regions:
+            right_n = sum(1 for r in alignment_shifted_regions if r["direction"] == "right")
+            left_n  = sum(1 for r in alignment_shifted_regions if r["direction"] == "left")
+            if right_n:
+                fmt_parts.append(
+                    f"{right_n} text element(s) indented further right in current version"
+                )
+            if left_n:
+                fmt_parts.append(
+                    f"{left_n} text element(s) indented further left (de-indented) in current version"
+                )
+        formatting_summary = " | ".join(fmt_parts)
+
+        content_parts: List[str] = []
+        if added_texts:
+            content_parts.append("Added: " + ", ".join(repr(t) for t in sorted(added_texts)[:10]))
+        if removed_texts:
+            content_parts.append("Removed: " + ", ".join(repr(t) for t in sorted(removed_texts)[:10]))
+        if formatting_summary:
+            content_parts.append("Formatting: " + formatting_summary)
+
+        if content_parts:
+            summary = " | ".join(content_parts)
         else:
-            parts = []
-            if added_texts:
-                parts.append("Added: " + ", ".join(repr(t) for t in sorted(added_texts)[:10]))
-            if removed_texts:
-                parts.append("Removed: " + ", ".join(repr(t) for t in sorted(removed_texts)[:10]))
-            summary = " | ".join(parts)
+            summary = "Text content identical — visual differences are rendering/watermark noise only."
 
         return {
             "added_regions": added_regions,
             "removed_regions": removed_regions,
+            "bold_changed_regions": bold_changed_regions[:30],
+            "alignment_shifted_regions": alignment_shifted_regions[:30],
             "added_texts": sorted(added_texts),
             "removed_texts": sorted(removed_texts),
+            "has_text_changes": has_text_changes,
+            "has_formatting_changes": has_fmt_changes,
+            "formatting_summary": formatting_summary,
             "summary": summary,
-            "has_text_changes": has_changes,
         }
 
     # Per-pattern overlay colors: (R, G, B), alpha, diff-panel header label

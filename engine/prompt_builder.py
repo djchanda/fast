@@ -31,37 +31,30 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             )
             continue
 
-        text_summary = v.get("text_diff_summary", "")
         added_texts = v.get("added_texts", [])
         removed_texts = v.get("removed_texts", [])
         has_text_changes = v.get("has_text_changes", False)
+        formatting_summary = v.get("formatting_summary", "")
+        has_fmt = v.get("has_formatting_changes", False)
 
         status = "MAJOR" if v.get("major") else ("WARN" if v.get("warn") else "OK")
         parts = [f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"]
 
-        # TEXT DIFF is the authoritative signal — always surface it first
-        if text_summary:
-            parts.append(f"TEXT DIFF: {text_summary}")
-        elif not has_text_changes and (v.get("major") or v.get("warn")):
+        # ── Content diff ──────────────────────────────────────────────────
+        if not has_text_changes and not has_fmt and (v.get("major") or v.get("warn")):
             parts.append("TEXT DIFF: Content identical — pixel differences are rendering/watermark noise only")
+        else:
+            if added_texts:
+                parts.append("ADDED TEXT: " + ", ".join(repr(t) for t in added_texts[:8]))
+            if removed_texts:
+                parts.append("REMOVED TEXT: " + ", ".join(repr(t) for t in removed_texts[:8]))
 
-        if added_texts:
-            parts.append(f"ADDED TEXT: {', '.join(repr(t) for t in added_texts[:8])}")
-        if removed_texts:
-            parts.append(f"REMOVED TEXT: {', '.join(repr(t) for t in removed_texts[:8])}")
+        # ── Formatting diff ───────────────────────────────────────────────
+        if formatting_summary:
+            parts.append(f"FORMATTING CHANGES: {formatting_summary}")
 
         if sig_candidate:
             parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
-
-        if change_pattern and has_text_changes:
-            pattern_guidance = {
-                "header_only": "HEADER CHANGE — check policy number, date, named insured",
-                "header_and_fields": "HEADER + FIELD VALUES — check populated/changed fields",
-                "body_content": "BODY CONTENT CHANGE — compare text for specific clause/value changes",
-                "footer_area": "FOOTER/SIGNATURE AREA — check signature blocks and footer text",
-            }.get(change_pattern, "")
-            if pattern_guidance:
-                parts.append(f"[{pattern_guidance}]")
 
         lines.append(" | ".join(parts))
     return "\n".join(lines)
@@ -127,6 +120,15 @@ def build_prompt(
             "- Similarly, if the same artifact pattern repeats identically across all pages "
             "(e.g., same scattered characters on every page), it is a single document-level "
             "artefact — report once, not per page.\n\n"
+            "FORMATTING CHANGES (bold / alignment):\n"
+            "- If a page shows FORMATTING CHANGES: 'Text became bold: ...', report each bolded term "
+            "as a format_issue. Severity depends on context: if it is a heading, section title, or "
+            "legal term, use 'medium'; if it is in running body text, use 'low'.\n"
+            "- If a page shows FORMATTING CHANGES: 'X text element(s) indented further right/left', "
+            "report as a layout_anomaly. List / bullet alignment changes in legal documents are "
+            "'medium' severity; minor shifts in paragraph text are 'low'.\n"
+            "- Do NOT conflate formatting changes with content changes — report them in separate "
+            "format_issues / layout_anomalies entries.\n\n"
             "TEXT DIFF — the authoritative accuracy signal (read this first):\n"
             "- Each visual diff row now includes TEXT DIFF: which compares the actual words extracted "
             "from both PDFs at the page level.\n"
