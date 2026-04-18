@@ -69,6 +69,10 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
         elif formatting_summary and not bold_changed and not size_changed and not list_align:
             parts.append(f"FORMATTING CHANGES: {formatting_summary}")
 
+        graphics_diff = v.get("graphics_diff", "")
+        if graphics_diff:
+            parts.append(f"GRAPHICS CHANGE: {graphics_diff}")
+
         if sig_candidate:
             parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
 

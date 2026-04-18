@@ -247,18 +247,44 @@ class VisualDiff:
                         "summary": "", "has_text_changes": False,
                     }
 
-                # If text AND formatting are identical, suppress noise flags
+                # Compare PDF graphical elements (rects, lines, borders)
+                try:
+                    graphics_diff = self._compare_pdf_graphics(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                    )
+                except Exception as _ge:
+                    logger.warning("Graphics diff failed for page %d: %s", output_row_num, _ge)
+                    graphics_diff = {"added_rects": 0, "removed_rects": 0, "has_graphics_changes": False, "summary": ""}
+
+                has_graphics_changes = graphics_diff.get("has_graphics_changes", False)
+
+                # Suppress noise ONLY when pixel diff is truly tiny (< 1%) —
+                # real graphical changes (border boxes, annotations, decorations) still show up
                 if (
                     not text_diff["has_text_changes"]
                     and not text_diff.get("has_formatting_changes")
+                    and not has_graphics_changes
                     and zone_analysis.get("change_pattern") == "page_wide"
+                    and diff_pct < 1.0  # sub-1% = pure DPI/font-hinting noise
                 ):
                     major = False
-                    warn = False if diff_pct < 20.0 else warn
+                    warn = False
+                elif (
+                    not text_diff["has_text_changes"]
+                    and not text_diff.get("has_formatting_changes")
+                    and not has_graphics_changes
+                    and zone_analysis.get("change_pattern") == "page_wide"
+                    and diff_pct < 5.0  # 1-5% with no text/fmt/graphics change = rendering noise
+                ):
+                    major = False
+                    # keep warn so tester still sees a low-level notice
 
                 note = self._generate_semantic_note(diff_pct, zone_analysis, major, warn)
                 if text_diff["summary"]:
                     note = f"{note} TEXT: {text_diff['summary']}"
+                if graphics_diff.get("summary"):
+                    note = f"{note} GRAPHICS: {graphics_diff['summary']}"
 
                 # Annotate when pages were re-ordered / shifted
                 if exp_idx != act_idx:
@@ -400,6 +426,8 @@ class VisualDiff:
                         r["text"] for r in text_diff.get("alignment_shifted_regions", [])
                         if r.get("is_list_marker")
                     ],
+                    "graphics_diff": graphics_diff.get("summary", ""),
+                    "has_graphics_changes": has_graphics_changes,
                 })
 
             return rows
@@ -905,6 +933,90 @@ class VisualDiff:
         "CONFIDENTIAL", "DUPLICATE", "CANCELLED", "CANCELED", "SUPERSEDED",
     })
 
+    def _compare_pdf_graphics(
+        self,
+        expected_pdf_path: str,
+        actual_pdf_path: str,
+        expected_page_num: int,
+        actual_page_num: int,
+    ) -> Dict[str, Any]:
+        """
+        Compare PDF graphical elements (rectangles, lines, curves) between two pages.
+
+        This catches visual differences that are invisible to word extraction:
+        - Decorative border boxes drawn around text
+        - Underlines / strikethroughs implemented as drawn lines
+        - Shaded / highlighted regions
+        - Added or removed divider lines
+
+        Returns counts of added/removed rects and a human-readable summary.
+        """
+        _SNAP = 5.0   # points — positions within this distance are treated as the same
+
+        def _extract_rects(pdf_path: str, page_num: int) -> List[Tuple[float, float, float, float]]:
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    if not (1 <= page_num <= len(pdf.pages)):
+                        return []
+                    page = pdf.pages[page_num - 1]
+                    out: List[Tuple[float, float, float, float]] = []
+                    for r in (page.rects or []):
+                        try:
+                            out.append((
+                                round(float(r.get("x0", 0)), 1),
+                                round(float(r.get("top", 0)), 1),
+                                round(float(r.get("x1", 0)), 1),
+                                round(float(r.get("bottom", 0)), 1),
+                            ))
+                        except Exception:
+                            pass
+                    for ln in (page.lines or []):
+                        try:
+                            out.append((
+                                round(float(ln.get("x0", 0)), 1),
+                                round(float(ln.get("top", 0)), 1),
+                                round(float(ln.get("x1", 0)), 1),
+                                round(float(ln.get("bottom", 0)), 1),
+                            ))
+                        except Exception:
+                            pass
+                    return out
+            except Exception:
+                return []
+
+        def _find_unmatched(set_a, set_b):
+            """Return items in set_a that have no near-match in set_b."""
+            unmatched = []
+            for a in set_a:
+                matched = any(
+                    abs(a[0] - b[0]) <= _SNAP and abs(a[1] - b[1]) <= _SNAP
+                    and abs(a[2] - b[2]) <= _SNAP and abs(a[3] - b[3]) <= _SNAP
+                    for b in set_b
+                )
+                if not matched:
+                    unmatched.append(a)
+            return unmatched
+
+        exp_rects = _extract_rects(expected_pdf_path, expected_page_num)
+        act_rects = _extract_rects(actual_pdf_path, actual_page_num)
+
+        removed_rects = _find_unmatched(exp_rects, act_rects)  # in expected, not in actual
+        added_rects   = _find_unmatched(act_rects, exp_rects)  # in actual, not in expected
+
+        has_graphics_changes = bool(removed_rects or added_rects)
+        parts = []
+        if removed_rects:
+            parts.append(f"{len(removed_rects)} border/line element(s) removed from current PDF")
+        if added_rects:
+            parts.append(f"{len(added_rects)} border/line element(s) added in current PDF")
+
+        return {
+            "added_rects": len(added_rects),
+            "removed_rects": len(removed_rects),
+            "has_graphics_changes": has_graphics_changes,
+            "summary": " | ".join(parts),
+        }
+
     # List/bullet marker pattern — these have tighter alignment tolerance
     _LIST_MARKER_RE = re.compile(
         r'^(\([a-zA-Z0-9]\)|[a-zA-Z]\.|[0-9]+\.|'
@@ -1149,15 +1261,15 @@ class VisualDiff:
 
     # Per-pattern overlay colors: (R, G, B), alpha, diff-panel header label
     _PATTERN_COLORS: Dict[str, tuple] = {
-        "page_wide":         ((140, 140, 140), 80,  "RENDERING / WATERMARK NOISE"),
-        "header_only":       ((255,  50,  50), 150, "HEADER / FIELD CHANGE"),
-        "header_and_fields": ((255,  50,  50), 150, "VALUE CHANGE"),
-        "body_content":      ((255, 130,   0), 140, "CONTENT CHANGE"),
-        "footer_area":       ((180,  60, 220), 150, "FOOTER / SIGNATURE"),
-        "partial":           ((255, 200,   0), 130, "PARTIAL CHANGE"),
+        "page_wide":         ((220,  80,  80), 140, "VISUAL / GRAPHICAL CHANGE"),
+        "header_only":       ((255,  50,  50), 160, "HEADER / FIELD CHANGE"),
+        "header_and_fields": ((255,  50,  50), 160, "VALUE CHANGE"),
+        "body_content":      ((255, 130,   0), 150, "CONTENT CHANGE"),
+        "footer_area":       ((180,  60, 220), 160, "FOOTER / SIGNATURE"),
+        "partial":           ((255, 200,   0), 140, "PARTIAL CHANGE"),
         "no_change":         ((  0, 200,   0),   0, "NO CHANGE"),
     }
-    _DEFAULT_DIFF_COLOR: tuple = ((255, 50, 50), 140, "DIFFERENCE")
+    _DEFAULT_DIFF_COLOR: tuple = ((255, 50, 50), 150, "DIFFERENCE")
 
     def _resolve_diff_color(
         self,
