@@ -175,24 +175,34 @@ class VisualDiff:
                 if op == "inserted":
                     # Page present in actual but absent in expected
                     act = actual_pages[act_idx].convert("RGB")
+                    is_blank = self._is_blank_page(act)
                     blank = self._create_blank_image(act.size)
                     blank_n, act_n = self._normalize_sizes(blank, act)
                     empty_mask = Image.new("L", act_n.size, 0)
                     panel = self._build_three_panel(blank_n, act_n, empty_mask)
                     out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                     panel.save(out_path, "PNG")
+                    if is_blank:
+                        inserted_note = (
+                            f"Page {act_idx + 1} of the actual PDF is a blank page with no "
+                            f"counterpart in the expected PDF — likely intentional (separator/placeholder). "
+                            f"Validation continues from next page."
+                        )
+                    else:
+                        inserted_note = (
+                            f"Page {act_idx + 1} of the actual PDF has no counterpart "
+                            f"in the expected PDF — this is an extra / inserted page."
+                        )
                     rows.append({
                         "page": output_row_num,
                         "expected_page_num": None,
                         "actual_page_num": act_idx + 1,
                         "alignment_op": "inserted",
+                        "is_blank_page": is_blank,
                         "similarity": 0.0,
-                        "major": True,
-                        "warn": False,
-                        "note": (
-                            f"Page {act_idx + 1} of the actual PDF has no counterpart "
-                            f"in the expected PDF — this is an extra / inserted page."
-                        ),
+                        "major": not is_blank,
+                        "warn": is_blank,
+                        "note": inserted_note,
                         "snapshot_path": f"visual_diffs/{out_path.name}",
                         "diff_bbox": None,
                         "diff_pixels_pct": 100.0,
@@ -490,6 +500,18 @@ class VisualDiff:
     # ---------------------------------------------------
     # Internals
     # ---------------------------------------------------
+    def _is_blank_page(self, img: Image.Image, white_threshold: int = 250, blank_pct: float = 98.0) -> bool:
+        """Return True when ≥ blank_pct % of pixels are near-white (blank / near-blank page)."""
+        try:
+            gray = img.convert("L")
+            pixels = list(gray.getdata())
+            if not pixels:
+                return False
+            near_white = sum(1 for p in pixels if p >= white_threshold)
+            return (near_white / len(pixels)) * 100.0 >= blank_pct
+        except Exception:
+            return False
+
     def _create_blank_image(self, size: Optional[Tuple[int, int]]) -> Image.Image:
         if not size:
             size = (1000, 1400)
@@ -873,7 +895,8 @@ class VisualDiff:
         Uses pdfplumber's extra_attrs to get fontname per word.
         Falls back gracefully if the PDF has no embedded text.
         """
-        _ALIGN_TOLERANCE_PTS = 8.0   # points — shifts smaller than this are acceptable
+        _ALIGN_TOLERANCE_PTS = 15.0  # points — shifts smaller than this are acceptable (raised from 8 to suppress minor noise)
+        _MIN_ALIGN_WORDS = 3          # require at least this many words shifted before reporting alignment changes
         _MIN_WORD_LEN = 2             # ignore single chars
 
         def _extract(pdf_path: str, page_num: int):
@@ -987,7 +1010,9 @@ class VisualDiff:
 
         # ── Build summaries ─────────────────────────────────────────────────
         has_text_changes = bool(added_texts or removed_texts)
-        has_fmt_changes = bool(bold_changed_regions or alignment_shifted_regions)
+        # Only count alignment as a real formatting change when enough words are affected
+        reportable_alignment = len(alignment_shifted_regions) >= _MIN_ALIGN_WORDS
+        has_fmt_changes = bool(bold_changed_regions or reportable_alignment)
 
         fmt_parts: List[str] = []
         if bold_changed_regions:
@@ -1001,7 +1026,7 @@ class VisualDiff:
                 fmt_parts.append(
                     "Text lost bold: " + ", ".join(repr(r["text"]) for r in b_rem[:5])
                 )
-        if alignment_shifted_regions:
+        if len(alignment_shifted_regions) >= _MIN_ALIGN_WORDS:
             right_n = sum(1 for r in alignment_shifted_regions if r["direction"] == "right")
             left_n  = sum(1 for r in alignment_shifted_regions if r["direction"] == "left")
             if right_n:

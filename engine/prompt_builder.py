@@ -26,9 +26,16 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             )
             continue
         if op == "inserted":
-            lines.append(
-                f"  Page {page}: INSERTED — new page in current PDF with no baseline counterpart."
-            )
+            is_blank = v.get("is_blank_page", False)
+            if is_blank:
+                lines.append(
+                    f"  Page {page}: INSERTED (is_blank_page=true) — blank/empty page added in current PDF. "
+                    f"Likely an intentional separator. Low severity."
+                )
+            else:
+                lines.append(
+                    f"  Page {page}: INSERTED (is_blank_page=false) — new content page in current PDF with no baseline counterpart."
+                )
             continue
 
         added_texts = v.get("added_texts", [])
@@ -143,11 +150,31 @@ def build_prompt(
             "missing from the current — these are real changes. Report what is missing.\n"
             "- ADDED TEXT containing dates, names, dollar amounts, or policy numbers = field values "
             "were populated — report as value_mismatches or format_issues as appropriate.\n\n"
+            "TESTER PERSPECTIVE — how a real form validator reads results:\n"
+            "- A real tester cares about business defects: wrong values, missing clauses, missing signatures.\n"
+            "- Minor layout shifts (a line slightly left or right) are NOT defects unless they affect readability.\n"
+            "- Blank pages added between sections are often intentional separators — NOT critical defects.\n"
+            "- Rendering differences (DPI, font hinting, watermarks) are noise — do NOT report them.\n"
+            "- Only report alignment changes when they are visually obvious and affect ≥ 3 text elements.\n\n"
+            "VALUE CHANGE FORMAT (critical rule):\n"
+            "- Whenever a value has changed, you MUST show it as: 'Changed from \"OLD VALUE\" to \"NEW VALUE\"'.\n"
+            "- Use REMOVED TEXT as the old value and ADDED TEXT as the new value when they are related.\n"
+            "- Example: if REMOVED TEXT has '$1,000' and ADDED TEXT has '$2,000', report: "
+            "\"Coverage limit changed from \\\"$1,000\\\" to \\\"$2,000\\\".\"\n"
+            "- For value_mismatches, always populate 'expected' with the old value and 'actual' with the new value.\n\n"
+            "BLANK / EMPTY INSERTED PAGES:\n"
+            "- If alignment_op='inserted' AND is_blank_page=true: this is a blank separator page.\n"
+            "  Report it as a single low-severity extra_content item with description: "
+            "'Blank page inserted — likely an intentional separator/placeholder. Validation continues from next page.'\n"
+            "  Do NOT mark it critical. Do NOT block validation.\n"
+            "- If alignment_op='inserted' AND is_blank_page=false: this is a real content addition. "
+            "Report as medium or high extra_content depending on significance.\n\n"
             "Visual diff interpretation rules:\n"
             "- If signature_candidate=true, always report as missing_content or visual_mismatches "
             "with category 'Signature / approval block'.\n"
             "- alignment_op='deleted': page removed from actual PDF — always critical missing_content.\n"
-            "- alignment_op='inserted': page added to actual PDF — always critical extra_content.\n"
+            "- alignment_op='inserted' with is_blank_page=true: low-severity blank separator — see above.\n"
+            "- alignment_op='inserted' with is_blank_page=false: real inserted page — report accordingly.\n"
             "- NEVER write 'Significant visual difference detected (Similarity: X.XXX)' as a finding. "
             "Always describe the specific text that changed based on the TEXT DIFF data.\n\n"
             "Deterministic reporting rules:\n"

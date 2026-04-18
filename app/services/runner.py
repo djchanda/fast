@@ -199,17 +199,32 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             act_pg = v.get("actual_page_num")
             out_pg = v.get("page")
             label_pg = act_pg if act_pg is not None else out_pg
-            result_json["extra_content"].append({
-                "page": label_pg,
-                "severity": "critical",
-                "field_name": f"page_{label_pg}",
-                "category": "Inserted page",
-                "description": (
-                    f"Page {label_pg} of the actual PDF has no counterpart in the expected PDF "
-                    f"— this is an extra / inserted page."
-                ),
-                "evidence": v.get("note") or "Extra page found in actual PDF.",
-            })
+            is_blank = bool(v.get("is_blank_page"))
+            if is_blank:
+                result_json["extra_content"].append({
+                    "page": label_pg,
+                    "severity": "low",
+                    "field_name": f"page_{label_pg}_blank",
+                    "category": "Blank page inserted",
+                    "description": (
+                        f"Page {label_pg} of the actual PDF is a blank page with no counterpart "
+                        f"in the expected PDF — likely an intentional separator or placeholder. "
+                        f"Validation continues from the next page."
+                    ),
+                    "evidence": v.get("note") or "Blank page found in actual PDF.",
+                })
+            else:
+                result_json["extra_content"].append({
+                    "page": label_pg,
+                    "severity": "high",
+                    "field_name": f"page_{label_pg}",
+                    "category": "Inserted page",
+                    "description": (
+                        f"Page {label_pg} of the actual PDF has no counterpart in the expected PDF "
+                        f"— this is an extra / inserted page with content."
+                    ),
+                    "evidence": v.get("note") or "Extra page found in actual PDF.",
+                })
             continue
         # ── Standard per-page comparison ────────────────────────────────────
 
@@ -271,6 +286,20 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             change_pattern = zone.get("change_pattern", "")
             change_hint = zone.get("change_hint", "")
             changed_zones = zone.get("changed_zones", [])
+
+            has_text_changes = v.get("has_text_changes", False)
+            has_fmt_changes = v.get("has_formatting_changes", False)
+            formatting_summary = v.get("formatting_summary", "")
+
+            # If only alignment shifts (no text changes, no bold) — skip entirely, too noisy
+            if (
+                not has_text_changes
+                and has_fmt_changes
+                and formatting_summary
+                and "bold" not in formatting_summary.lower()
+                and "indented" in formatting_summary.lower()
+            ):
+                continue
 
             # Page-wide diff at this similarity almost always means rendering/font noise
             if change_pattern == "page_wide":
