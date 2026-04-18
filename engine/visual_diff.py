@@ -258,7 +258,7 @@ class VisualDiff:
                         else:
                             note = "Possible signature-region change detected."
 
-                panel = self._build_three_panel(exp, act, mask, diff_regions)
+                panel = self._build_three_panel(exp, act, mask, diff_regions, zone_analysis, signature_candidate)
                 out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
 
@@ -437,8 +437,8 @@ class VisualDiff:
     def _compute_similarity_and_mask(self, actual: Image.Image, expected: Image.Image) -> Tuple[float, float, Image.Image]:
         diff = ImageChops.difference(actual, expected).convert("L")
 
-        # Keep sensitivity high enough for missing signatures, but not too low
-        threshold = 18
+        # Threshold 25 filters anti-aliasing/JPEG noise while still catching real changes
+        threshold = 25
         mask = diff.point(lambda x: 255 if x > threshold else 0)
 
         diff_pixels = sum(1 for px in mask.getdata() if px > 0)
@@ -768,22 +768,58 @@ class VisualDiff:
             base = f"Minor visual differences detected ({diff_pct:.2f}% of pixels differ)."
         return f"{base} {hint}".strip() if hint else base
 
+    # Per-pattern overlay colors: (R, G, B), alpha, diff-panel header label
+    _PATTERN_COLORS: Dict[str, tuple] = {
+        "page_wide":         ((140, 140, 140), 80,  "RENDERING / WATERMARK NOISE"),
+        "header_only":       ((255,  50,  50), 150, "HEADER / FIELD CHANGE"),
+        "header_and_fields": ((255,  50,  50), 150, "VALUE CHANGE"),
+        "body_content":      ((255, 130,   0), 140, "CONTENT CHANGE"),
+        "footer_area":       ((180,  60, 220), 150, "FOOTER / SIGNATURE"),
+        "partial":           ((255, 200,   0), 130, "PARTIAL CHANGE"),
+        "no_change":         ((  0, 200,   0),   0, "NO CHANGE"),
+    }
+    _DEFAULT_DIFF_COLOR: tuple = ((255, 50, 50), 140, "DIFFERENCE")
+
+    def _resolve_diff_color(
+        self,
+        zone_analysis: Optional[Dict[str, Any]],
+        signature_candidate: bool,
+    ) -> tuple:
+        """Return (rgb_tuple, alpha, label) for the diff overlay."""
+        if signature_candidate:
+            return (180, 60, 220), 155, "SIGNATURE / FOOTER"
+        pattern = (zone_analysis or {}).get("change_pattern", "")
+        return self._PATTERN_COLORS.get(pattern, self._DEFAULT_DIFF_COLOR)
+
     def _build_three_panel(
         self,
         expected: Image.Image,
         actual: Image.Image,
         mask: Image.Image,
         diff_regions: Optional[List[Tuple[int, int, int, int]]] = None,
+        zone_analysis: Optional[Dict[str, Any]] = None,
+        signature_candidate: bool = False,
     ) -> Image.Image:
-        """Build three-panel comparison image with translucent overlay and region boxes."""
-        # Translucent red overlay so original content stays visible
+        """
+        Build three-panel comparison image.
+        Diff panel uses a pattern-specific color:
+          gray   = rendering / watermark noise
+          red    = value / header field change
+          orange = body content change
+          purple = footer / signature area
+          yellow = partial / mixed change
+        """
+        rgb, alpha, diff_label = self._resolve_diff_color(zone_analysis, signature_candidate)
+        r, g, b = rgb
+
+        # Translucent colored overlay (original content stays readable)
         actual_rgba = actual.convert("RGBA")
-        overlay = Image.new("RGBA", actual.size, (255, 40, 40, 0))
-        alpha = mask.point(lambda x: 150 if x > 0 else 0)
-        overlay.putalpha(alpha)
+        overlay = Image.new("RGBA", actual.size, (r, g, b, 0))
+        mask_alpha = mask.point(lambda x: alpha if x > 0 else 0)
+        overlay.putalpha(mask_alpha)
         diff_panel = Image.alpha_composite(actual_rgba, overlay).convert("RGB")
 
-        # Draw bounding boxes around the most significant changed regions
+        # Draw bounding boxes in the same color around the most significant regions
         if diff_regions:
             draw = ImageDraw.Draw(diff_panel)
             for x0, y0, x1, y1 in diff_regions[:8]:
@@ -794,7 +830,7 @@ class VisualDiff:
                         min(actual.width - 1, x1 + 2),
                         min(actual.height - 1, y1 + 2),
                     ],
-                    outline=(255, 30, 30),
+                    outline=(r, g, b),
                     width=3,
                 )
 
@@ -804,18 +840,26 @@ class VisualDiff:
         out.paste(actual, (w, 0))
         out.paste(diff_panel, (w * 2, 0))
 
-        out = self._add_headers(out, w)
+        out = self._add_headers(out, w, diff_label=diff_label, diff_header_color=rgb)
         return out
 
-    def _add_headers(self, img: Image.Image, w: int) -> Image.Image:
+    def _add_headers(
+        self,
+        img: Image.Image,
+        w: int,
+        diff_label: str = "DIFF (HIGHLIGHTED)",
+        diff_header_color: tuple = (240, 240, 240),
+    ) -> Image.Image:
         draw = ImageDraw.Draw(img)
         header_h = 40
         draw.rectangle([0, 0, w * 3, header_h], fill=(20, 20, 20))
 
-        labels = ["EXPECTED", "ACTUAL", "DIFF (HIGHLIGHTED)"]
-        for idx, text in enumerate(labels):
-            x = idx * w + 12
-            y = 10
-            draw.text((x, y), text, fill=(240, 240, 240))
+        labels = [
+            ("EXPECTED (BASELINE)", (200, 200, 200)),
+            ("ACTUAL (CURRENT)",    (200, 200, 200)),
+            (f"DIFF — {diff_label}", diff_header_color),
+        ]
+        for idx, (text, color) in enumerate(labels):
+            draw.text((idx * w + 12, 10), text, fill=color)
 
         return img
