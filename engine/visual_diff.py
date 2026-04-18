@@ -221,7 +221,30 @@ class VisualDiff:
                 zone_analysis = self._analyze_diff_zones(mask, diff_pct)
                 diff_regions = self._extract_top_diff_regions(mask) if (major or warn) else []
 
+                # Word-level text comparison (most reliable signal for real vs. noise)
+                try:
+                    text_diff = self._build_text_diff_annotations(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                        exp.size,
+                    )
+                except Exception as _te:
+                    logger.warning("Text diff failed for page %d: %s", output_row_num, _te)
+                    text_diff = {
+                        "added_regions": [], "removed_regions": [],
+                        "added_texts": [], "removed_texts": [],
+                        "summary": "", "has_text_changes": False,
+                    }
+
+                # If text is identical, suppress major/warn flags for the diff overlay
+                # (keeps pixel-diff data but marks it as noise)
+                if not text_diff["has_text_changes"] and zone_analysis.get("change_pattern") == "page_wide":
+                    major = False
+                    warn = False if diff_pct < 20.0 else warn
+
                 note = self._generate_semantic_note(diff_pct, zone_analysis, major, warn)
+                if text_diff["summary"]:
+                    note = f"{note} TEXT: {text_diff['summary']}"
 
                 # Annotate when pages were re-ordered / shifted
                 if exp_idx != act_idx:
@@ -258,7 +281,34 @@ class VisualDiff:
                         else:
                             note = "Possible signature-region change detected."
 
-                panel = self._build_three_panel(exp, act, mask, diff_regions, zone_analysis, signature_candidate)
+                # Annotate expected panel: red boxes on words present in baseline but gone
+                exp_annotated = exp.copy()
+                if text_diff["removed_regions"]:
+                    draw_e = ImageDraw.Draw(exp_annotated)
+                    for region in text_diff["removed_regions"][:40]:
+                        x0, y0, x1, y1 = region["bbox"]
+                        draw_e.rectangle(
+                            [max(0, x0 - 1), max(0, y0 - 1),
+                             min(exp.width - 1, x1 + 1), min(exp.height - 1, y1 + 1)],
+                            outline=(220, 50, 50), width=2,
+                        )
+
+                # Annotate actual panel: green boxes on words added in current
+                act_annotated = act.copy()
+                if text_diff["added_regions"]:
+                    draw_a = ImageDraw.Draw(act_annotated)
+                    for region in text_diff["added_regions"][:40]:
+                        x0, y0, x1, y1 = region["bbox"]
+                        draw_a.rectangle(
+                            [max(0, x0 - 1), max(0, y0 - 1),
+                             min(act.width - 1, x1 + 1), min(act.height - 1, y1 + 1)],
+                            outline=(50, 200, 80), width=2,
+                        )
+
+                panel = self._build_three_panel(
+                    exp_annotated, act_annotated, mask,
+                    diff_regions, zone_analysis, signature_candidate,
+                )
                 out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
 
@@ -281,6 +331,10 @@ class VisualDiff:
                     "signature_confidence": signature_confidence,
                     "zone_analysis": zone_analysis,
                     "diff_regions": diff_regions,
+                    "text_diff_summary": text_diff["summary"],
+                    "added_texts": text_diff["added_texts"],
+                    "removed_texts": text_diff["removed_texts"],
+                    "has_text_changes": text_diff["has_text_changes"],
                 })
 
             return rows
@@ -767,6 +821,101 @@ class VisualDiff:
         else:
             base = f"Minor visual differences detected ({diff_pct:.2f}% of pixels differ)."
         return f"{base} {hint}".strip() if hint else base
+
+    # Words that are almost certainly watermark/stamp artifacts, not real content
+    _WATERMARK_WORDS: frozenset = frozenset({
+        "SPECIMEN", "SAMPLE", "DRAFT", "VOID", "COPY",
+        "CONFIDENTIAL", "DUPLICATE", "CANCELLED", "CANCELED", "SUPERSEDED",
+    })
+
+    def _build_text_diff_annotations(
+        self,
+        expected_pdf_path: str,
+        actual_pdf_path: str,
+        expected_page_num: int,
+        actual_page_num: int,
+        image_size: Tuple[int, int],
+    ) -> Dict[str, Any]:
+        """
+        Word-level text comparison between two PDF pages using pdfplumber.
+
+        Returns word bounding boxes for added/removed text and a plain-English
+        summary.  The caller annotates the rendered page images with these boxes
+        so the three-panel image explicitly shows WHAT text changed (green =
+        added in current, red = present in baseline but gone in current).
+        """
+        def _extract(pdf_path: str, page_num: int):
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    if not (1 <= page_num <= len(pdf.pages)):
+                        return [], 612.0, 792.0
+                    page = pdf.pages[page_num - 1]
+                    words = page.extract_words() or []
+                    return words, float(page.width or 612.0), float(page.height or 792.0)
+            except Exception:
+                return [], 612.0, 792.0
+
+        exp_words, exp_pw, exp_ph = _extract(expected_pdf_path, expected_page_num)
+        act_words, act_pw, act_ph = _extract(actual_pdf_path, actual_page_num)
+
+        img_w, img_h = image_size
+        exp_sx, exp_sy = img_w / exp_pw, img_h / exp_ph
+        act_sx, act_sy = img_w / act_pw, img_h / act_ph
+
+        def _scale(word: dict, sx: float, sy: float) -> Tuple[int, int, int, int]:
+            return (
+                int(float(word.get("x0", 0)) * sx),
+                int(float(word.get("top", 0)) * sy),
+                int(float(word.get("x1", 0)) * sx),
+                int(float(word.get("bottom", 0)) * sy),
+            )
+
+        def _clean_set(words):
+            return {
+                w["text"].strip()
+                for w in words
+                if len(w.get("text", "").strip()) > 1
+                and w["text"].strip().upper() not in self._WATERMARK_WORDS
+            }
+
+        exp_set = _clean_set(exp_words)
+        act_set = _clean_set(act_words)
+        added_texts = act_set - exp_set
+        removed_texts = exp_set - act_set
+
+        # Locate added words in actual image coordinates
+        added_regions: List[Dict] = []
+        for w in act_words:
+            txt = w.get("text", "").strip()
+            if txt in added_texts:
+                added_regions.append({"text": txt, "bbox": _scale(w, act_sx, act_sy)})
+
+        # Locate removed words in expected image coordinates
+        removed_regions: List[Dict] = []
+        for w in exp_words:
+            txt = w.get("text", "").strip()
+            if txt in removed_texts:
+                removed_regions.append({"text": txt, "bbox": _scale(w, exp_sx, exp_sy)})
+
+        has_changes = bool(added_texts or removed_texts)
+        if not has_changes:
+            summary = "Text content identical — visual differences are rendering/watermark noise only."
+        else:
+            parts = []
+            if added_texts:
+                parts.append("Added: " + ", ".join(repr(t) for t in sorted(added_texts)[:10]))
+            if removed_texts:
+                parts.append("Removed: " + ", ".join(repr(t) for t in sorted(removed_texts)[:10]))
+            summary = " | ".join(parts)
+
+        return {
+            "added_regions": added_regions,
+            "removed_regions": removed_regions,
+            "added_texts": sorted(added_texts),
+            "removed_texts": sorted(removed_texts),
+            "summary": summary,
+            "has_text_changes": has_changes,
+        }
 
     # Per-pattern overlay colors: (R, G, B), alpha, diff-panel header label
     _PATTERN_COLORS: Dict[str, tuple] = {

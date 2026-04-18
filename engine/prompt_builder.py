@@ -31,28 +31,37 @@ def _format_visual_diffs_for_llm(visual_diffs: list) -> str:
             )
             continue
 
+        text_summary = v.get("text_diff_summary", "")
+        added_texts = v.get("added_texts", [])
+        removed_texts = v.get("removed_texts", [])
+        has_text_changes = v.get("has_text_changes", False)
+
         status = "MAJOR" if v.get("major") else ("WARN" if v.get("warn") else "OK")
         parts = [f"  Page {page}: {status} | similarity={sim:.3f} ({diff_pct:.1f}% pixels differ)"]
+
+        # TEXT DIFF is the authoritative signal — always surface it first
+        if text_summary:
+            parts.append(f"TEXT DIFF: {text_summary}")
+        elif not has_text_changes and (v.get("major") or v.get("warn")):
+            parts.append("TEXT DIFF: Content identical — pixel differences are rendering/watermark noise only")
+
+        if added_texts:
+            parts.append(f"ADDED TEXT: {', '.join(repr(t) for t in added_texts[:8])}")
+        if removed_texts:
+            parts.append(f"REMOVED TEXT: {', '.join(repr(t) for t in removed_texts[:8])}")
 
         if sig_candidate:
             parts.append(f"[SIGNATURE CANDIDATE near '{sig_label}']")
 
-        if changed_zones:
-            parts.append(f"zones changed: {', '.join(changed_zones)}")
-
-        if change_pattern:
+        if change_pattern and has_text_changes:
             pattern_guidance = {
-                "page_wide": "LIKELY RENDERING/FONT NOISE — use low severity unless text also differs",
                 "header_only": "HEADER CHANGE — check policy number, date, named insured",
                 "header_and_fields": "HEADER + FIELD VALUES — check populated/changed fields",
                 "body_content": "BODY CONTENT CHANGE — compare text for specific clause/value changes",
                 "footer_area": "FOOTER/SIGNATURE AREA — check signature blocks and footer text",
-                "no_change": "NO SIGNIFICANT CHANGE",
             }.get(change_pattern, "")
             if pattern_guidance:
                 parts.append(f"[{pattern_guidance}]")
-        elif change_hint:
-            parts.append(f"[{change_hint}]")
 
         lines.append(" | ".join(parts))
     return "\n".join(lines)
@@ -118,22 +127,27 @@ def build_prompt(
             "- Similarly, if the same artifact pattern repeats identically across all pages "
             "(e.g., same scattered characters on every page), it is a single document-level "
             "artefact — report once, not per page.\n\n"
+            "TEXT DIFF — the authoritative accuracy signal (read this first):\n"
+            "- Each visual diff row now includes TEXT DIFF: which compares the actual words extracted "
+            "from both PDFs at the page level.\n"
+            "- If TEXT DIFF says 'Content identical' or 'Text content identical': "
+            "there are NO real content differences on that page. "
+            "Do NOT report any spelling_errors, value_mismatches, or missing_content for that page. "
+            "Any visual pixel differences are purely rendering/watermark noise. "
+            "At most, note once as a low-severity layout_anomaly only if it seems significant.\n"
+            "- If TEXT DIFF shows ADDED TEXT: those are words/values that appear in the current PDF "
+            "but not in the baseline — these are real changes. Report what was added and where.\n"
+            "- If TEXT DIFF shows REMOVED TEXT: those are words/values present in the baseline but "
+            "missing from the current — these are real changes. Report what is missing.\n"
+            "- ADDED TEXT containing dates, names, dollar amounts, or policy numbers = field values "
+            "were populated — report as value_mismatches or format_issues as appropriate.\n\n"
             "Visual diff interpretation rules:\n"
-            "- Visual diff rows include a 'change_pattern' hint that tells you WHERE the pixel differences are.\n"
-            "- change_pattern='page_wide': differences span the whole page — this is almost always a "
-            "rendering/font/watermark difference, NOT a real content change. "
-            "Report as layout_anomaly with LOW severity ONLY if the page text also shows differences. "
-            "Do NOT report as value_mismatch or missing_content based on visual alone.\n"
-            "- change_pattern='header_only': only the header changed — check policy number, date, named insured, logo.\n"
-            "- change_pattern='header_and_fields': header and upper fields changed — identify which fields were populated or modified.\n"
-            "- change_pattern='body_content': main body changed — compare per-page text to identify specific clauses or values.\n"
-            "- change_pattern='footer_area': footer/signature area changed — check signature blocks and footer content.\n"
-            "- change_pattern='no_change': no meaningful difference despite similarity < 1.0 — ignore this page.\n"
-            "- If signature_candidate=true, always report as missing_content or visual_mismatches with category 'Signature / approval block'.\n"
+            "- If signature_candidate=true, always report as missing_content or visual_mismatches "
+            "with category 'Signature / approval block'.\n"
             "- alignment_op='deleted': page removed from actual PDF — always critical missing_content.\n"
             "- alignment_op='inserted': page added to actual PDF — always critical extra_content.\n"
-            "- NEVER write 'Significant visual difference detected (Similarity: X.XXX)' as a finding description. "
-            "Always describe WHAT specifically appears to have changed based on the text comparison and zone pattern.\n\n"
+            "- NEVER write 'Significant visual difference detected (Similarity: X.XXX)' as a finding. "
+            "Always describe the specific text that changed based on the TEXT DIFF data.\n\n"
             "Deterministic reporting rules:\n"
             "1) Populate every top-level list even if empty.\n"
             "2) summary_counts must equal the exact lengths of the arrays.\n"
