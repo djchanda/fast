@@ -1158,7 +1158,13 @@ class VisualDiff:
 
         def _is_bold(w):
             f = str(w.get("fontname", "") or "").lower()
-            return "bold" in f or "heavy" in f or ",b" in f or "-bd" in f
+            return (
+                "bold" in f or "heavy" in f or "black" in f
+                or "demibold" in f or "semibold" in f
+                or ",b" in f or "-bd" in f or "-b," in f
+                or f.endswith(",b") or f.endswith("-b")
+                or f.endswith("bold") or f.endswith("heavy")
+            )
 
         # ── Extract + cluster ────────────────────────────────────────────────
         img_w, img_h = image_size
@@ -1251,53 +1257,78 @@ class VisualDiff:
         added_regions   = added_regions[:_MAX_BOXES]
         removed_regions = removed_regions[:_MAX_BOXES]
 
-        # ── Formatting diff on EQUAL paragraphs ──────────────────────────────
+        # ── Formatting diff on EQUAL paragraphs and 1-to-1 replacements ────────
+        # Covers:
+        #   equal  → same text, may differ in bold/size/alignment
+        #   replace 1:1 → text changed but same paragraph structure; bold may
+        #                 have changed simultaneously (e.g. heading became bold
+        #                 while its wording was also updated)
         bold_changed_regions:   List[Dict] = []
         size_changed_regions:   List[Dict] = []
         alignment_shifted_list: List[Dict] = []
         alignment_shifted_body: List[Dict] = []
 
+        def _check_paragraph_formatting(ep, ap):
+            """Compare word-level formatting between two corresponding paragraphs."""
+            exp_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ep]
+            act_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ap]
+            for el, al in zip(exp_llines, act_llines):
+                # Position-based matching handles duplicate words correctly
+                for ew, aw in zip(el, al):
+                    exp_t = ew.get("text", "").strip()
+                    act_t = aw.get("text", "").strip()
+                    # For equal paragraphs: only compare formatting for same text
+                    # For replace paragraphs: compare any word at same position
+                    if not exp_t or not act_t:
+                        continue
+                    txt = act_t  # label by actual text
+                    is_m = self._is_list_marker(txt)
+
+                    # ── Bold ──────────────────────────────────────────────────
+                    eb, ab = _is_bold(ew), _is_bold(aw)
+                    if eb != ab:
+                        bold_changed_regions.append({
+                            "text": txt,
+                            "change": "bold_added" if ab else "bold_removed",
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        })
+
+                    # ── Size (independent of bold — a word can change BOTH) ──
+                    es  = float(ew.get("size", 0) or 0)
+                    as_ = float(aw.get("size", 0) or 0)
+                    if es > 0 and as_ > 0 and abs(as_ - es) > _SIZE_TOLERANCE:
+                        size_changed_regions.append({
+                            "text": txt,
+                            "exp_size": round(es, 1),
+                            "act_size": round(as_, 1),
+                            "change": "larger" if as_ > es else "smaller",
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        })
+
+                    # ── Alignment ─────────────────────────────────────────────
+                    xs = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
+                    tol = _ALIGN_TOLERANCE_LIST if is_m else _ALIGN_TOLERANCE_BODY
+                    if abs(xs) > tol:
+                        rec = {
+                            "text": txt, "x_shift_pts": round(xs, 1),
+                            "direction": "right" if xs > 0 else "left",
+                            "is_list_marker": is_m,
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        }
+                        (alignment_shifted_list if is_m else alignment_shifted_body).append(rec)
+
         for tag, i1, i2, j1, j2 in opcodes:
-            if tag != "equal":
-                continue
-            for ep, ap in zip(exp_paras[i1:i2], act_paras[j1:j2]):
-                # Build per-line word lookup within corresponding lines
-                exp_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ep]
-                act_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ap]
-                for el, al in zip(exp_llines, act_llines):
-                    exp_by = {w.get("text", "").strip(): w for w in reversed(el)}
-                    for aw in al:
-                        txt = aw.get("text", "").strip()
-                        ew  = exp_by.get(txt)
-                        if not ew:
-                            continue
-                        is_m = self._is_list_marker(txt)
-                        eb, ab = _is_bold(ew), _is_bold(aw)
-                        if eb != ab:
-                            bold_changed_regions.append({
-                                "text": txt, "change": "bold_added" if ab else "bold_removed",
-                                "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
-                                "bbox_act": _scale_word(aw, act_sx, act_sy),
-                            })
-                        else:
-                            es = float(ew.get("size", 0) or 0)
-                            as_ = float(aw.get("size", 0) or 0)
-                            if es > 0 and as_ > 0 and abs(as_ - es) > _SIZE_TOLERANCE:
-                                size_changed_regions.append({
-                                    "text": txt, "exp_size": round(es, 1), "act_size": round(as_, 1),
-                                    "change": "larger" if as_ > es else "smaller",
-                                    "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
-                                    "bbox_act": _scale_word(aw, act_sx, act_sy),
-                                })
-                        xs = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
-                        tol = _ALIGN_TOLERANCE_LIST if is_m else _ALIGN_TOLERANCE_BODY
-                        if abs(xs) > tol:
-                            rec = {"text": txt, "x_shift_pts": round(xs, 1),
-                                   "direction": "right" if xs > 0 else "left",
-                                   "is_list_marker": is_m,
-                                   "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
-                                   "bbox_act": _scale_word(aw, act_sx, act_sy)}
-                            (alignment_shifted_list if is_m else alignment_shifted_body).append(rec)
+            if tag == "equal":
+                for ep, ap in zip(exp_paras[i1:i2], act_paras[j1:j2]):
+                    _check_paragraph_formatting(ep, ap)
+            elif tag == "replace" and (i2 - i1) == (j2 - j1):
+                # 1-to-1 paragraph replacement: check formatting changes
+                # even though text content also changed
+                for ep, ap in zip(exp_paras[i1:i2], act_paras[j1:j2]):
+                    _check_paragraph_formatting(ep, ap)
 
         reportable_align_list = alignment_shifted_list
         reportable_align_body = alignment_shifted_body if len(alignment_shifted_body) >= _MIN_ALIGN_WORDS_BODY else []
