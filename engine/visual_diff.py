@@ -1571,10 +1571,7 @@ class VisualDiff:
             draw.text((idx * w + 12, 8),  text,   fill=color,        font=font)
             if suffix:
                 draw.text((idx * w + 12, 26), suffix, fill=(180, 180, 180), font=font)
-
-    # ---------------------------------------------------
-    # Single-PDF page rendering (basic mode snapshots)
-    # ---------------------------------------------------
+        return img
 
     def render_pages(
         self,
