@@ -688,12 +688,14 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         # Mode-specific bucket enforcement: strip findings the LLM adds outside
         # the intended scope regardless of prompt instructions.
         if effective_mode == "specific":
-            # Specific mode: only assertion-driven categories are valid.
-            # value_mismatches (Exact/Checkbox/Calc), missing_content (Signature),
-            # format_issues (Pattern/Date), compliance_issues (Conditional),
-            # extra_content — everything else is out of scope.
+            # Specific mode: only assertion-driven buckets are valid.
+            # Keep: value_mismatches, missing_content, compliance_issues.
+            # Clear everything else — LLM routinely adds unsolicited findings
+            # to format_issues / extra_content / etc. even when assertions pass,
+            # causing false REVIEW/FAIL verdicts.
             for _oos in (
-                "spelling_errors", "layout_anomalies", "typography_issues",
+                "spelling_errors", "format_issues", "extra_content",
+                "layout_anomalies", "typography_issues",
                 "accessibility_issues", "visual_mismatches", "structural_changes",
             ):
                 result_json[_oos] = []
