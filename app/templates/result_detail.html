@@ -70,6 +70,27 @@
       </div>
 
       <div class="rd-iframe-wrap">
+        <!-- Live status banner — always reflects current DB state, not the static HTML report -->
+        {% set _s = rr.status or 'unknown' %}
+        {% if _s == 'passed' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#22c55e;">PASSED</span>
+            <span style="font-size:12px;color:var(--text-muted);">All findings reviewed and cleared. The static report below is for reference only.</span>
+          </div>
+        {% elif _s == 'failed' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#ef4444;">FAILED</span>
+            <span style="font-size:12px;color:var(--text-muted);">Confirmed defects found. See Review Findings for details.</span>
+          </div>
+        {% elif _s == 'in_review' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#d97706;">IN REVIEW</span>
+            <span style="font-size:12px;color:var(--text-muted);">Findings require human review. Visit <a href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="color:#d97706;">Review Findings</a> to act on them.</span>
+          </div>
+        {% endif %}
         {% if report_url %}
           <iframe id="report-iframe" class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
         {% else %}
