@@ -4,95 +4,562 @@
 
 {% block content %}
 
-<div class="contact-hero">
-  <div>
-    <h2 class="contact-title">Talk to the FAST team</h2>
-    <p class="contact-subtitle">
-      FAST helps financial teams validate forms with repeatable evidence — not screenshots and debates.
-      Reach out for onboarding, design review, or a quick proof-of-value.
-    </p>
+<div id="cp-wrap" data-theme="dark">
 
-    <div class="contact-chips">
-      <span class="chip">JSON + Plain English</span>
-      <span class="chip">Built for financial orgs</span>
+<!-- ── Theme toggle ────────────────────────────────────────── -->
+<button id="cp-theme-btn" title="Toggle light / dark">
+  <svg id="cp-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  <svg id="cp-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<!-- ── Hero ────────────────────────────────────────────────── -->
+<div class="cp-hero">
+  <div class="cp-eyebrow">
+    <span class="cp-eyebrow-dot"></span>
+    AI-Assisted Forms Testing · CGI
+  </div>
+  <h1 class="cp-hero-title">FAST — <em>F</em>orm <em>A</em>nalysis &amp; <em>S</em>ecurity <em>T</em>esting</h1>
+  <p class="cp-hero-sub">
+    Stop validating forms with screenshots and spreadsheets.<br>
+    FAST generates traceable, audit-ready evidence automatically — every run, every release.
+  </p>
+  <div class="cp-hero-pills">
+    <span class="cp-pill">3 Validation Modes</span>
+    <span class="cp-pill">Multi-Model AI</span>
+    <span class="cp-pill">Visual Diff Engine</span>
+    <span class="cp-pill">Jira Integration</span>
+    <span class="cp-pill">Audit Trail</span>
+  </div>
+</div>
+
+<!-- ── Feature grid ────────────────────────────────────────── -->
+<div class="cp-section-label">What FAST does</div>
+<div class="cp-feature-grid">
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-red">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Three Validation Modes</div>
+      <div class="cp-feat-desc"><strong>Basic</strong> — self-review against built-in rules. <strong>Specific</strong> — validate against your business assertions. <strong>Benchmark</strong> — compare two PDF versions side-by-side.</div>
     </div>
   </div>
 
-  <div class="contact-cta">
-    <div class="cta-title">Need a demo or onboarding?</div>
-    <div class="cta-text">We can run a 30-min walkthrough using your real forms (images can come later).</div>
-    <div class="cta-actions">
-      <a class="btn btn-primary" href="mailto:dj.chanda@cgi.com?subject=FAST%20Request%20-%20Demo%20/%20Onboarding">Request a Demo</a>
-      <a class="btn btn-outline" href="mailto:dj.chanda@cgi.com?subject=FAST%20Support%20Request">Ask a Question</a>
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-blue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="9" height="18" rx="1"/><rect x="13" y="3" width="9" height="18" rx="1"/><line x1="2" y1="8" x2="11" y2="8"/><line x1="13" y1="8" x2="22" y2="8"/><line x1="2" y1="16" x2="11" y2="16"/><line x1="13" y1="16" x2="22" y2="16"/></svg>
     </div>
-    <div class="cta-note">Typical response time: same business day.</div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Visual Diff Engine</div>
+      <div class="cp-feat-desc">Page-by-page pixel comparison with annotated side-by-side panels. Detects moved fields, text changes, signature regions, and font differences automatically.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 1 8 8v4a8 8 0 0 1-16 0v-4a8 8 0 0 1 8-8z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Multi-Model AI Analysis</div>
+      <div class="cp-feat-desc">Choose between Claude, Gemini, or GPT-4o as the analysis engine. Findings are categorised by type (spelling, format, value mismatch, compliance) and severity.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Review &amp; Approval Workflow</div>
+      <div class="cp-feat-desc">Assign findings to reviewers, confirm defects, mark false positives. Formal approval gate with named sign-off before a run is marked production-ready.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">False Positive Learning</div>
+      <div class="cp-feat-desc">Mark an observation as a false positive once — FAST learns the pattern and suppresses the same noise automatically on every future run. No repeated manual dismissal.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-blue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Jira Integration</div>
+      <div class="cp-feat-desc">Log confirmed defects directly to Jira Cloud with one click from the Review Findings page. Ticket keys persist across re-runs so history is never lost.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-purple">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Trend Analytics</div>
+      <div class="cp-feat-desc">Per-test-case run history charts filtered by Pass / Fail / In Review. Spot regressions, track quality improvement, and see the effect of process changes over time.</div>
+    </div>
+  </div>
+
+  <div class="cp-feat-card">
+    <div class="cp-feat-icon cp-icon-green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    </div>
+    <div class="cp-feat-body">
+      <div class="cp-feat-title">Evidence Bundle &amp; Audit Trail</div>
+      <div class="cp-feat-desc">Every action — review, resolution, approval — is timestamped in the Audit Log. Download the full evidence bundle (annotated PDF + diff images + report) for compliance submissions.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── How it works ────────────────────────────────────────── -->
+<div class="cp-section-label" style="margin-top:48px;">How it works</div>
+<div class="cp-steps">
+  <div class="cp-step">
+    <div class="cp-step-num">1</div>
+    <div class="cp-step-body">
+      <div class="cp-step-title">Upload your forms</div>
+      <div class="cp-step-text">Drop in one or two PDFs — your current form, or a baseline to benchmark against.</div>
+    </div>
+  </div>
+  <div class="cp-step-arrow">→</div>
+  <div class="cp-step">
+    <div class="cp-step-num">2</div>
+    <div class="cp-step-body">
+      <div class="cp-step-title">Define test cases</div>
+      <div class="cp-step-text">Write rules in plain English or JSON. Choose Basic, Specific, or Benchmark mode.</div>
+    </div>
+  </div>
+  <div class="cp-step-arrow">→</div>
+  <div class="cp-step">
+    <div class="cp-step-num">3</div>
+    <div class="cp-step-body">
+      <div class="cp-step-title">Execute &amp; Review</div>
+      <div class="cp-step-text">AI runs the validation. Reviewers act on findings, log defects to Jira, approve the run.</div>
+    </div>
+  </div>
+  <div class="cp-step-arrow">→</div>
+  <div class="cp-step">
+    <div class="cp-step-num">4</div>
+    <div class="cp-step-body">
+      <div class="cp-step-title">Rerun &amp; trend</div>
+      <div class="cp-step-text">Run again next release. False positives are suppressed automatically. Track quality over time.</div>
+    </div>
   </div>
 </div>
 
-<div class="contact-section-title">Key contacts</div>
-<div class="muted">Pick the right lane and you’ll get answers faster.</div>
+<!-- ── Contact section ─────────────────────────────────────── -->
+<div class="cp-section-label" style="margin-top:48px;">Get in touch</div>
+<div class="cp-contact-row">
 
-<div class="grid-3 contact-grid modern">
-  <!-- Executive Sponsors -->
-  <div class="card contact-card v2">
-    <div class="contact-banner sponsor">
-      <div class="banner-title">Executive Sponsor</div>
-      <div class="banner-sub">Strategy • Governance • Scale</div>
+  <div class="cp-cta-box">
+    <div class="cp-cta-title">Need a demo or onboarding?</div>
+    <div class="cp-cta-text">We can run a 30-min walkthrough using your real forms — evidence you can reuse every release.</div>
+    <div class="cp-cta-actions">
+      <a class="cp-btn-primary" href="mailto:dj.chanda@cgi.com?subject=FAST%20Request%20-%20Demo%20/%20Onboarding">Request a Demo</a>
+      <a class="cp-btn-ghost" href="mailto:dj.chanda@cgi.com?subject=FAST%20Support%20Request">Ask a Question</a>
     </div>
-
-    <div class="contact-body v2">
-      <img class="avatar v2" src="{{ url_for('static', filename='assets/people/sponsor1.png') }}" alt="Executive Sponsor" />
-      <div class="contact-name">Rakesh Samal</div>
-
-      <div class="contact-lines">
-        <div class="contact-line"><b>Email:</b> rakesh.samal@cgi.com</div>
-        <div class="contact-line"><b>Phone:</b> </div>
-      </div>
-
-      <div class="contact-mini">
-        Best for: rollout approvals, enterprise onboarding, stakeholder alignment.
-      </div>
-    </div>
+    <div class="cp-cta-note">Typical response: same business day</div>
   </div>
 
-  <!-- Solution Architect -->
-  <div class="card contact-card v2">
-    <div class="contact-banner architect">
-      <div class="banner-title">Solution Architect</div>
-      <div class="banner-sub">Design • Integration • Patterns</div>
-    </div>
-
-    <div class="contact-body v2">
-      <img class="avatar v2" src="{{ url_for('static', filename='assets/people/solution1.png') }}" alt="Solution Architect" />
-      <div class="contact-name">DJ Chanda</div>
-
-      <div class="contact-lines">
-        <div class="contact-line"><b>Email:</b> dj.chanda@cgi.com</div>
-        <div class="contact-line"><b>Phone:</b> 416-275-0614</div>
-      </div>
-
-      <div class="contact-mini">
-        Best for: architecture review, environments, security alignment, scaling usage.
-      </div>
-    </div>
+  <div class="cp-person-card">
+    <div class="cp-person-role">Executive Sponsor</div>
+    <img class="cp-avatar" src="{{ url_for('static', filename='assets/people/sponsor1.png') }}" alt="Rakesh Samal" />
+    <div class="cp-person-name">Rakesh Samal</div>
+    <div class="cp-person-email">rakesh.samal@cgi.com</div>
+    <div class="cp-person-note">Strategy · Governance · Scale</div>
   </div>
 
-  <!-- Delivery / Support -->
+  <div class="cp-person-card">
+    <div class="cp-person-role">Solution Architect</div>
+    <img class="cp-avatar" src="{{ url_for('static', filename='assets/people/solution1.png') }}" alt="DJ Chanda" />
+    <div class="cp-person-name">DJ Chanda</div>
+    <div class="cp-person-email">dj.chanda@cgi.com</div>
+    <div class="cp-person-note">Architecture · Integration · Delivery</div>
+  </div>
 
-
-<div class="contact-strip">
-  <div class="strip-item">
-    <div class="strip-title">1) Align on use case</div>
-    <div class="strip-text">What are we validating: compliance fields, signatures, consistency, benchmarks?</div>
-  </div>
-  <div class="strip-item">
-    <div class="strip-title">2) Run a proof</div>
-    <div class="strip-text">Pick 1–2 high-risk forms. FAST generates evidence you can reuse every release.</div>
-  </div>
-  <div class="strip-item">
-    <div class="strip-title">3) Operationalize</div>
-    <div class="strip-text">Standard rules, reporting, and a repeatable workflow for testers and business.</div>
-  </div>
 </div>
+
+</div>{# /cp-wrap #}
+
+<!-- ── Styles ───────────────────────────────────────────────── -->
+<style>
+/* ---- Token sets ----------------------------------------- */
+#cp-wrap[data-theme="dark"] {
+  --cp-bg:        transparent;
+  --cp-surface:   rgba(255,255,255,0.04);
+  --cp-surface2:  rgba(255,255,255,0.07);
+  --cp-border:    rgba(255,255,255,0.08);
+  --cp-text:      #e2e8f0;
+  --cp-sub:       #94a3b8;
+  --cp-muted:     #475569;
+  --cp-accent:    #e31837;
+  --cp-pill-bg:   rgba(255,255,255,0.07);
+  --cp-pill-text: #94a3b8;
+  --cp-step-num:  rgba(227,24,55,0.15);
+  --cp-step-tc:   #e31837;
+  --cp-cta-bg:    rgba(227,24,55,0.08);
+  --cp-cta-border:rgba(227,24,55,0.25);
+  --cp-btn-ghost-bg: rgba(255,255,255,0.06);
+  --cp-btn-ghost-border: rgba(255,255,255,0.12);
+  --cp-btn-ghost-text: #cbd5e1;
+}
+#cp-wrap[data-theme="light"] {
+  --cp-bg:        #f8fafc;
+  --cp-surface:   #ffffff;
+  --cp-surface2:  #f1f5f9;
+  --cp-border:    rgba(0,0,0,0.08);
+  --cp-text:      #0f172a;
+  --cp-sub:       #475569;
+  --cp-muted:     #94a3b8;
+  --cp-accent:    #c8192a;
+  --cp-pill-bg:   #f1f5f9;
+  --cp-pill-text: #475569;
+  --cp-step-num:  rgba(200,25,42,0.1);
+  --cp-step-tc:   #c8192a;
+  --cp-cta-bg:    rgba(200,25,42,0.05);
+  --cp-cta-border:rgba(200,25,42,0.2);
+  --cp-btn-ghost-bg: #f1f5f9;
+  --cp-btn-ghost-border: #e2e8f0;
+  --cp-btn-ghost-text: #334155;
+}
+
+/* ---- Wrap ------------------------------------------------ */
+#cp-wrap {
+  background: var(--cp-bg);
+  color: var(--cp-text);
+  transition: background .25s, color .25s;
+  padding-bottom: 60px;
+}
+
+/* ---- Theme toggle button --------------------------------- */
+#cp-theme-btn {
+  position: fixed;
+  top: 70px;
+  right: 24px;
+  z-index: 200;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--cp-sub);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: background .2s, color .2s, box-shadow .2s;
+}
+#cp-theme-btn:hover {
+  background: var(--cp-surface2);
+  color: var(--cp-text);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* ---- Hero ----------------------------------------------- */
+.cp-hero {
+  padding: 40px 0 32px;
+  max-width: 720px;
+}
+.cp-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cp-accent);
+  margin-bottom: 16px;
+}
+.cp-eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cp-accent); flex-shrink: 0;
+}
+.cp-hero-title {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--cp-text);
+  margin-bottom: 14px;
+  letter-spacing: -.5px;
+}
+.cp-hero-title em { font-style: normal; color: var(--cp-accent); }
+.cp-hero-sub {
+  font-size: 15px;
+  color: var(--cp-sub);
+  line-height: 1.65;
+  margin-bottom: 22px;
+}
+.cp-hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cp-pill {
+  background: var(--cp-pill-bg);
+  color: var(--cp-pill-text);
+  border: 1px solid var(--cp-border);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ---- Section label -------------------------------------- */
+.cp-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cp-muted);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cp-border);
+}
+
+/* ---- Feature grid --------------------------------------- */
+.cp-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.cp-feat-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  padding: 18px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.cp-feat-card:hover {
+  border-color: rgba(200,25,42,0.25);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.cp-feat-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cp-feat-icon svg { width: 18px; height: 18px; }
+.cp-icon-red    { background: rgba(220,38,38,.12);  color: #f87171; border: 1px solid rgba(220,38,38,.2); }
+.cp-icon-blue   { background: rgba(59,130,246,.12); color: #60a5fa; border: 1px solid rgba(59,130,246,.2); }
+.cp-icon-purple { background: rgba(139,92,246,.12); color: #a78bfa; border: 1px solid rgba(139,92,246,.2); }
+.cp-icon-green  { background: rgba(34,197,94,.12);  color: #4ade80; border: 1px solid rgba(34,197,94,.2); }
+.cp-icon-amber  { background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.2); }
+
+#cp-wrap[data-theme="light"] .cp-icon-red    { background: rgba(220,38,38,.08);  color: #dc2626; border-color: rgba(220,38,38,.15); }
+#cp-wrap[data-theme="light"] .cp-icon-blue   { background: rgba(59,130,246,.08); color: #2563eb; border-color: rgba(59,130,246,.15); }
+#cp-wrap[data-theme="light"] .cp-icon-purple { background: rgba(139,92,246,.08); color: #7c3aed; border-color: rgba(139,92,246,.15); }
+#cp-wrap[data-theme="light"] .cp-icon-green  { background: rgba(22,163,74,.08);  color: #16a34a; border-color: rgba(22,163,74,.15); }
+#cp-wrap[data-theme="light"] .cp-icon-amber  { background: rgba(217,119,6,.08);  color: #d97706; border-color: rgba(217,119,6,.15); }
+
+.cp-feat-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-text);
+  margin-bottom: 4px;
+}
+.cp-feat-desc {
+  font-size: 12.5px;
+  color: var(--cp-sub);
+  line-height: 1.55;
+}
+.cp-feat-desc strong { color: var(--cp-text); font-weight: 600; }
+
+/* ---- How it works steps --------------------------------- */
+.cp-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.cp-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 180px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  padding: 18px;
+}
+.cp-step-arrow {
+  align-self: center;
+  color: var(--cp-muted);
+  font-size: 18px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.cp-step-num {
+  width: 32px; height: 32px;
+  background: var(--cp-step-num);
+  color: var(--cp-step-tc);
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cp-step-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cp-text);
+  margin-bottom: 4px;
+}
+.cp-step-text {
+  font-size: 12px;
+  color: var(--cp-sub);
+  line-height: 1.5;
+}
+
+/* ---- Contact row ---------------------------------------- */
+.cp-contact-row {
+  display: grid;
+  grid-template-columns: 1fr 180px 180px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.cp-cta-box {
+  background: var(--cp-cta-bg);
+  border: 1px solid var(--cp-cta-border);
+  border-radius: 14px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cp-cta-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cp-text);
+}
+.cp-cta-text {
+  font-size: 13px;
+  color: var(--cp-sub);
+  line-height: 1.6;
+  flex: 1;
+}
+.cp-cta-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.cp-btn-primary {
+  background: var(--cp-accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity .15s, box-shadow .15s;
+}
+.cp-btn-primary:hover { opacity: .88; box-shadow: 0 4px 14px rgba(200,25,42,.35); }
+.cp-btn-ghost {
+  background: var(--cp-btn-ghost-bg);
+  color: var(--cp-btn-ghost-text);
+  border: 1px solid var(--cp-btn-ghost-border);
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s;
+}
+.cp-btn-ghost:hover { background: var(--cp-surface2); }
+.cp-cta-note {
+  font-size: 11px;
+  color: var(--cp-muted);
+}
+
+.cp-person-card {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 14px;
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: border-color .15s;
+}
+.cp-person-card:hover { border-color: rgba(200,25,42,.3); }
+.cp-person-role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cp-accent);
+  margin-bottom: 6px;
+}
+.cp-avatar {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--cp-border);
+  background: var(--cp-surface2);
+}
+.cp-person-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cp-text);
+}
+.cp-person-email {
+  font-size: 11px;
+  color: #3b82f6;
+  word-break: break-all;
+}
+.cp-person-note {
+  font-size: 11px;
+  color: var(--cp-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 820px) {
+  .cp-contact-row { grid-template-columns: 1fr; }
+  .cp-steps { flex-direction: column; gap: 8px; }
+  .cp-step-arrow { display: none; }
+}
+</style>
+
+<script>
+(function () {
+  const wrap = document.getElementById('cp-wrap');
+  const btn  = document.getElementById('cp-theme-btn');
+  const sun  = document.getElementById('cp-sun');
+  const moon = document.getElementById('cp-moon');
+
+  const saved = localStorage.getItem('cp-theme') || 'dark';
+  setTheme(saved);
+
+  btn.addEventListener('click', () => {
+    setTheme(wrap.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+
+  function setTheme(t) {
+    wrap.dataset.theme = t;
+    localStorage.setItem('cp-theme', t);
+    sun.style.display  = t === 'light' ? 'block' : 'none';
+    moon.style.display = t === 'dark'  ? 'block' : 'none';
+  }
+})();
+</script>
 
 {% endblock %}
