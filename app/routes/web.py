@@ -83,9 +83,10 @@ def is_logged_in() -> bool:
 
 
 @web_bp.before_request
-def _enforce_reviewer_project_access():
-    """Block reviewer users from accessing projects they are not assigned to."""
-    if session.get("role") != "reviewer":
+def _enforce_project_access():
+    """Block non-admin users from accessing projects they are not assigned to."""
+    role = session.get("role")
+    if role == "admin" or role is None:
         return None
     if not request.view_args:
         return None
@@ -215,7 +216,7 @@ def home():
     from datetime import datetime, timedelta
     from sqlalchemy import func
 
-    if session.get("role") == "reviewer":
+    if session.get("role") != "admin":
         member_pids = [
             m.project_id for m in
             ProjectMember.query.filter_by(user_id=session.get("user_id")).all()
@@ -265,7 +266,7 @@ def home():
 
 @web_bp.route("/projects/create", methods=["GET", "POST"])
 def create_project():
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -496,7 +497,7 @@ def project_forms(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/forms/upload", methods=["POST"])
 def upload_project_forms(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -584,7 +585,7 @@ def delete_form(project_id: int, form_id: int):
 
 @web_bp.route("/projects/<int:project_id>/forms/<int:form_id>/delete_project_form", methods=["POST"])
 def delete_project_form(project_id: int, form_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -699,7 +700,7 @@ def new_testcase(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/testcases/create", methods=["POST"])
 def create_testcase(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -749,7 +750,7 @@ def create_testcase(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>/delete", methods=["POST"])
 def delete_testcase(project_id: int, testcase_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -803,7 +804,7 @@ def _cleanup_stuck_runs(project_id: int) -> None:
 
 @web_bp.route("/projects/<int:project_id>/execute/run", methods=["POST"])
 def execute_run(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("reviewer")
     if gate:
         return gate
 
@@ -965,7 +966,7 @@ def project_results(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/delete", methods=["POST"])
 def delete_run(project_id: int, run_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 

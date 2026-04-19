@@ -13,6 +13,7 @@
       {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
     </div>
   </div>
+  {% if session.get('role') == 'admin' %}
   <div class="ov-actions">
     <form action="{{ url_for('web.upload_project_forms', project_id=project.id) }}"
           method="POST" enctype="multipart/form-data" id="upload-form" class="upload-inline-form">
@@ -24,6 +25,7 @@
       </label>
     </form>
   </div>
+  {% endif %}
 </div>
 
 <!-- Upload progress bar -->
@@ -104,6 +106,7 @@
                  href="{{ url_for('web.form_accessibility', project_id=project.id, form_id=f.id) }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
               </a>
+              {% if session.get('role') == 'admin' %}
               {% if _tcs %}
               <!-- Form is in use: show force-delete button with a stronger confirm -->
               <form action="{{ url_for('web.delete_project_form', project_id=project.id, form_id=f.id) }}"
@@ -122,6 +125,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                 </button>
               </form>
+              {% endif %}
               {% endif %}
             </div>
           </td>

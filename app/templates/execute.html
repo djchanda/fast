@@ -17,10 +17,12 @@
     <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
       ← Test Cases
     </a>
+    {% if session.get('role') in ('admin', 'reviewer') %}
     <button id="executeBtn" form="execForm" class="btn btn-primary" type="submit">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       Execute Selected
     </button>
+    {% endif %}
   </div>
 </div>
 
