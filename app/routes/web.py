@@ -350,6 +350,33 @@ def project_overview(project_id: int):
                              "pass_f": pass_f, "defect_f": defect_f, "pending_f": open_f,
                              "jira_keys": jira_keys})
 
+    # Aggregate dashboard metrics derived from tc_summaries
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc)
+
+    def _time_ago(dt):
+        if not dt:
+            return "Never"
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        diff = int((now_utc - dt).total_seconds())
+        if diff < 60:
+            return "just now"
+        if diff < 3600:
+            return f"{diff // 60}m ago"
+        if diff < 86400:
+            return f"{diff // 3600}h ago"
+        return f"{diff // 86400}d ago"
+
+    for s in tc_summaries:
+        s["time_ago"] = _time_ago(s["rr"].created_at if s["rr"] else None)
+
+    total_open_defects = sum(s["defect_f"] for s in tc_summaries)
+    total_pending      = sum(s["pending_f"] for s in tc_summaries)
+    tests_passing   = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "passed")
+    tests_failing   = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "failed")
+    tests_in_review = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "in_review")
+
     return render_template(
         "project_overview.html",
         page_title=f"FAST | {project.name}",
@@ -362,6 +389,11 @@ def project_overview(project_id: int):
         total_run_count=total_run_count,
         pass_rate=pass_rate,
         tc_summaries=tc_summaries,
+        total_open_defects=total_open_defects,
+        total_pending=total_pending,
+        tests_passing=tests_passing,
+        tests_failing=tests_failing,
+        tests_in_review=tests_in_review,
         user=session.get("user"),
     )
 

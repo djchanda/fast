@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<!-- Page header -->
+<!-- ── Page header ──────────────────────────────────────────── -->
 <div class="ov-header">
   <div class="ov-title-block">
     <h1 class="ov-project-name">{{ project.name }}</h1>
@@ -16,205 +16,189 @@
   </div>
   <div class="ov-actions">
     <a class="btn btn-outline" href="{{ url_for('web.project_forms', project_id=project.id) }}">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Upload Forms
     </a>
     <a class="btn btn-outline" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Test Case
     </a>
     <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
       Execute
     </a>
   </div>
 </div>
 
-<!-- Project-wide stat cards -->
-<div class="ov-kpi-row">
-  <div class="ov-kpi ov-kpi-blue">
-    <div class="ov-kpi-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    </div>
-    <div class="ov-kpi-num">{{ form_count }}</div>
-    <div class="ov-kpi-label">Forms Uploaded</div>
-    <div class="ov-kpi-sub">PDF forms in this project</div>
+<!-- ── Stat strip ───────────────────────────────────────────── -->
+<div class="dash-strip">
+  <div class="dash-kv">
+    <span class="dash-kv-num">{{ form_count }}</span>
+    <span class="dash-kv-label">Forms</span>
   </div>
-  <div class="ov-kpi ov-kpi-amber">
-    <div class="ov-kpi-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-    </div>
-    <div class="ov-kpi-num">{{ test_case_count }}</div>
-    <div class="ov-kpi-label">Test Cases</div>
-    <div class="ov-kpi-sub">Defined validation rules</div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv">
+    <span class="dash-kv-num">{{ test_case_count }}</span>
+    <span class="dash-kv-label">Test Cases</span>
   </div>
-  <div class="ov-kpi ov-kpi-red">
-    <div class="ov-kpi-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    </div>
-    <div class="ov-kpi-num">{{ total_run_count }}</div>
-    <div class="ov-kpi-label">Total Runs</div>
-    <div class="ov-kpi-sub">All-time executions</div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv">
+    <span class="dash-kv-num">{{ total_run_count }}</span>
+    <span class="dash-kv-label">Total Runs</span>
   </div>
-  <div class="ov-kpi ov-kpi-green">
-    <div class="ov-kpi-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    </div>
-    <div class="ov-kpi-num">{{ pass_rate }}<span class="ov-kpi-unit">%</span></div>
-    <div class="ov-kpi-label">Pass Rate</div>
-    <div class="ov-kpi-sub">Across all runs</div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv">
+    <span class="dash-kv-num {% if pass_rate >= 80 %}dash-num-green{% elif pass_rate >= 50 %}dash-num-amber{% else %}dash-num-red{% endif %}">{{ pass_rate }}%</span>
+    <span class="dash-kv-label">Pass Rate</span>
+  </div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv">
+    <span class="dash-kv-num {% if total_open_defects %}dash-num-red{% endif %}">{{ total_open_defects }}</span>
+    <span class="dash-kv-label">Confirmed Defects</span>
+  </div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv">
+    <span class="dash-kv-num {% if total_pending %}dash-num-amber{% endif %}">{{ total_pending }}</span>
+    <span class="dash-kv-label">Pending Review</span>
+  </div>
+  <div class="dash-sep"></div>
+  <div class="dash-kv dash-kv-tests">
+    {% if tests_passing %}<span class="dash-test-dot dot-green"></span><span class="dash-kv-sub">{{ tests_passing }} passing</span>{% endif %}
+    {% if tests_failing %}<span class="dash-test-dot dot-red" style="margin-left:8px;"></span><span class="dash-kv-sub dash-sub-red">{{ tests_failing }} failing</span>{% endif %}
+    {% if tests_in_review %}<span class="dash-test-dot dot-amber" style="margin-left:8px;"></span><span class="dash-kv-sub dash-sub-amber">{{ tests_in_review }} in review</span>{% endif %}
+    {% if not tests_passing and not tests_failing and not tests_in_review %}
+      <span class="dash-kv-sub">No runs yet</span>
+    {% endif %}
   </div>
 </div>
 
-<!-- Test Case Summary -->
+<!-- ── Test Health ───────────────────────────────────────────── -->
 <div class="card">
   <div class="card-header">
-    <span>Test Case Summary</span>
-    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
-      Manage Test Cases →
-    </a>
+    <span>Test Health</span>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_testcases', project_id=project.id) }}">Manage →</a>
   </div>
 
   {% if tc_summaries %}
-  <div class="card-body p0">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Test Case</th>
-          <th>Last Run</th>
-          <th>Status</th>
-          <th style="text-align:center;">Observations</th>
-          <th style="text-align:center;">Passed</th>
-          <th style="text-align:center;">Defects</th>
-          <th style="text-align:center;">Pending</th>
-          <th>Defect Tickets</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in tc_summaries %}
-        {% set rr = s.rr %}
-        {% set st = rr.status if rr else 'never_run' %}
-        <tr>
-          <!-- Test case name + mode -->
-          <td>
-            <div style="font-weight:600;font-size:13px;">{{ s.tc.name }}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ s.tc.mode | upper }}</div>
-          </td>
-          <!-- Last run date -->
-          <td class="text-muted" style="font-size:12px;">
-            {% if rr %}{{ rr.created_at.strftime("%Y-%m-%d %H:%M") if rr.created_at else "—" }}{% else %}Never{% endif %}
-          </td>
-          <!-- Status chip -->
-          <td>
-            {% if st == 'passed' %}
-              <span class="stat-pill stat-pill-green">PASSED</span>
-            {% elif st == 'failed' %}
-              <span class="stat-pill stat-pill-red">FAILED</span>
-            {% elif st == 'in_review' %}
-              <span class="stat-pill stat-pill-amber">IN REVIEW</span>
-            {% elif st == 'running' %}
-              <span class="stat-pill stat-pill-amber">RUNNING</span>
-            {% else %}
-              <span class="stat-pill stat-pill-neutral">—</span>
-            {% endif %}
-          </td>
-          <!-- Total observations -->
-          <td style="text-align:center;">
-            {% if s.total_obs %}
-              <span class="stat-pill stat-pill-neutral">{{ s.total_obs }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <!-- Passed / No Issue -->
-          <td style="text-align:center;">
-            {% if s.pass_f %}
-              <span class="stat-pill stat-pill-green">{{ s.pass_f }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <!-- Confirmed Defects -->
-          <td style="text-align:center;">
-            {% if s.defect_f %}
-              <span class="stat-pill stat-pill-red">{{ s.defect_f }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <!-- Pending Review -->
-          <td style="text-align:center;">
-            {% if s.pending_f %}
-              <span class="stat-pill stat-pill-amber">{{ s.pending_f }}</span>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <!-- Jira defect tickets -->
-          <td>
-            {% if s.jira_keys %}
-              <div style="display:flex;flex-wrap:wrap;gap:4px;">
-                {% for key in s.jira_keys %}
-                  <span style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:monospace;">{{ key }}</span>
-                {% endfor %}
-              </div>
-            {% else %}
-              <span class="text-muted" style="font-size:12px;">—</span>
-            {% endif %}
-          </td>
-          <!-- Actions -->
-          <td class="right" style="white-space:nowrap;">
-            {% if rr %}
-              <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="margin-right:4px;">Review</a>
-              <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">Report →</a>
-            {% endif %}
-          </td>
-        </tr>
+  <div class="dash-tc-list">
+    {% for s in tc_summaries %}
+    {% set rr = s.rr %}
+    {% set st = rr.status if rr else 'never_run' %}
+    <div class="dash-tc-row">
+
+      <!-- Status dot -->
+      <div class="dash-tc-dot">
+        {% if st == 'passed' %}
+          <span class="dash-dot dash-dot-green" title="Passed"></span>
+        {% elif st == 'failed' %}
+          <span class="dash-dot dash-dot-red" title="Failed"></span>
+        {% elif st == 'in_review' %}
+          <span class="dash-dot dash-dot-amber" title="In Review"></span>
+        {% elif st == 'running' %}
+          <span class="dash-dot dash-dot-pulse" title="Running"></span>
+        {% else %}
+          <span class="dash-dot dash-dot-gray" title="Never run"></span>
+        {% endif %}
+      </div>
+
+      <!-- Name + mode -->
+      <div class="dash-tc-name-block">
+        <span class="dash-tc-name">{{ s.tc.name }}</span>
+        <span class="dash-mode-badge dash-mode-{{ s.tc.mode }}">{{ s.tc.mode | upper }}</span>
+      </div>
+
+      <!-- Finding bar + summary text -->
+      <div class="dash-bar-block">
+        {% if s.total_obs > 0 %}
+        {% set pct_pass    = ((s.pass_f    / s.total_obs) * 100) | round | int %}
+        {% set pct_defect  = ((s.defect_f  / s.total_obs) * 100) | round | int %}
+        {% set pct_pending = ((s.pending_f / s.total_obs) * 100) | round | int %}
+        <div class="dash-bar" title="{{ s.pass_f }} pass · {{ s.defect_f }} defects · {{ s.pending_f }} pending">
+          {% if pct_pass    %}<div class="dash-bar-seg dash-seg-green"  style="width:{{ pct_pass }}%"></div>{% endif %}
+          {% if pct_defect  %}<div class="dash-bar-seg dash-seg-red"    style="width:{{ pct_defect }}%"></div>{% endif %}
+          {% if pct_pending %}<div class="dash-bar-seg dash-seg-amber"  style="width:{{ pct_pending }}%"></div>{% endif %}
+        </div>
+        <div class="dash-bar-label">
+          <span>{{ s.total_obs }} obs</span>
+          {% if s.pass_f %}<span class="dash-bl-green">· {{ s.pass_f }} pass</span>{% endif %}
+          {% if s.defect_f %}<span class="dash-bl-red">· {{ s.defect_f }} defect{{ 's' if s.defect_f != 1 }}</span>{% endif %}
+          {% if s.pending_f %}<span class="dash-bl-amber">· {{ s.pending_f }} pending</span>{% endif %}
+        </div>
+        {% else %}
+        <div class="dash-bar dash-bar-empty"></div>
+        <div class="dash-bar-label"><span class="text-muted">No findings</span></div>
+        {% endif %}
+      </div>
+
+      <!-- Jira tickets -->
+      <div class="dash-jira-block">
+        {% for key in s.jira_keys %}
+          <span class="dash-jira-key">{{ key }}</span>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+
+      <!-- Time ago + actions -->
+      <div class="dash-tc-tail">
+        <span class="dash-time">{{ s.time_ago }}</span>
+        {% if rr %}
+          <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}">Review</a>
+          <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">Report</a>
+        {% else %}
+          <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_execute', project_id=project.id) }}">Run</a>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <div class="card-body">
     <div class="empty-state">
       <p class="empty-title">No test cases yet</p>
-      <p class="empty-text">Create a test case and execute it to see results here.</p>
+      <p class="empty-text">Create a test case to start validating forms.</p>
     </div>
   </div>
   {% endif %}
 </div>
 
-<!-- Recent Runs (compact) -->
+<!-- ── Recent Activity ──────────────────────────────────────── -->
 {% if recent_runs %}
-<div class="card" style="margin-top:16px;">
+<div class="card" style="margin-top:14px;">
   <div class="card-header">
-    <span>Recent Runs</span>
+    <span>Recent Activity</span>
     {% if last_summary.run_id %}
-    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
-      View Latest →
-    </a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">All Results →</a>
     {% endif %}
   </div>
-  <div class="card-body p0">
-    <table class="table">
-      <thead>
-        <tr><th>Run</th><th>When</th><th>By</th><th>Errors</th><th>Warnings</th><th>Passed</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for r in recent_runs %}
-        <tr>
-          <td><span class="run-badge">#{{ r.id }}</span></td>
-          <td class="text-muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
-          <td>{{ r.triggered_by or "—" }}</td>
-          <td>{% if r.errors %}<span class="stat-pill stat-pill-red">{{ r.errors }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
-          <td>{% if r.warnings %}<span class="stat-pill stat-pill-amber">{{ r.warnings }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
-          <td>{% if r.passed %}<span class="stat-pill stat-pill-green">{{ r.passed }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
-          <td class="right"><a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View →</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="dash-act-list">
+    {% for r in recent_runs %}
+    <div class="dash-act-row">
+      {% set rs = (r.status or 'unknown').lower() %}
+      {% if rs == 'completed' or rs == 'passed' %}
+        <span class="dash-dot dash-dot-green dash-dot-sm"></span>
+      {% elif rs == 'failed' %}
+        <span class="dash-dot dash-dot-red dash-dot-sm"></span>
+      {% elif rs == 'running' %}
+        <span class="dash-dot dash-dot-pulse dash-dot-sm"></span>
+      {% else %}
+        <span class="dash-dot dash-dot-gray dash-dot-sm"></span>
+      {% endif %}
+      <span class="dash-act-run">#{{ r.id }}</span>
+      <span class="dash-act-meta">
+        by {{ r.triggered_by or "—" }} · {{ r.created_at.strftime("%b %d, %H:%M") if r.created_at else "—" }}
+      </span>
+      {% if r.errors %}
+        <span class="stat-pill stat-pill-red" style="padding:1px 8px;font-size:11px;">{{ r.errors }} error{{ 's' if r.errors != 1 }}</span>
+      {% endif %}
+      {% if r.warnings %}
+        <span class="stat-pill stat-pill-amber" style="padding:1px 8px;font-size:11px;">{{ r.warnings }} warning{{ 's' if r.warnings != 1 }}</span>
+      {% endif %}
+      {% if r.passed and not r.errors and not r.warnings %}
+        <span class="stat-pill stat-pill-green" style="padding:1px 8px;font-size:11px;">passed</span>
+      {% endif %}
+      <a class="dash-act-link" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View →</a>
+    </div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}
