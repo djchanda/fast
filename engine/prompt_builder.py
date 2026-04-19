@@ -547,11 +547,11 @@ There is NO benchmark document in this mode — validate the form against itself
 Current PDF extraction meta:
 {current_meta}
 
-Current PDF text:
-{current_text}
+Current PDF text (first 5000 chars):
+{str(current_text or "")[:5000]}
 
-Current PDF per-page text:
-{current_pages}
+Current PDF per-page text (first 3000 chars):
+{str(current_pages or "")[:3000]}
 
 Current PDF form fields (ALWAYS RELIABLE — use for value checks):
 {current_fields}
@@ -593,11 +593,11 @@ Signature, Checkbox/Selection, Conditional, Calculation). Place results in the c
 Current PDF extraction meta:
 {current_meta}
 
-Current PDF text:
-{current_text}
+Current PDF text (first 5000 chars):
+{str(current_text or "")[:5000]}
 
-Current PDF per-page text:
-{current_pages}
+Current PDF per-page text (first 3000 chars):
+{str(current_pages or "")[:3000]}
 
 Current PDF form fields (ALWAYS RELIABLE — use for value assertions):
 {current_fields}
@@ -638,6 +638,19 @@ Current PDF form fields (ALWAYS RELIABLE — use for value assertions):
             if fd.get("has_structural_changes"):
                 doc_level_note += "\nFIELD STRUCTURE CHANGES detected — removed/added fields listed in DOCUMENT-LEVEL CHANGES."
 
+        # Truncate large text blocks to prevent prompt overflow and LLM JSON
+        # parse failures (Gemini returns truncated JSON when input is too long).
+        _MAX_TEXT = 6000
+        _MAX_PAGES_CHARS = 4000
+
+        def _trunc(s: Any, n: int) -> str:
+            t = str(s or "")
+            return t[:n] + "\n[... truncated ...]" if len(t) > n else t
+
+        def _trunc_pages(pages: Any, n: int) -> str:
+            txt = str(pages or "")
+            return txt[:n] + "\n[... truncated ...]" if len(txt) > n else txt
+
         user_content = f"""
 Perform BENCHMARK VALIDATION comparing a GOLDEN baseline PDF against a CURRENT PDF.
 
@@ -661,20 +674,20 @@ User-provided additional instructions:
 --- BASELINE (GOLDEN) PDF ---
 Extraction meta: {benchmark_meta}
 Full text:
-{benchmark_text}
+{_trunc(benchmark_text, _MAX_TEXT)}
 
 Per-page text:
-{benchmark_pages}
+{_trunc_pages(benchmark_pages, _MAX_PAGES_CHARS)}
 
 Form fields: {benchmark_fields}
 
 --- CURRENT PDF ---
 Extraction meta: {current_meta}
 Full text:
-{current_text}
+{_trunc(current_text, _MAX_TEXT)}
 
 Per-page text:
-{current_pages}
+{_trunc_pages(current_pages, _MAX_PAGES_CHARS)}
 
 Form fields: {current_fields}
 
