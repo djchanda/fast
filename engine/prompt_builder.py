@@ -164,16 +164,37 @@ def build_prompt(
             "- If per-page text is provided, use it for correct page numbers.\n\n"
 
             "OCR TEXT RELIABILITY — CRITICAL (prevents false positives):\n"
-            "- The extraction meta includes 'is_scanned_like' and 'used_ocr' flags.\n"
-            "- If is_scanned_like=True OR used_ocr=True: the body text came from OCR and is "
-            "UNRELIABLE for spell-checking. OCR commonly swaps u↔n, l↔1, O↔0, rn↔m, etc.\n"
-            "- For SCANNED PDFs: do NOT report single-word or single-character spelling errors "
-            "from body text — these are almost certainly OCR artifacts, not real typos.\n"
-            "- For SCANNED PDFs: only report a spelling error if it is ALSO present verbatim "
-            "in a form field value (form fields are AcroForm data, always reliable).\n"
-            "- For embedded (non-scanned) PDFs: spell-check body text normally.\n"
+            "- The extraction meta includes 'is_scanned_like', 'used_ocr', and "
+            "'text_is_sparse' flags.\n"
+            "- If is_scanned_like=True OR used_ocr=True OR text_is_sparse=True: body text "
+            "came from OCR or a minimal searchable layer — it is UNRELIABLE for spell-checking.\n"
+            "- For SCANNED/SPARSE PDFs: do NOT report single-word or single-character spelling "
+            "errors from body text — these are OCR artifacts, not real typos.\n"
+            "- For SCANNED/SPARSE PDFs: only report a spelling error if it ALSO appears verbatim "
+            "in a form field value (AcroForm data is always reliable).\n"
             "- Common OCR false positives to NEVER report: single letters swapped, 'rn' "
             "read as 'm', 'vv' read as 'w', character-level noise in legal/technical terms.\n\n"
+
+            "CONSERVATIVE SPELL-CHECK RULES — applies to ALL PDFs regardless of scan status:\n"
+            "Insurance, legal, and financial forms are professionally authored. Genuine spelling "
+            "errors are extremely rare. Apply ALL of these tests before reporting any spelling error:\n"
+            "  1. The word must be a COMMON everyday word (not a legal term, insurance term, "
+            "Latin phrase, medical term, or industry abbreviation).\n"
+            "  2. The error must be OBVIOUS to a non-specialist — clear transposition of ≤3 chars "
+            "in a short common word (e.g. 'teh'→'the', 'recieve'→'receive').\n"
+            "  3. The word is NOT in ALL-CAPS (all-caps text is intentional style in legal headers).\n"
+            "  4. The same word does NOT appear consistently throughout the document "
+            "(consistent = intentional spelling or house style).\n"
+            "  5. The error is in a user-visible label or section header — NOT inside legal "
+            "definitions, boilerplate clauses, or legal disclaimers (those have specialised "
+            "vocabulary that must not be second-guessed).\n"
+            "NEVER report as spelling errors:\n"
+            "  - Any word longer than 8 characters with a single-character difference "
+            "(rendering artifact, not a typo).\n"
+            "  - Legal definitions, disclosure text, or statutory language.\n"
+            "  - Proper nouns, company names, policy codes, form numbers.\n"
+            "  - Words inside parentheses in legal clauses.\n"
+            "  - Text that could be an abbreviation or acronym.\n\n"
 
             "PLACEHOLDER DETECTION — NARROW SCOPE:\n"
             "- Only flag as placeholder test data if the value is a widely-known generic "
@@ -184,19 +205,25 @@ def build_prompt(
             "placeholder data — these are legitimate technical identifiers.\n\n"
 
             "WATERMARK / SPECIMEN ARTIFACT DETECTION:\n"
-            "- Insurance forms frequently carry diagonal 'SAMPLE', 'SPECIMEN', 'DRAFT', 'VOID' stamps.\n"
-            "- Scattered isolated single characters spelling a watermark word are OCR artifacts — "
-            "NOT typos or data errors.\n"
-            "- Do NOT report watermark artifacts as spelling_errors. Report once as a single "
-            "format_issue with severity='low'.\n"
-            "- If the same artifact repeats across all pages, report it once, not per page.\n\n"
+            "- Insurance forms frequently carry diagonal 'SAMPLE', 'SPECIMEN', 'DRAFT', 'VOID', "
+            "'NOT FOR SALE', 'COPY' stamps across the page.\n"
+            "- Scattered isolated single characters or short fragments (e.g. 'S', 'A', 'M', "
+            "'P', 'L', 'E' spread across a page) are parts of a watermark rendered as text — "
+            "they are NOT individual spelling errors or data errors.\n"
+            "- NEVER report watermark character fragments as spelling_errors — they are artifacts.\n"
+            "- If a watermark is detected, report it ONCE as a single format_issue with "
+            "severity='low' and description 'Watermark stamp detected (SAMPLE/SPECIMEN/etc.)'.\n"
+            "- If the same watermark repeats across all pages, report it once total — not per page.\n"
+            "- Do NOT count watermark fragments toward the spelling_errors summary count.\n\n"
 
             # ── MODE 1 — BASIC validation rules ───────────────────────────
             "MODE 1 — BASIC VALIDATION TARGETS:\n\n"
 
             "SPELLING & LANGUAGE (report as spelling_errors or format_issues):\n"
-            "- Spell-check ALL visible text: field labels, section headers, instructions, "
-            "helper text, footer text, legal disclaimers, placeholder text, button labels.\n"
+            "- Spell-check field labels, section headers, instructions, and helper text.\n"
+            "- Do NOT spell-check legal disclaimers, legal definitions, boilerplate clauses, "
+            "or statutory text — these use specialised vocabulary and must not be questioned.\n"
+            "- Apply the CONSERVATIVE SPELL-CHECK RULES above before reporting anything.\n"
             "- Detect placeholder text left in production: patterns like 'Enter…', 'Type here…', "
             "'Lorem ipsum', 'TBD', 'Sample', 'Test', 'N/A' in unexpected locations → "
             "format_issue severity=high.\n"
@@ -476,22 +503,40 @@ Before writing the final JSON:
         is_scanned = bool(
             (current_meta or {}).get("is_scanned_like")
             or (current_meta or {}).get("used_ocr")
+            or (current_meta or {}).get("text_is_sparse")
         )
         scanned_notice = (
-            "\n⚠ SCANNED/OCR PDF DETECTED (is_scanned_like=True or used_ocr=True):\n"
-            "- Body text is OCR-extracted and UNRELIABLE for spelling.\n"
-            "- Do NOT report spelling errors from body text — they are almost certainly OCR artifacts.\n"
-            "- ONLY report spelling errors found verbatim in form field values.\n"
-            "- Focus instead on: Form Completeness, Accessibility, Layout, and Typography "
-            "(these do not depend on OCR text accuracy).\n"
+            "\n⚠ SCANNED/OCR/SPARSE-TEXT PDF DETECTED "
+            "(is_scanned_like=True, used_ocr=True, or text_is_sparse=True):\n"
+            "- Body text is OCR-extracted or from a minimal text layer — UNRELIABLE for spelling.\n"
+            "- Do NOT report ANY spelling errors from body text — they are OCR artifacts.\n"
+            "- ONLY report spelling errors found verbatim in AcroForm field values.\n"
+            "- Focus instead on: Form Completeness, Accessibility, Layout, and Typography.\n"
             if is_scanned
-            else "\nPDF source: embedded text (reliable for spell-checking).\n"
+            else (
+                "\nPDF source: embedded text (avg_words_per_page="
+                f"{(current_meta or {}).get('avg_words_per_page', '?')}).\n"
+                "Apply CONSERVATIVE SPELL-CHECK RULES from the system message. "
+                "Only report common-word errors with high confidence. "
+                "Do NOT spell-check legal definitions, disclaimers, or boilerplate.\n"
+            )
+        )
+        spell_instruction = (
+            "For this scanned/OCR PDF: check AcroForm FIELDS ONLY for spelling "
+            "(body text is unreliable OCR). Detect placeholders (narrow scope — see system rules)."
+            if is_scanned
+            else (
+                "Apply CONSERVATIVE spell-check: common-word errors ONLY in field labels and "
+                "section headers. Do NOT spell-check legal definitions, clauses, or disclaimers. "
+                "Detect placeholders (narrow scope), duplicate labels, and obvious punctuation "
+                "inconsistencies in labels."
+            )
         )
         user_content = f"""
 Perform BASIC VALIDATION on the following PDF form.
 {scanned_notice}
 Apply ALL five validation categories from the system rules:
-1. SPELLING & LANGUAGE — {"For this scanned PDF: check FORM FIELDS only for spelling (body text is OCR noise). Detect placeholders (narrow scope — see system rules)." if is_scanned else "Spell-check all text; detect placeholders (narrow scope), duplicate labels, capitalization/punctuation inconsistencies, truncated text."}
+1. SPELLING & LANGUAGE — {spell_instruction}
 2. TYPOGRAPHY CONSISTENCY — Detect font size outliers, font family deviations, bold/italic inconsistencies, text below minimum readable size.
 3. LAYOUT & SPATIAL CONSISTENCY — Detect field misalignment, overlapping elements, margin violations, header/footer shifts.
 4. FORM COMPLETENESS — Detect empty required fields, missing form title/version, missing signature/date blocks, missing legal disclaimers.
@@ -520,10 +565,12 @@ Current PDF form fields (ALWAYS RELIABLE — use for value checks):
         is_scanned = bool(
             (current_meta or {}).get("is_scanned_like")
             or (current_meta or {}).get("used_ocr")
+            or (current_meta or {}).get("text_is_sparse")
         )
         scanned_notice = (
-            "\n⚠ SCANNED/OCR PDF (is_scanned_like=True or used_ocr=True):\n"
-            "- Body text is OCR-extracted. Do NOT report spelling errors from body text.\n"
+            "\n⚠ SCANNED/OCR/SPARSE-TEXT PDF detected:\n"
+            "- Body text is unreliable (OCR or minimal text layer). "
+            "Do NOT report spelling errors from body text.\n"
             "- Only validate form field values against the user's assertions.\n"
             if is_scanned else ""
         )
