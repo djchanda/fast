@@ -15,6 +15,60 @@
   <div class="stat-card"><div class="stat-num">{{ users | length }}</div><div class="stat-label">Users</div></div>
 </div>
 
+<!-- Project Access: User Assignments -->
+<div class="card mb-4">
+  <div class="card-header">
+    <span>Project Access — User Assignments</span>
+    <span class="badge badge-secondary" style="font-size:11px;">Admins see all projects. Assign reviewers &amp; viewers to specific projects.</span>
+  </div>
+  <div class="card-body p0">
+    {% if all_projects %}
+    {% for project in all_projects %}
+    <div style="padding:14px 18px; border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="min-width:140px;">
+          <span style="font-weight:600;font-size:13px;color:var(--text-primary);">{{ project.name }}</span>
+          {% if project.environment %}<span class="badge badge-info" style="margin-left:6px;font-size:10px;">{{ project.environment }}</span>{% endif %}
+        </div>
+        <!-- Current members -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0;">
+          {% set mlist = members_by_project.get(project.id, []) %}
+          {% for u in mlist if u %}
+          <span class="member-badge">
+            <span style="width:20px;height:20px;border-radius:50%;background:var(--cgi-red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ u.username[0]|upper }}</span>
+            {{ u.username }}
+            <span class="badge role-{{ u.role }}" style="font-size:9px;padding:1px 5px;">{{ u.role }}</span>
+            <form method="POST" action="{{ url_for('web.admin_remove_project_member', project_id=project.id, user_id=u.id) }}" style="display:inline;">
+              <button type="submit" title="Remove">×</button>
+            </form>
+          </span>
+          {% endfor %}
+          {% if not mlist %}
+            <span style="font-size:12px;color:var(--text-muted);">No members assigned — only admins can access this project</span>
+          {% endif %}
+        </div>
+        <!-- Add member -->
+        <form method="POST" action="{{ url_for('web.admin_add_project_member', project_id=project.id) }}" style="display:flex;gap:6px;flex-shrink:0;">
+          <select name="user_id" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-primary);">
+            <option value="">— assign user —</option>
+            {% for u in users if u.role != 'admin' %}
+              {% set already = members_by_project.get(project.id, [])|selectattr('id', 'equalto', u.id)|list %}
+              {% if not already %}
+              <option value="{{ u.id }}">{{ u.username }} ({{ u.role }})</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline btn-sm">Add</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card-body"><p class="text-muted">No projects yet.</p></div>
+    {% endif %}
+  </div>
+</div>
+
 <!-- Users -->
 <div class="card mb-4">
   <div class="card-header">User Management</div>
@@ -52,6 +106,25 @@
           </td>
         </tr>
         {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Role Capabilities Reference -->
+<div class="card mb-4">
+  <div class="card-header">Role Capabilities</div>
+  <div class="card-body">
+    <table class="table" style="font-size:13px;">
+      <thead><tr><th>Action</th><th style="text-align:center">Admin</th><th style="text-align:center">Reviewer</th><th style="text-align:center">Viewer</th></tr></thead>
+      <tbody>
+        <tr><td>View projects</td><td style="text-align:center">All</td><td style="text-align:center">Assigned only</td><td style="text-align:center">Assigned only</td></tr>
+        <tr><td>Create / delete projects, forms, test cases</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+        <tr><td>Execute runs</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">—</td></tr>
+        <tr><td>Review findings &amp; approve gates</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">—</td></tr>
+        <tr><td>Delete runs</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+        <tr><td>Project settings (webhooks, Jira, schedules)</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+        <tr><td>Admin panel</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
       </tbody>
     </table>
   </div>
@@ -131,77 +204,5 @@ curl -X POST -F "file=@form.pdf" -F "mode=basic" -H "Authorization: Bearer YOUR_
 .role-reviewer { background: #f4a261; color: #fff; }
 .role-viewer { background: #6c757d; color: #fff; }
 </style>
-<!-- RBAC Capabilities Reference -->
-<div class="card mb-4" style="margin-top:16px;">
-  <div class="card-header">Role Capabilities</div>
-  <div class="card-body">
-    <table class="table" style="font-size:13px;">
-      <thead><tr><th>Action</th><th style="text-align:center">Admin</th><th style="text-align:center">Reviewer</th><th style="text-align:center">Viewer</th></tr></thead>
-      <tbody>
-        <tr><td>View projects</td><td style="text-align:center">All</td><td style="text-align:center">Assigned only</td><td style="text-align:center">Assigned only</td></tr>
-        <tr><td>Create / delete projects, forms, test cases</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
-        <tr><td>Execute runs</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">—</td></tr>
-        <tr><td>Review findings &amp; approve gates</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">—</td></tr>
-        <tr><td>Delete runs</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
-        <tr><td>Project settings (webhooks, Jira, schedules)</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
-        <tr><td>Admin panel</td><td style="text-align:center">✓</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Project Access: User Assignments -->
-<div class="card" style="margin-top:16px;">
-  <div class="card-header">
-    <span>Project Access — User Assignments</span>
-    <span class="badge badge-secondary" style="font-size:11px;">Admins see all projects. Assign reviewers &amp; viewers to specific projects.</span>
-  </div>
-  <div class="card-body p0">
-    {% if all_projects %}
-    {% for project in all_projects %}
-    <div style="padding:14px 18px; border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div>
-          <span style="font-weight:600;font-size:13px;color:var(--text-primary);">{{ project.name }}</span>
-          {% if project.environment %}<span class="badge badge-info" style="margin-left:6px;font-size:10px;">{{ project.environment }}</span>{% endif %}
-        </div>
-        <!-- Current members -->
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0;">
-          {% set mlist = members_by_project.get(project.id, []) %}
-          {% for u in mlist if u %}
-          <span class="member-badge">
-            <span style="width:20px;height:20px;border-radius:50%;background:var(--cgi-red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ u.username[0]|upper }}</span>
-            {{ u.username }}
-            <span class="badge role-{{ u.role }}" style="font-size:9px;padding:1px 5px;">{{ u.role }}</span>
-            <form method="POST" action="{{ url_for('web.admin_remove_project_member', project_id=project.id, user_id=u.id) }}" style="display:inline;">
-              <button type="submit" title="Remove">×</button>
-            </form>
-          </span>
-          {% endfor %}
-          {% if not mlist %}
-            <span style="font-size:12px;color:var(--text-muted);">No members assigned — only admins can access this project</span>
-          {% endif %}
-        </div>
-        <!-- Add member -->
-        <form method="POST" action="{{ url_for('web.admin_add_project_member', project_id=project.id) }}" style="display:flex;gap:6px;flex-shrink:0;">
-          <select name="user_id" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-primary);">
-            <option value="">— assign user —</option>
-            {% for u in users if u.role != 'admin' %}
-              {% set already = members_by_project.get(project.id, [])|selectattr('id', 'equalto', u.id)|list %}
-              {% if not already %}
-              <option value="{{ u.id }}">{{ u.username }} ({{ u.role }})</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-outline btn-sm">Add</button>
-        </form>
-      </div>
-    </div>
-    {% endfor %}
-    {% else %}
-    <div class="card-body"><p class="text-muted">No projects yet.</p></div>
-    {% endif %}
-  </div>
-</div>
 
 {% endblock %}
