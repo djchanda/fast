@@ -490,6 +490,39 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
     return result_json
 
 
+def _reconcile_benchmark_visual(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    """For benchmark runs: add visual_mismatch entries for pages with >=2% pixel
+    diff that the LLM did not produce a finding for (missed detections, not FP-suppressed items)."""
+    visual = result_json.get("visual_validation") or []
+    existing_pages = {
+        item.get("page")
+        for item in (result_json.get("visual_mismatches") or [])
+        if item.get("page") is not None
+    }
+    added = []
+    for entry in visual:
+        if not entry.get("major"):
+            continue
+        page = entry.get("page") or entry.get("actual_page_num")
+        if page is None or page in existing_pages:
+            continue
+        diff_pct = entry.get("diff_pixels_pct") or entry.get("diff_pct") or 0.0
+        added.append({
+            "page": page,
+            "severity": "medium",
+            "description": (
+                f"Significant visual difference detected on page {page} "
+                f"({diff_pct:.1f}% pixel diff) — not classified by LLM."
+            ),
+            "category": "Visual Mismatch",
+            "source": "reconciler",
+        })
+        existing_pages.add(page)
+    if added:
+        result_json["visual_mismatches"] = list(result_json.get("visual_mismatches") or []) + added
+    return result_json
+
+
 def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
     errors = (
         _count_list(result_json.get("spelling_errors"))
@@ -713,6 +746,10 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
             from app.services.auto_learning import suppress_false_positives
             form_id = main_form.id if main_form else None
             result_json = suppress_false_positives(result_json, project_id=project_id, form_id=form_id)
+            # Benchmark reconciler: re-add visual_mismatches for pages with significant
+            # pixel diff that the LLM missed entirely (as opposed to FP-suppressed).
+            if effective_mode == "benchmark":
+                result_json = _reconcile_benchmark_visual(result_json)
             result_json = _refresh_summary_fields(result_json)
         except Exception as _sfe:
             logger.warning("False-positive suppression failed: %s", _sfe)

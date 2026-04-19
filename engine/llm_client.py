@@ -102,7 +102,11 @@ def _run_claude(messages: List[Dict]) -> Dict[str, Any]:
     if not api_key:
         raise ValueError("Missing ANTHROPIC_API_KEY in environment")
 
-    client = anthropic.Anthropic(api_key=api_key)
+    import httpx
+    client = anthropic.Anthropic(
+        api_key=api_key,
+        timeout=httpx.Timeout(180.0, connect=15.0),
+    )
 
     # Split system message from user messages
     system_msg = ""

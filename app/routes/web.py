@@ -310,42 +310,64 @@ def project_overview(project_id: int):
     total_passed = sum(r.passed or 0 for r in all_runs)
     pass_rate = round((total_passed / total_checks) * 100) if total_checks > 0 else 0
 
-    # Per-test-case summary for the dashboard table
+    # Per-test-case summary — batched to avoid N+1 queries
+    from sqlalchemy import func as _func
     test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
+
+    # 1) Latest RunResult id per test case
+    _latest_subq = (
+        db.session.query(_func.max(RunResult.id).label("max_id"))
+        .filter(RunResult.project_id == project_id)
+        .group_by(RunResult.test_case_id)
+        .subquery()
+    )
+    latest_rrs = RunResult.query.filter(RunResult.id.in_(_latest_subq)).all()
+    latest_rr_by_tc = {rr.test_case_id: rr for rr in latest_rrs}
+    latest_rr_ids = [rr.id for rr in latest_rrs]
+
+    # 2) FindingReview status counts for all latest RunResults
+    _review_rows = (
+        db.session.query(
+            FindingReview.run_result_id,
+            FindingReview.status,
+            _func.count(FindingReview.id).label("cnt"),
+        )
+        .filter(FindingReview.run_result_id.in_(latest_rr_ids))
+        .group_by(FindingReview.run_result_id, FindingReview.status)
+        .all()
+    ) if latest_rr_ids else []
+    review_stats: dict = {}
+    for row in _review_rows:
+        review_stats.setdefault(row.run_result_id, {})[row.status] = row.cnt
+
+    # 3) All RunResult ids for this project (for Jira key lookup across reruns)
+    all_project_rrs = RunResult.query.filter_by(project_id=project_id).with_entities(
+        RunResult.id, RunResult.test_case_id
+    ).all()
+    rr_to_tc = {r.id: r.test_case_id for r in all_project_rrs}
+    all_project_rr_ids = list(rr_to_tc.keys())
+
+    # 4) Jira keys grouped by test case
+    jira_by_tc: dict = {}
+    if all_project_rr_ids:
+        _jira_rows = FindingReview.query.filter(
+            FindingReview.run_result_id.in_(all_project_rr_ids),
+            FindingReview.jira_issue_key.isnot(None),
+        ).with_entities(FindingReview.run_result_id, FindingReview.jira_issue_key).all()
+        for row in _jira_rows:
+            tc_id = rr_to_tc.get(row.run_result_id)
+            if tc_id and row.jira_issue_key:
+                jira_by_tc.setdefault(tc_id, set()).add(row.jira_issue_key)
+
     tc_summaries = []
     for tc in test_cases:
-        all_rrs = (
-            RunResult.query.filter_by(project_id=project_id, test_case_id=tc.id)
-            .order_by(RunResult.created_at.desc())
-            .all()
-        )
-        latest_rr = all_rrs[0] if all_rrs else None
-
-        # Metrics from latest run only
-        if latest_rr:
-            reviews_latest = FindingReview.query.filter_by(run_result_id=latest_rr.id).all()
-            pass_f   = sum(1 for r in reviews_latest if r.status == "false_positive")
-            defect_f = sum(1 for r in reviews_latest if r.status == "resolved")
-            open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0)
-            total_obs = open_f + pass_f + defect_f
-        else:
-            pass_f = defect_f = open_f = total_obs = 0
-
-        # Jira keys from ALL runs for this test case (tickets survive across re-runs)
-        if all_rrs:
-            all_rr_ids = [r.id for r in all_rrs]
-            jira_keys = list({
-                r.jira_issue_key
-                for r in FindingReview.query.filter(
-                    FindingReview.run_result_id.in_(all_rr_ids),
-                    FindingReview.jira_issue_key.isnot(None),
-                ).all()
-                if r.jira_issue_key
-            })
-            jira_keys.sort()
-        else:
-            jira_keys = []
-
+        latest_rr = latest_rr_by_tc.get(tc.id)
+        stats = review_stats.get(latest_rr.id, {}) if latest_rr else {}
+        pass_f   = stats.get("false_positive", 0)
+        defect_f = stats.get("resolved", 0)
+        open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0) if latest_rr else 0
+        total_obs = open_f + pass_f + defect_f
+        jira_keys = sorted(jira_by_tc.get(tc.id, set()))
         tc_summaries.append({"tc": tc, "rr": latest_rr, "total_obs": total_obs,
                              "pass_f": pass_f, "defect_f": defect_f, "pending_f": open_f,
                              "jira_keys": jira_keys})
@@ -377,6 +399,8 @@ def project_overview(project_id: int):
     tests_failing   = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "failed")
     tests_in_review = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "in_review")
 
+    jira_config_active = bool(JiraConfig.query.filter_by(project_id=project_id, is_active=True).first())
+
     return render_template(
         "project_overview.html",
         page_title=f"FAST | {project.name}",
@@ -394,6 +418,7 @@ def project_overview(project_id: int):
         tests_passing=tests_passing,
         tests_failing=tests_failing,
         tests_in_review=tests_in_review,
+        jira_config_active=jira_config_active,
         user=session.get("user"),
     )
 
@@ -421,11 +446,19 @@ def project_forms(project_id: int):
     project = Project.query.get_or_404(project_id)
     forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
 
+    # Map form_id → list of test case names that depend on it (for delete UX)
+    all_tcs = TestCase.query.filter_by(project_id=project_id).all()
+    tc_by_form_id: dict = {}
+    for tc in all_tcs:
+        if tc.form_id:
+            tc_by_form_id.setdefault(tc.form_id, []).append(tc.name)
+
     return render_template(
         "forms.html",
         page_title="FAST | Forms",
         project=project,
         forms=forms,
+        tc_by_form_id=tc_by_form_id,
         max_allowed=MAX_FORMS_PER_PROJECT,
         user=session.get("user"),
         active="forms",
@@ -529,20 +562,37 @@ def delete_project_form(project_id: int, form_id: int):
     Project.query.get_or_404(project_id)
     form = Form.query.filter_by(id=form_id, project_id=project_id).first_or_404()
 
-    # Block deletion if any test cases use this form as their primary form
-    # (form_id has a NOT NULL constraint — nullifying it would violate the DB schema)
     blocking_tcs = TestCase.query.filter_by(form_id=form_id).all()
-    if blocking_tcs:
+    force = request.form.get("force") == "1"
+
+    if blocking_tcs and not force:
         names = ", ".join(f"'{tc.name}'" for tc in blocking_tcs[:3])
         extra = f" and {len(blocking_tcs) - 3} more" if len(blocking_tcs) > 3 else ""
         flash(
-            f"Cannot delete this form — it is used by test case(s): {names}{extra}. "
-            "Update or delete those test cases first.",
+            f"Cannot delete — form is used by test case(s): {names}{extra}. "
+            "Use Force Delete to remove the form along with those test cases.",
             "error",
         )
         return redirect(url_for("web.project_forms", project_id=project_id))
 
-    # Safe to delete: detach from any benchmark references first
+    if blocking_tcs and force:
+        # Cascade-delete each blocking test case and its run data
+        from app.models.finding_review import FindingReview as _FR
+        from app.models.finding_comment import FindingComment as _FC
+        for tc in blocking_tcs:
+            rrs = RunResult.query.filter_by(test_case_id=tc.id).all()
+            for rr in rrs:
+                _FC.query.filter(
+                    _FC.finding_review_id.in_(
+                        db.session.query(_FR.id).filter_by(run_result_id=rr.id)
+                    )
+                ).delete(synchronize_session=False)
+                _FR.query.filter_by(run_result_id=rr.id).delete(synchronize_session=False)
+                db.session.delete(rr)
+            db.session.delete(tc)
+        flash(f"Form and {len(blocking_tcs)} test case(s) deleted.", "success")
+
+    # Detach from any benchmark references
     for tc in TestCase.query.filter_by(benchmark_form_id=form_id).all():
         tc.benchmark_form_id = None
 
@@ -554,7 +604,8 @@ def delete_project_form(project_id: int, form_id: int):
 
     db.session.delete(form)
     db.session.commit()
-    flash("Form deleted.", "success")
+    if not blocking_tcs:
+        flash("Form deleted.", "success")
     return redirect(url_for("web.project_forms", project_id=project_id))
 
 
@@ -704,6 +755,23 @@ def project_execute(project_id: int):
     )
 
 
+def _cleanup_stuck_runs(project_id: int) -> None:
+    """Mark RunResults stuck in 'running' for >15 min as failed."""
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(minutes=15)
+    stuck = RunResult.query.filter(
+        RunResult.project_id == project_id,
+        RunResult.status == "running",
+        RunResult.created_at < cutoff,
+    ).all()
+    for rr in stuck:
+        rr.status = "failed"
+        if hasattr(rr, "error_message"):
+            rr.error_message = "Run timed out — exceeded 15 minutes without completing."
+    if stuck:
+        db.session.commit()
+
+
 @web_bp.route("/projects/<int:project_id>/execute/run", methods=["POST"])
 def execute_run(project_id: int):
     gate = require_login()
@@ -711,6 +779,8 @@ def execute_run(project_id: int):
         return gate
 
     Project.query.get_or_404(project_id)
+
+    _cleanup_stuck_runs(project_id)
 
     tc_ids = request.form.getlist("testcase_ids")
     if not tc_ids:
@@ -1008,13 +1078,6 @@ def result_reviews(project_id: int, result_id: int):
             })
             idx += 1
 
-    # Auto-resolve deadlock: runs stuck "in_review" with no reviewable findings
-    # (can happen when all findings were suppressed as false positives, or when
-    # the old warned_pages metric inflated warnings beyond named-bucket findings).
-    if not findings and rr.status == "in_review":
-        _recompute_result_metrics(result_id)
-        rr = RunResult.query.get(result_id)
-
     # Available reviewers
     reviewers = User.query.filter(User.role.in_(["admin", "reviewer"]), User.is_active == True).all()
     compliance_standards = ComplianceStandard.query.all()
@@ -1028,6 +1091,15 @@ def result_reviews(project_id: int, result_id: int):
 
     jira_config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
 
+    # Build page→snapshot mapping from visual_validation entries so finding cards
+    # can show a "View Diff" link when a visual diff image exists for that page.
+    snapshot_by_page = {}
+    for entry in result_obj.get("visual_validation") or []:
+        snap = entry.get("snapshot_path")
+        page = entry.get("page") or entry.get("actual_page_num")
+        if snap and page is not None:
+            snapshot_by_page[str(page)] = snap
+
     return render_template(
         "finding_reviews.html",
         page_title=f"FAST | Review Findings",
@@ -1038,6 +1110,7 @@ def result_reviews(project_id: int, result_id: int):
         reviewers=reviewers,
         compliance_standards=compliance_standards,
         jira_config=jira_config,
+        snapshot_by_page=snapshot_by_page,
         prev_result_id=prev_result_id,
         next_result_id=next_result_id,
         current_pos=current_pos + 1,
@@ -1169,27 +1242,60 @@ def _recompute_result_metrics(result_id: int) -> None:
 
         db.session.commit()
 
-        # Patch the verdict chip in the stored HTML report when a final verdict is reached
-        if rr.report_html_path and rr.status in ("passed", "failed"):
+        # Regenerate the full HTML report on final verdict so the chip, summary
+        # and finding table all reflect the reviewed state correctly.
+        if rr.status in ("passed", "failed"):
             try:
-                from app.reporting.html_report import _reports_dir
-                import re as _re
-                report_path = _reports_dir() / rr.report_html_path
-                if report_path.exists():
-                    html = report_path.read_text(encoding="utf-8")
-                    if rr.status == "passed":
-                        new_chip = "<span class='chip chip-ok'>PASS</span>"
-                    else:
-                        new_chip = "<span class='chip chip-bad'>FAIL</span>"
-                    html = _re.sub(
-                        r"<span class='chip chip-(?:ok|bad|warn)'>(?:PASS|FAIL|REVIEW|IN REVIEW)</span>",
-                        new_chip, html, count=1,
-                    )
-                    report_path.write_text(html, encoding="utf-8")
-            except Exception as _chip_err:
-                logger.warning("Report chip update failed: %s", _chip_err)
+                from app.reporting.html_report import write_cli_style_report
+                from app.models.test_case import TestCase as _TC
+                from app.models.form import Form as _Form
+                _tc = _TC.query.get(rr.test_case_id)
+                _main_form = _Form.query.get(rr.form_id) if rr.form_id else None
+                _bench_form = _Form.query.get(_tc.benchmark_form_id) if _tc and _tc.benchmark_form_id else None
+                new_filename = write_cli_style_report(
+                    project_id=rr.project_id,
+                    run_id=rr.run_id,
+                    rr_id=rr.id,
+                    tc=_tc,
+                    result_json=json.loads(rr.result_json) if rr.result_json else {},
+                    llm_summary=rr.summary_text or "",
+                    main_form=_main_form,
+                    bench_form=_bench_form,
+                )
+                rr.report_html_path = new_filename
+                db.session.commit()
+            except Exception as _regen_err:
+                logger.warning("Report regen failed: %s", _regen_err)
+                # Fall back: patch verdict chip in existing report
+                if rr.report_html_path:
+                    try:
+                        from app.reporting.html_report import _reports_dir
+                        import re as _re
+                        report_path = _reports_dir() / rr.report_html_path
+                        if report_path.exists():
+                            html = report_path.read_text(encoding="utf-8")
+                            new_chip = "<span class='chip chip-ok'>PASS</span>" if rr.status == "passed" else "<span class='chip chip-bad'>FAIL</span>"
+                            html = _re.sub(
+                                r"<span class='chip chip-(?:ok|bad|warn)'>(?:PASS|FAIL|REVIEW|IN REVIEW)</span>",
+                                new_chip, html, count=1,
+                            )
+                            report_path.write_text(html, encoding="utf-8")
+                    except Exception as _chip_err:
+                        logger.warning("Report chip fallback failed: %s", _chip_err)
     except Exception as _e:
         logger.warning("_recompute_result_metrics failed for result %d: %s", result_id, _e)
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/recompute", methods=["POST"])
+def recompute_result_status(project_id: int, result_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    RunResult.query.get_or_404(result_id)
+    _recompute_result_metrics(result_id)
+    rr = RunResult.query.get(result_id)
+    flash(f"Status updated to {rr.status}.", "success")
+    return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
 
 
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>/reviews/resolve", methods=["POST"])
@@ -1823,6 +1929,30 @@ def project_jira_settings(project_id: int):
         user=session.get("user"),
         user_role=session.get("role", "viewer"),
     )
+
+
+@web_bp.route("/projects/<int:project_id>/jira/status", methods=["GET"])
+def jira_issue_status(project_id: int):
+    """Return live Jira status for a comma-separated list of issue keys.
+
+    Query param: ?keys=KAN-1,KAN-2
+    Returns JSON: {"KAN-1": {"name": "Done", "category": "done"}, ...}
+    """
+    gate = require_login()
+    if gate:
+        return gate
+
+    config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
+    if not config:
+        return jsonify({}), 200
+
+    raw_keys = request.args.get("keys", "")
+    keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+    if not keys:
+        return jsonify({}), 200
+
+    statuses = jira_client.fetch_issue_statuses(config, keys)
+    return jsonify(statuses)
 
 
 @web_bp.route("/projects/<int:project_id>/jira/test", methods=["POST"])

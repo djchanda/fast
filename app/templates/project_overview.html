@@ -154,7 +154,8 @@
       <!-- Jira tickets -->
       <div class="dash-jira-block">
         {% for key in s.jira_keys %}
-          <span class="dash-jira-key">{{ key }}</span>
+          <span class="dash-jira-key"
+                {% if jira_config_active %}data-jira-key="{{ key }}"{% endif %}>{{ key }}</span>
         {% endfor %}
       </div>
 
@@ -222,6 +223,37 @@
     {% endfor %}
   </div>
 </div>
+{% endif %}
+
+{% if jira_config_active %}
+<script>
+(function () {
+  const keys = [...document.querySelectorAll('[data-jira-key]')]
+    .map(el => el.dataset.jiraKey);
+  if (!keys.length) return;
+
+  const CATEGORY_COLORS = {
+    done:       { bg: 'rgba(34,197,94,.15)',  border: 'rgba(34,197,94,.3)',  text: '#22c55e' },
+    inprogress: { bg: 'rgba(245,158,11,.15)', border: 'rgba(245,158,11,.3)', text: '#f59e0b' },
+    new:        { bg: 'rgba(148,163,184,.12)', border: 'rgba(148,163,184,.2)', text: '#94a3b8' },
+  };
+
+  fetch("{{ url_for('web.jira_issue_status', project_id=project.id) }}?keys=" + keys.join(','))
+    .then(r => r.ok ? r.json() : {})
+    .then(statuses => {
+      document.querySelectorAll('[data-jira-key]').forEach(el => {
+        const info = statuses[el.dataset.jiraKey];
+        if (!info) return;
+        const c = CATEGORY_COLORS[info.category] || CATEGORY_COLORS.new;
+        el.style.background = c.bg;
+        el.style.borderColor = c.border;
+        el.style.color = c.text;
+        el.title = info.name;
+      });
+    })
+    .catch(() => {});
+})();
+</script>
 {% endif %}
 
 {% endblock %}
