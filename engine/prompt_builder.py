@@ -12,9 +12,13 @@ def _format_visual_diffs_for_llm(visual_diffs: list, extra_context: Optional[Dic
 
     for v in visual_diffs:
         page = v.get("page", "?")
-        sim = v.get("similarity", 1.0)
-        diff_pct = v.get("diff_pixels_pct", 0.0)
+        _sim = v.get("similarity")
+        sim = float(_sim) if _sim is not None else 1.0
+        diff_pct = v.get("diff_pixels_pct") or 0.0
         op = v.get("alignment_op", "matched")
+        # Skip single-panel entries (fallback render_pages output — no comparison data)
+        if op == "single":
+            continue
         sig_candidate = v.get("signature_candidate", False)
         sig_label = v.get("signature_label", "")
         zone = v.get("zone_analysis") or {}
