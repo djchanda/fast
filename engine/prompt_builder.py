@@ -564,8 +564,25 @@ Current PDF form fields (ALWAYS RELIABLE — use for value assertions):
         # benchmark mode
         formatted_visual_diffs = _format_visual_diffs_for_llm(current_visual_diffs, extra_context)
 
+        # OCR detection: flag if either the baseline or current PDF is scanned
+        is_scanned = bool(
+            (benchmark_meta or {}).get("is_scanned_like")
+            or (benchmark_meta or {}).get("used_ocr")
+            or (current_meta or {}).get("is_scanned_like")
+            or (current_meta or {}).get("used_ocr")
+        )
+        scanned_notice = (
+            "\n⚠ SCANNED/OCR PDF DETECTED (is_scanned_like=True or used_ocr=True):\n"
+            "- Body text in one or both PDFs is OCR-extracted and UNRELIABLE for spell-checking.\n"
+            "- Do NOT report single-word spelling errors from body text — these are OCR artifacts.\n"
+            "- Only report as a content change if the same difference also appears in form field values.\n"
+            "- Focus on structural changes, metadata, and explicit LINE DIFF entries (these are reliable).\n"
+            if is_scanned
+            else ""
+        )
+
         # Build extra context narrative
-        doc_level_note = ""
+        doc_level_note = scanned_notice
         if extra_context:
             md = extra_context.get("metadata_diff") or {}
             fd = extra_context.get("field_diff") or {}
