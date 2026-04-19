@@ -726,6 +726,16 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
 
         result_json = _refresh_summary_fields(result_json)
 
+        # Suppress findings that match known false-positive patterns learned from
+        # previous reviewer decisions, so the same observation doesn't recur.
+        try:
+            from app.services.auto_learning import suppress_false_positives
+            form_id = main_form.id if main_form else None
+            result_json = suppress_false_positives(result_json, project_id=project_id, form_id=form_id)
+            result_json = _refresh_summary_fields(result_json)
+        except Exception as _sfe:
+            logger.warning("False-positive suppression failed: %s", _sfe)
+
         # Annotate snapshots with problem-area boxes for basic/specific modes.
         # Done after reconcile so all findings (including LLM + reconciler) are present.
         if effective_mode in ("basic", "specific") and visual:

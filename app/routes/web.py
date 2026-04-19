@@ -1058,11 +1058,11 @@ def _recompute_result_metrics(result_id: int) -> None:
                 if report_path.exists():
                     html = report_path.read_text(encoding="utf-8")
                     if rr.status == "passed":
-                        new_chip = '<span class="chip chip-ok">PASS</span>'
+                        new_chip = "<span class='chip chip-ok'>PASS</span>"
                     else:
-                        new_chip = '<span class="chip chip-bad">FAIL</span>'
+                        new_chip = "<span class='chip chip-bad'>FAIL</span>"
                     html = _re.sub(
-                        r'<span class="chip chip-(?:ok|bad|warn)">(?:PASS|FAIL|REVIEW|IN REVIEW)</span>',
+                        r"<span class='chip chip-(?:ok|bad|warn)'>(?:PASS|FAIL|REVIEW|IN REVIEW)</span>",
                         new_chip, html, count=1,
                     )
                     report_path.write_text(html, encoding="utf-8")
