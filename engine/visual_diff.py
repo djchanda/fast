@@ -1593,6 +1593,165 @@ class VisualDiff:
             logger.warning("render_pages failed for %s: %s", pdf_path, e)
         return rows
 
+    def annotate_snapshots_with_findings(
+        self,
+        pdf_path: str,
+        result_json: Dict[str, Any],
+        visual_entries: List[Dict[str, Any]],
+    ) -> None:
+        """Draw colored highlight boxes on page snapshots at the exact location
+        of each LLM finding.  Modifies the PNG files in-place.
+
+        Color coding matches legend:
+          critical → red   high → orange   medium → yellow   low → blue
+        """
+        _SEVERITY_FILL = {
+            "critical": (220, 30,  30,  110),
+            "high":     (230, 110, 20,  100),
+            "medium":   (230, 190, 0,   90),
+            "low":      (70,  140, 230, 80),
+        }
+        _SEVERITY_OUTLINE = {
+            "critical": (200, 0,   0),
+            "high":     (200, 80,  0),
+            "medium":   (180, 150, 0),
+            "low":      (40,  100, 200),
+        }
+
+        # Build page → findings map from all finding buckets
+        finding_buckets = [
+            "spelling_errors", "format_issues", "value_mismatches",
+            "missing_content", "extra_content", "layout_anomalies",
+            "typography_issues", "structural_changes", "visual_mismatches",
+            "compliance_issues", "accessibility_issues",
+        ]
+        findings_by_page: Dict[int, List[Dict[str, Any]]] = {}
+        for bucket in finding_buckets:
+            for item in (result_json.get(bucket) or []):
+                if not isinstance(item, dict):
+                    continue
+                p = item.get("page")
+                try:
+                    p = int(str(p).strip()) if p not in (None, "") else None
+                except Exception:
+                    p = None
+                if p is not None:
+                    findings_by_page.setdefault(p, []).append(item)
+
+        if not findings_by_page:
+            return
+
+        # Build page → snapshot path map from visual entries
+        snap_map: Dict[int, str] = {}
+        for ve in visual_entries:
+            if not isinstance(ve, dict):
+                continue
+            p = ve.get("page")
+            sp = ve.get("snapshot_path", "")
+            if p and sp:
+                # snapshot_path is relative like "visual_diffs/foo.png"
+                abs_snap = self.output_dir / Path(sp).name
+                snap_map[int(p)] = str(abs_snap)
+
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for page_num, findings in findings_by_page.items():
+                    snap_abs = snap_map.get(page_num)
+                    if not snap_abs or not os.path.exists(snap_abs):
+                        continue
+                    if page_num < 1 or page_num > len(pdf.pages):
+                        continue
+
+                    try:
+                        page = pdf.pages[page_num - 1]
+                        page_w = float(page.width)
+                        page_h = float(page.height)
+                        words = page.extract_words(
+                            keep_blank_chars=False, x_tolerance=3, y_tolerance=3
+                        )
+
+                        img = Image.open(snap_abs).convert("RGBA")
+                        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                        draw = ImageDraw.Draw(overlay)
+                        font = self._get_small_font(9)
+
+                        x_scale = img.width / page_w
+                        y_scale = img.height / page_h
+
+                        annotated = False
+                        for idx, finding in enumerate(findings[:12], 1):
+                            # Try to find the problem text on the page
+                            search = (
+                                finding.get("text")
+                                or finding.get("snippet")
+                                or finding.get("field_name")
+                                or ""
+                            ).strip()
+
+                            bbox = self._find_text_bbox(words, search) if search and len(search) >= 3 else None
+
+                            sev = str(finding.get("severity") or "low").lower()
+                            fill = _SEVERITY_FILL.get(sev, _SEVERITY_FILL["low"])
+                            outline = _SEVERITY_OUTLINE.get(sev, _SEVERITY_OUTLINE["low"])
+
+                            if bbox:
+                                x0, y0, x1, y1 = bbox
+                                ix0 = max(0, int(x0 * x_scale) - 4)
+                                iy0 = max(0, int(y0 * y_scale) - 4)
+                                ix1 = min(img.width - 1, int(x1 * x_scale) + 4)
+                                iy1 = min(img.height - 1, int(y1 * y_scale) + 4)
+                                draw.rectangle([ix0, iy0, ix1, iy1], fill=fill, outline=outline + (220,), width=2)
+                                # Finding number badge
+                                bx, by = ix0, max(0, iy0 - 14)
+                                draw.rectangle([bx, by, bx + 16, by + 13], fill=outline + (230,))
+                                draw.text((bx + 3, by + 2), str(idx), fill=(255, 255, 255), font=font)
+                                annotated = True
+
+                        if annotated:
+                            composite = Image.alpha_composite(img, overlay).convert("RGB")
+                            composite.save(snap_abs, "PNG")
+                    except Exception as _pe:
+                        logger.debug("Annotation failed for page %d: %s", page_num, _pe)
+
+        except Exception as e:
+            logger.warning("annotate_snapshots_with_findings failed: %s", e)
+
+    def _find_text_bbox(
+        self,
+        words: List[Dict[str, Any]],
+        search_text: str,
+    ) -> Optional[Tuple[float, float, float, float]]:
+        """Locate search_text in a pdfplumber word list and return its bounding box."""
+        if not words or not search_text:
+            return None
+        search_lower = search_text.lower().strip()
+        tokens = search_lower.split()
+        if not tokens:
+            return None
+        word_texts = [str(w.get("text", "")).lower() for w in words]
+
+        # Exact token-sequence match (sliding window)
+        n = len(tokens)
+        for i in range(len(word_texts) - n + 1):
+            if word_texts[i:i + n] == tokens:
+                matched = words[i:i + n]
+                return (
+                    min(float(w["x0"]) for w in matched),
+                    min(float(w["top"]) for w in matched),
+                    max(float(w["x1"]) for w in matched),
+                    max(float(w["bottom"]) for w in matched),
+                )
+
+        # Fallback: find any word that contains the longest token
+        longest = max(tokens, key=len)
+        if len(longest) >= 5:
+            for i, wt in enumerate(word_texts):
+                if longest in wt:
+                    w = words[i]
+                    return float(w["x0"]), float(w["top"]), float(w["x1"]), float(w["bottom"])
+
+        return None
+
     # ---------------------------------------------------
     # Document-level comparison helpers
     # ---------------------------------------------------

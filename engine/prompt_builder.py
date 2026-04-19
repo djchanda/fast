@@ -517,16 +517,31 @@ Current PDF form fields (ALWAYS RELIABLE — use for value checks):
 """
 
     elif mode == "specific":
+        is_scanned = bool(
+            (current_meta or {}).get("is_scanned_like")
+            or (current_meta or {}).get("used_ocr")
+        )
+        scanned_notice = (
+            "\n⚠ SCANNED/OCR PDF (is_scanned_like=True or used_ocr=True):\n"
+            "- Body text is OCR-extracted. Do NOT report spelling errors from body text.\n"
+            "- Only validate form field values against the user's assertions.\n"
+            if is_scanned else ""
+        )
         user_content = f"""
 Perform SPECIFIC VALIDATION according to the user's rules.
+{scanned_notice}
+STRICT SCOPE — CRITICAL:
+Only execute the assertions listed by the user below. Do NOT:
+- Perform general spell-checking unless the user explicitly requested it.
+- Report typography, layout, or accessibility issues unless the user asked for them.
+- Add any findings beyond what the user's rules directly require.
+Every finding you report MUST map to a specific user assertion or rule below.
 
 User-provided validation instructions:
 {base_prompt}
 
-Execute each assertion using the assertion types from the system rules:
-- Exact Value, Pattern/Format, Date Range, Signature, Checkbox/Selection, Conditional, Calculation.
-- Map each failed assertion to the appropriate finding category.
-- For high-importance assertions that PASS, add a low-severity format_issue noting the pass for the audit trail.
+Execute each assertion using the appropriate type (Exact Value, Pattern/Format, Date Range,
+Signature, Checkbox/Selection, Conditional, Calculation). Place results in the correct category.
 
 Current PDF extraction meta:
 {current_meta}
@@ -537,7 +552,7 @@ Current PDF text:
 Current PDF per-page text:
 {current_pages}
 
-Current PDF form fields:
+Current PDF form fields (ALWAYS RELIABLE — use for value assertions):
 {current_fields}
 
 {summary_enforcement}

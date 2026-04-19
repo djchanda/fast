@@ -682,6 +682,20 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         result_json = _reconcile_visual_findings(result_json)
         result_json = _refresh_summary_fields(result_json)
 
+        # Annotate snapshots with problem-area boxes for basic/specific modes.
+        # Done after reconcile so all findings (including LLM + reconciler) are present.
+        if effective_mode in ("basic", "specific") and visual:
+            try:
+                from engine.visual_diff import VisualDiff
+                vd_ann = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                vd_ann.annotate_snapshots_with_findings(
+                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    result_json=result_json,
+                    visual_entries=visual,
+                )
+            except Exception as _ae:
+                logger.warning("Snapshot annotation failed: %s", _ae)
+
         overall = (result_json.get("overall_summary") or "").strip()
         if result_json.get("error"):
             summary_text = f"Overall Assessment: FAIL\n{result_json.get('error')}"
