@@ -507,25 +507,6 @@ def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
         + _count_list(result_json.get("accessibility_issues"))
     )
 
-    visual = result_json.get("visual_validation") or []
-    if isinstance(visual, list):
-        promoted_pages = {
-            int(str(it.get("page")).strip())
-            for it in (result_json.get("visual_mismatches") or []) + (result_json.get("missing_content") or [])
-            if isinstance(it, dict) and it.get("page") not in (None, "")
-        }
-
-        warned_pages = {
-            int(str(v.get("page")).strip())
-            for v in visual
-            if isinstance(v, dict)
-            and v.get("warn")
-            and v.get("page") not in (None, "")
-            and _safe_similarity(v) <= VISUAL_REVIEW_SIMILARITY_THRESHOLD
-        }
-
-        warnings += len([p for p in warned_pages if p not in promoted_pages])
-
     passed = 1 if errors == 0 else 0
     return errors, warnings, passed
 

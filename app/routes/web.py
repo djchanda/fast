@@ -895,6 +895,13 @@ def result_reviews(project_id: int, result_id: int):
             })
             idx += 1
 
+    # Auto-resolve deadlock: runs stuck "in_review" with no reviewable findings
+    # (can happen when all findings were suppressed as false positives, or when
+    # the old warned_pages metric inflated warnings beyond named-bucket findings).
+    if not findings and rr.status == "in_review":
+        _recompute_result_metrics(result_id)
+        rr = RunResult.query.get(result_id)
+
     # Available reviewers
     reviewers = User.query.filter(User.role.in_(["admin", "reviewer"]), User.is_active == True).all()
     compliance_standards = ComplianceStandard.query.all()
