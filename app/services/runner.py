@@ -653,6 +653,7 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                 field_diff = {}
                 current_doc.setdefault("meta", {})
                 current_doc["meta"]["visual_diff_error"] = str(e)
+                logger.error("Benchmark visual diff failed: %s", e, exc_info=True)
 
             current_doc["visual_diffs"] = visual
             if benchmark_doc is not None:
@@ -678,6 +679,9 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         result_json["visual_validation"] = visual
         if effective_mode == "benchmark":
             result_json["_field_diff"] = field_diff
+            vde = (current_doc.get("meta") or {}).get("visual_diff_error")
+            if vde:
+                result_json["visual_diff_error"] = vde
 
         result_json = _reconcile_visual_findings(result_json)
         result_json = _refresh_summary_fields(result_json)
