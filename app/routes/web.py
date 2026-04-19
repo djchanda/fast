@@ -1048,6 +1048,26 @@ def _recompute_result_metrics(result_id: int) -> None:
             run.passed = sum(r.passed or 0 for r in all_rrs)
 
         db.session.commit()
+
+        # Patch the verdict chip in the stored HTML report when a final verdict is reached
+        if rr.report_html_path and rr.status in ("passed", "failed"):
+            try:
+                from app.reporting.html_report import _reports_dir
+                import re as _re
+                report_path = _reports_dir() / rr.report_html_path
+                if report_path.exists():
+                    html = report_path.read_text(encoding="utf-8")
+                    if rr.status == "passed":
+                        new_chip = '<span class="chip chip-ok">PASS</span>'
+                    else:
+                        new_chip = '<span class="chip chip-bad">FAIL</span>'
+                    html = _re.sub(
+                        r'<span class="chip chip-(?:ok|bad|warn)">(?:PASS|FAIL|REVIEW|IN REVIEW)</span>',
+                        new_chip, html, count=1,
+                    )
+                    report_path.write_text(html, encoding="utf-8")
+            except Exception as _chip_err:
+                logger.warning("Report chip update failed: %s", _chip_err)
     except Exception as _e:
         logger.warning("_recompute_result_metrics failed for result %d: %s", result_id, _e)
 

@@ -372,10 +372,8 @@ def write_cli_style_report(
             or f"Found {len(mismatches)} mismatch page(s) and {len(reviews)} review page(s)."
         )
 
-    if mismatches:
-        verdict = _chip("FAIL", "bad")
-    elif reviews:
-        verdict = _chip("REVIEW", "warn")
+    if mismatches or reviews:
+        verdict = _chip("IN REVIEW", "warn")
     else:
         verdict = _chip("PASS", "ok")
 
