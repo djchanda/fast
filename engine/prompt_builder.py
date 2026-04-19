@@ -163,6 +163,26 @@ def build_prompt(
             "- Prefer form fields where available; otherwise rely on extracted text.\n"
             "- If per-page text is provided, use it for correct page numbers.\n\n"
 
+            "OCR TEXT RELIABILITY — CRITICAL (prevents false positives):\n"
+            "- The extraction meta includes 'is_scanned_like' and 'used_ocr' flags.\n"
+            "- If is_scanned_like=True OR used_ocr=True: the body text came from OCR and is "
+            "UNRELIABLE for spell-checking. OCR commonly swaps u↔n, l↔1, O↔0, rn↔m, etc.\n"
+            "- For SCANNED PDFs: do NOT report single-word or single-character spelling errors "
+            "from body text — these are almost certainly OCR artifacts, not real typos.\n"
+            "- For SCANNED PDFs: only report a spelling error if it is ALSO present verbatim "
+            "in a form field value (form fields are AcroForm data, always reliable).\n"
+            "- For embedded (non-scanned) PDFs: spell-check body text normally.\n"
+            "- Common OCR false positives to NEVER report: single letters swapped, 'rn' "
+            "read as 'm', 'vv' read as 'w', character-level noise in legal/technical terms.\n\n"
+
+            "PLACEHOLDER DETECTION — NARROW SCOPE:\n"
+            "- Only flag as placeholder test data if the value is a widely-known generic "
+            "placeholder: 'Lorem ipsum', 'TEST DATA', 'SAMPLE', 'TBD', 'Enter text here', "
+            "'N/A', '[INSERT NAME]', etc.\n"
+            "- Do NOT flag system identifiers, form codes, internal IDs, version numbers, "
+            "or application-specific tokens (e.g. 'If360_Testing', 'POL-DRAFT-001') as "
+            "placeholder data — these are legitimate technical identifiers.\n\n"
+
             "WATERMARK / SPECIMEN ARTIFACT DETECTION:\n"
             "- Insurance forms frequently carry diagonal 'SAMPLE', 'SPECIMEN', 'DRAFT', 'VOID' stamps.\n"
             "- Scattered isolated single characters spelling a watermark word are OCR artifacts — "
@@ -453,15 +473,29 @@ Before writing the final JSON:
 """
 
     if mode == "basic":
+        is_scanned = bool(
+            (current_meta or {}).get("is_scanned_like")
+            or (current_meta or {}).get("used_ocr")
+        )
+        scanned_notice = (
+            "\n⚠ SCANNED/OCR PDF DETECTED (is_scanned_like=True or used_ocr=True):\n"
+            "- Body text is OCR-extracted and UNRELIABLE for spelling.\n"
+            "- Do NOT report spelling errors from body text — they are almost certainly OCR artifacts.\n"
+            "- ONLY report spelling errors found verbatim in form field values.\n"
+            "- Focus instead on: Form Completeness, Accessibility, Layout, and Typography "
+            "(these do not depend on OCR text accuracy).\n"
+            if is_scanned
+            else "\nPDF source: embedded text (reliable for spell-checking).\n"
+        )
         user_content = f"""
 Perform BASIC VALIDATION on the following PDF form.
-
+{scanned_notice}
 Apply ALL five validation categories from the system rules:
-1. SPELLING & LANGUAGE — spell-check all text; detect placeholders, duplicate labels, capitalization/punctuation inconsistencies, truncated text.
-2. TYPOGRAPHY CONSISTENCY — detect font size outliers, font family deviations, bold/italic inconsistencies, text below minimum readable size.
-3. LAYOUT & SPATIAL CONSISTENCY — detect field misalignment, overlapping elements, margin violations, header/footer shifts.
-4. FORM COMPLETENESS — detect empty required fields, missing form title/version, missing signature/date blocks, missing legal disclaimers.
-5. ACCESSIBILITY & USABILITY — detect low contrast, orphan input fields, tables without headers, color-only indicators.
+1. SPELLING & LANGUAGE — {"For this scanned PDF: check FORM FIELDS only for spelling (body text is OCR noise). Detect placeholders (narrow scope — see system rules)." if is_scanned else "Spell-check all text; detect placeholders (narrow scope), duplicate labels, capitalization/punctuation inconsistencies, truncated text."}
+2. TYPOGRAPHY CONSISTENCY — Detect font size outliers, font family deviations, bold/italic inconsistencies, text below minimum readable size.
+3. LAYOUT & SPATIAL CONSISTENCY — Detect field misalignment, overlapping elements, margin violations, header/footer shifts.
+4. FORM COMPLETENESS — Detect empty required fields, missing form title/version, missing signature/date blocks, missing legal disclaimers.
+5. ACCESSIBILITY & USABILITY — Detect low contrast, orphan input fields, tables without headers, color-only indicators.
 
 There is NO benchmark document in this mode — validate the form against itself.
 
@@ -474,7 +508,7 @@ Current PDF text:
 Current PDF per-page text:
 {current_pages}
 
-Current PDF form fields:
+Current PDF form fields (ALWAYS RELIABLE — use for value checks):
 {current_fields}
 
 {summary_enforcement}

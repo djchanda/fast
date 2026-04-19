@@ -606,6 +606,19 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         current_doc = extract_all(current_bytes)
 
         visual = []
+        # Basic/specific mode: render pages as single-panel snapshots so the
+        # HTML report can show the form in the Snapshot column without a diff.
+        if effective_mode in ("basic", "specific"):
+            try:
+                from engine.visual_diff import VisualDiff
+                vd_basic = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = vd_basic.render_pages(
+                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    result_id=f"run{run_id}_rr{rr_id}",
+                ) or []
+            except Exception as _re:
+                logger.warning("Basic mode page render failed: %s", _re)
+
         if effective_mode == "benchmark" and bench_form:
             bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
             benchmark_doc = extract_all(bench_bytes)

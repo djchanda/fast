@@ -1541,6 +1541,59 @@ class VisualDiff:
                 draw.text((idx * w + 12, 26), suffix, fill=(180, 180, 180), font=font)
 
     # ---------------------------------------------------
+    # Single-PDF page rendering (basic mode snapshots)
+    # ---------------------------------------------------
+
+    def render_pages(
+        self,
+        pdf_path: str,
+        result_id: Optional[str] = None,
+        dpi: int = 150,
+    ) -> List[Dict[str, Any]]:
+        """Render each page of a single PDF as a single-panel PNG snapshot.
+
+        Used in basic mode so the HTML report can show the form page in the
+        Snapshot column even without a comparison partner.
+
+        Returns a list of visual_validation-compatible dicts with:
+        - page, snapshot_path, alignment_op="single",
+          similarity=None, major=False, warn=False
+        """
+        rows: List[Dict[str, Any]] = []
+        try:
+            poppler = _poppler_path()
+            pages = convert_from_path(pdf_path, dpi=dpi, fmt="png", poppler_path=poppler)
+            base_name = Path(pdf_path).stem
+            if result_id:
+                base_name = f"{result_id}_{base_name}"
+
+            for idx, page_img in enumerate(pages, start=1):
+                img = page_img.convert("RGB")
+                out_path = self.output_dir / f"{base_name}_basic_page{idx}.png"
+                img.save(out_path, "PNG")
+                rows.append({
+                    "page": idx,
+                    "expected_page_num": idx,
+                    "actual_page_num": idx,
+                    "alignment_op": "single",
+                    "similarity": None,
+                    "major": False,
+                    "warn": False,
+                    "note": "",
+                    "snapshot_path": f"visual_diffs/{out_path.name}",
+                    "diff_bbox": None,
+                    "diff_pixels_pct": 0.0,
+                    "diff_area_pct": 0.0,
+                    "signature_candidate": False,
+                    "signature_label": None,
+                    "signature_reason": "",
+                    "signature_confidence": "none",
+                })
+        except Exception as e:
+            logger.warning("render_pages failed for %s: %s", pdf_path, e)
+        return rows
+
+    # ---------------------------------------------------
     # Document-level comparison helpers
     # ---------------------------------------------------
 
