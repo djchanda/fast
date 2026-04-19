@@ -314,21 +314,38 @@ def project_overview(project_id: int):
     test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
     tc_summaries = []
     for tc in test_cases:
-        latest_rr = (
+        all_rrs = (
             RunResult.query.filter_by(project_id=project_id, test_case_id=tc.id)
             .order_by(RunResult.created_at.desc())
-            .first()
+            .all()
         )
-        if not latest_rr:
-            tc_summaries.append({"tc": tc, "rr": None, "total_obs": 0,
-                                  "pass_f": 0, "defect_f": 0, "pending_f": 0, "jira_keys": []})
-            continue
-        reviews = FindingReview.query.filter_by(run_result_id=latest_rr.id).all()
-        pass_f   = sum(1 for r in reviews if r.status == "false_positive")
-        defect_f = sum(1 for r in reviews if r.status == "resolved")
-        open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0)
-        total_obs = open_f + pass_f + defect_f
-        jira_keys = [r.jira_issue_key for r in reviews if r.status == "resolved" and r.jira_issue_key]
+        latest_rr = all_rrs[0] if all_rrs else None
+
+        # Metrics from latest run only
+        if latest_rr:
+            reviews_latest = FindingReview.query.filter_by(run_result_id=latest_rr.id).all()
+            pass_f   = sum(1 for r in reviews_latest if r.status == "false_positive")
+            defect_f = sum(1 for r in reviews_latest if r.status == "resolved")
+            open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0)
+            total_obs = open_f + pass_f + defect_f
+        else:
+            pass_f = defect_f = open_f = total_obs = 0
+
+        # Jira keys from ALL runs for this test case (tickets survive across re-runs)
+        if all_rrs:
+            all_rr_ids = [r.id for r in all_rrs]
+            jira_keys = list({
+                r.jira_issue_key
+                for r in FindingReview.query.filter(
+                    FindingReview.run_result_id.in_(all_rr_ids),
+                    FindingReview.jira_issue_key.isnot(None),
+                ).all()
+                if r.jira_issue_key
+            })
+            jira_keys.sort()
+        else:
+            jira_keys = []
+
         tc_summaries.append({"tc": tc, "rr": latest_rr, "total_obs": total_obs,
                              "pass_f": pass_f, "defect_f": defect_f, "pending_f": open_f,
                              "jira_keys": jira_keys})
@@ -479,6 +496,23 @@ def delete_project_form(project_id: int, form_id: int):
 
     Project.query.get_or_404(project_id)
     form = Form.query.filter_by(id=form_id, project_id=project_id).first_or_404()
+
+    # Block deletion if any test cases use this form as their primary form
+    # (form_id has a NOT NULL constraint — nullifying it would violate the DB schema)
+    blocking_tcs = TestCase.query.filter_by(form_id=form_id).all()
+    if blocking_tcs:
+        names = ", ".join(f"'{tc.name}'" for tc in blocking_tcs[:3])
+        extra = f" and {len(blocking_tcs) - 3} more" if len(blocking_tcs) > 3 else ""
+        flash(
+            f"Cannot delete this form — it is used by test case(s): {names}{extra}. "
+            "Update or delete those test cases first.",
+            "error",
+        )
+        return redirect(url_for("web.project_forms", project_id=project_id))
+
+    # Safe to delete: detach from any benchmark references first
+    for tc in TestCase.query.filter_by(benchmark_form_id=form_id).all():
+        tc.benchmark_form_id = None
 
     store_dir = project_forms_dir(project_id)
     if form.stored_filename:
