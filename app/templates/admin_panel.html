@@ -170,7 +170,6 @@ curl -X POST -F "file=@form.pdf" -F "mode=basic" -H "Authorization: Bearer YOUR_
           {% set mlist = members_by_project.get(project.id, []) %}
           {% for u in mlist if u %}
           <span class="member-badge">
-            <span class="role-dot role-{{ u.role }}"></span>
             <span style="width:20px;height:20px;border-radius:50%;background:var(--cgi-red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ u.username[0]|upper }}</span>
             {{ u.username }}
             <span class="badge role-{{ u.role }}" style="font-size:9px;padding:1px 5px;">{{ u.role }}</span>
