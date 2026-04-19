@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fast.css') }}" />
+  <script>
+    /* Apply saved theme before first paint to avoid flash */
+    (function(){var t=localStorage.getItem('fast-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+  </script>
 </head>
 <body class="{% if request.endpoint == 'web.landing' %}landing-body{% endif %}{% if dark_page is defined and dark_page %} dark-page{% endif %}">
 
@@ -43,6 +47,10 @@
       {% else %}
         <a class="topbar-icon-btn" href="{{ url_for('web.contact') }}" title="Contact">✉</a>
       {% endif %}
+      <button id="theme-toggle-btn" class="topbar-icon-btn" title="Toggle light/dark mode" style="border:none;cursor:pointer;background:none;padding:0;">
+        <svg id="tb-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="tb-icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
     </div>
   </header>
 
@@ -140,6 +148,34 @@
     <span>© CGI Group Inc. — FAST · AI Assisted Forms Testing</span>
     <span>Powered by CGI</span>
   </footer>
+
+  <script>
+  (function () {
+    var HTML = document.documentElement;
+    var BTN  = document.getElementById('theme-toggle-btn');
+    var MOON = document.getElementById('tb-icon-moon');
+    var SUN  = document.getElementById('tb-icon-sun');
+
+    function applyTheme(theme) {
+      HTML.setAttribute('data-theme', theme);
+      if (theme === 'light') {
+        MOON.style.display = 'block';
+        SUN.style.display  = 'none';
+      } else {
+        MOON.style.display = 'none';
+        SUN.style.display  = 'block';
+      }
+    }
+
+    applyTheme(localStorage.getItem('fast-theme') || 'dark');
+
+    BTN.addEventListener('click', function () {
+      var next = HTML.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      localStorage.setItem('fast-theme', next);
+    });
+  })();
+  </script>
 
 </body>
 </html>
