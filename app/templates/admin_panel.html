@@ -131,4 +131,57 @@ curl -X POST -F "file=@form.pdf" -F "mode=basic" -H "Authorization: Bearer YOUR_
 .role-reviewer { background: #f4a261; color: #fff; }
 .role-viewer { background: #6c757d; color: #fff; }
 </style>
+<!-- Project Access: Reviewer Assignments -->
+<div class="card" style="margin-top:16px;">
+  <div class="card-header">
+    <span>Reviewer Project Access</span>
+    <span class="badge badge-secondary" style="font-size:11px;">Assign reviewers to specific projects</span>
+  </div>
+  <div class="card-body p0">
+    {% if all_projects %}
+    {% for project in all_projects %}
+    <div style="padding:14px 18px; border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <span style="font-weight:600;font-size:13px;color:var(--text-primary);">{{ project.name }}</span>
+          {% if project.environment %}<span class="badge badge-info" style="margin-left:6px;font-size:10px;">{{ project.environment }}</span>{% endif %}
+        </div>
+        <!-- Current members -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0;">
+          {% set mlist = members_by_project.get(project.id, []) %}
+          {% for u in mlist if u %}
+          <span class="member-badge">
+            <span style="width:20px;height:20px;border-radius:50%;background:var(--cgi-red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ u.username[0]|upper }}</span>
+            {{ u.username }}
+            <form method="POST" action="{{ url_for('web.admin_remove_project_member', project_id=project.id, user_id=u.id) }}" style="display:inline;">
+              <button type="submit" title="Remove">×</button>
+            </form>
+          </span>
+          {% endfor %}
+          {% if not mlist %}
+            <span style="font-size:12px;color:var(--text-muted);">No members — all non-admin users can see this project</span>
+          {% endif %}
+        </div>
+        <!-- Add member -->
+        <form method="POST" action="{{ url_for('web.admin_add_project_member', project_id=project.id) }}" style="display:flex;gap:6px;flex-shrink:0;">
+          <select name="user_id" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-primary);">
+            <option value="">— add reviewer —</option>
+            {% for u in users if u.role == 'reviewer' %}
+              {% set already = members_by_project.get(project.id, [])|selectattr('id', 'equalto', u.id)|list %}
+              {% if not already %}
+              <option value="{{ u.id }}">{{ u.username }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline btn-sm">Add</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="card-body"><p class="text-muted">No projects yet.</p></div>
+    {% endif %}
+  </div>
+</div>
+
 {% endblock %}

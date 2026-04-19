@@ -2988,3 +2988,82 @@ html[data-theme="light"] .cp-input::placeholder { color: var(--text-muted); }
 html[data-theme="light"] .cp-hint  { color: var(--text-muted); }
 html[data-theme="light"] .cp-btn-cancel { background: var(--surface-2); border-color: var(--border); color: var(--text-secondary); }
 html[data-theme="light"] select.cp-input option { background: #ffffff; color: var(--text-primary); }
+
+/* ============================================================
+   LIGHT MODE SIDEBAR + IMPROVED CONTRAST
+   ============================================================ */
+
+/* Better content background in light mode */
+html[data-theme="light"] body,
+html[data-theme="light"] body.dark-page {
+  --bg: #eef2f7;
+  --surface-2: #f4f7fa;
+}
+
+/* Sidebar: white panel with light borders */
+html[data-theme="light"] .sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Nav items */
+html[data-theme="light"] .nav-item { color: #4a5568; }
+html[data-theme="light"] .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+html[data-theme="light"] .nav-item.active {
+  background: rgba(200,25,42,0.08);
+  color: #c8192a;
+  border-left-color: #c8192a;
+}
+
+/* Sidebar text elements */
+html[data-theme="light"] .sidebar-project-label { color: #94a3b8; }
+html[data-theme="light"] .sidebar-project-name  { color: #0f172a; border-bottom-color: #e2e8f0; }
+html[data-theme="light"] .sidebar-section-label { color: #94a3b8; }
+html[data-theme="light"] .sidebar-back-btn      { color: #4a5568; }
+html[data-theme="light"] .sidebar-back-btn:hover { background: #f1f5f9; color: #1e293b; }
+html[data-theme="light"] .icon-btn  { color: #4a5568; border-color: #e2e8f0; }
+html[data-theme="light"] .icon-btn:hover { background: #f1f5f9; color: #1e293b; }
+html[data-theme="light"] .link      { color: #4a5568; }
+html[data-theme="light"] .link:hover { color: #1e293b; }
+html[data-theme="light"] .nav-back  { color: #4a5568; }
+
+/* Footer: white to match sidebar */
+html[data-theme="light"] .footer {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+/* Card depth improvement for light mode */
+html[data-theme="light"] .card {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.05);
+}
+html[data-theme="light"] .ov-kpi  { box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.05); }
+html[data-theme="light"] .results-kpi { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+html[data-theme="light"] .stat-card   { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+html[data-theme="light"] .runs-list-panel { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+/* ── Project member badge (admin UI) ─────────────────────── */
+.member-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 3px 10px 3px 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.member-badge form { display: inline; }
+.member-badge button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 0 0 4px;
+  transition: color .12s;
+}
+.member-badge button:hover { color: var(--danger); }

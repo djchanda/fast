@@ -14,6 +14,7 @@ from .compliance_standard import ComplianceStandard, ComplianceRequirement
 from .false_positive import FalsePositive
 from .field_inventory import FieldInventory
 from .api_key import ApiKey
+from .project_member import ProjectMember
 
 __all__ = [
     "Project", "Form", "TestCase", "Run", "RunResult",
@@ -22,4 +23,5 @@ __all__ = [
     "WebhookConfig", "ScheduledRun",
     "ComplianceStandard", "ComplianceRequirement",
     "FalsePositive", "FieldInventory", "ApiKey",
+    "ProjectMember",
 ]

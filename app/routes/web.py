@@ -41,6 +41,7 @@ from app.models.false_positive import FalsePositive
 from app.models.field_inventory import FieldInventory
 from app.models.api_key import ApiKey
 from app.models.jira_config import JiraConfig
+from app.models.project_member import ProjectMember
 from app.services.runner import run_testcase
 from app.services.audit import log_action
 from app.services import jira_client
@@ -79,6 +80,27 @@ def visual_diffs_dir() -> Path:
 
 def is_logged_in() -> bool:
     return bool(session.get("user"))
+
+
+@web_bp.before_request
+def _enforce_reviewer_project_access():
+    """Block reviewer users from accessing projects they are not assigned to."""
+    if session.get("role") != "reviewer":
+        return None
+    if not request.view_args:
+        return None
+    project_id = request.view_args.get("project_id")
+    if project_id is None:
+        return None
+    if not is_logged_in():
+        return None
+    assigned = ProjectMember.query.filter_by(
+        project_id=project_id,
+        user_id=session.get("user_id"),
+    ).first()
+    if not assigned:
+        flash("Access denied: you are not assigned to this project.", "error")
+        return redirect(url_for("web.home"))
 
 
 def require_login() -> Optional[object]:
@@ -193,7 +215,14 @@ def home():
     from datetime import datetime, timedelta
     from sqlalchemy import func
 
-    projects = Project.query.order_by(Project.created_at.desc()).all()
+    if session.get("role") == "reviewer":
+        member_pids = [
+            m.project_id for m in
+            ProjectMember.query.filter_by(user_id=session.get("user_id")).all()
+        ]
+        projects = Project.query.filter(Project.id.in_(member_pids)).order_by(Project.created_at.desc()).all()
+    else:
+        projects = Project.query.order_by(Project.created_at.desc()).all()
 
     # KPI: runs this week
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -2254,6 +2283,14 @@ def admin_panel():
     total_projects = Project.query.count()
     total_runs = Run.query.count()
     total_forms = Form.query.count()
+    all_projects = Project.query.order_by(Project.name).all()
+    all_members = ProjectMember.query.all()
+    # {project_id: [User, ...]}
+    members_by_project = {}
+    member_user_ids = {m.user_id for m in all_members}
+    member_users = {u.id: u for u in User.query.filter(User.id.in_(member_user_ids)).all()} if member_user_ids else {}
+    for m in all_members:
+        members_by_project.setdefault(m.project_id, []).append(member_users.get(m.user_id))
 
     return render_template(
         "admin_panel.html",
@@ -2264,6 +2301,8 @@ def admin_panel():
         total_projects=total_projects,
         total_runs=total_runs,
         total_forms=total_forms,
+        all_projects=all_projects,
+        members_by_project=members_by_project,
         active="admin",
         user=session.get("user"),
         user_role=session.get("role", "viewer"),
@@ -2374,6 +2413,48 @@ def admin_revoke_api_key(key_id: int):
     ak.is_active = False
     db.session.commit()
     flash(f"API key '{ak.name}' revoked.", "success")
+    return redirect(url_for("web.admin_panel"))
+
+
+@web_bp.route("/admin/projects/<int:project_id>/members/add", methods=["POST"])
+def admin_add_project_member(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("admin")
+    if role_check:
+        return role_check
+
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        flash("No user selected.", "error")
+        return redirect(url_for("web.admin_panel"))
+    project = Project.query.get_or_404(project_id)
+    user = User.query.get_or_404(user_id)
+    existing = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+    if not existing:
+        db.session.add(ProjectMember(project_id=project_id, user_id=user_id))
+        db.session.commit()
+        flash(f"Added {user.username} to {project.name}.", "success")
+    else:
+        flash(f"{user.username} is already a member of {project.name}.", "info")
+    return redirect(url_for("web.admin_panel"))
+
+
+@web_bp.route("/admin/projects/<int:project_id>/members/<int:user_id>/remove", methods=["POST"])
+def admin_remove_project_member(project_id: int, user_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("admin")
+    if role_check:
+        return role_check
+
+    pm = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+    if pm:
+        db.session.delete(pm)
+        db.session.commit()
+        flash("Member removed.", "success")
     return redirect(url_for("web.admin_panel"))
 
 
