@@ -63,12 +63,33 @@
   </div>
   <div class="dash-sep"></div>
   <div class="dash-kv dash-kv-tests">
-    {% if tests_passing %}<span class="dash-test-dot dot-green"></span><span class="dash-kv-sub">{{ tests_passing }} passing</span>{% endif %}
-    {% if tests_failing %}<span class="dash-test-dot dot-red" style="margin-left:8px;"></span><span class="dash-kv-sub dash-sub-red">{{ tests_failing }} failing</span>{% endif %}
-    {% if tests_in_review %}<span class="dash-test-dot dot-amber" style="margin-left:8px;"></span><span class="dash-kv-sub dash-sub-amber">{{ tests_in_review }} in review</span>{% endif %}
-    {% if not tests_passing and not tests_failing and not tests_in_review %}
-      <span class="dash-kv-sub">No runs yet</span>
-    {% endif %}
+    <span class="dash-kv-label" style="display:block;width:100%;margin-bottom:6px;">Test Status</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      {% if tests_passing %}
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span class="dash-dot dash-dot-green dash-dot-sm"></span>
+          <span class="dash-kv-sub dash-num-green" style="font-weight:600;font-size:13px;">{{ tests_passing }}</span>
+          <span class="dash-kv-sub">pass</span>
+        </span>
+      {% endif %}
+      {% if tests_failing %}
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span class="dash-dot dash-dot-red dash-dot-sm"></span>
+          <span class="dash-kv-sub dash-num-red" style="font-weight:600;font-size:13px;">{{ tests_failing }}</span>
+          <span class="dash-kv-sub">fail</span>
+        </span>
+      {% endif %}
+      {% if tests_in_review %}
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span class="dash-dot dash-dot-amber dash-dot-sm"></span>
+          <span class="dash-kv-sub dash-num-amber" style="font-weight:600;font-size:13px;">{{ tests_in_review }}</span>
+          <span class="dash-kv-sub">review</span>
+        </span>
+      {% endif %}
+      {% if not tests_passing and not tests_failing and not tests_in_review %}
+        <span class="dash-kv-sub">No runs yet</span>
+      {% endif %}
+    </div>
   </div>
 </div>
 
@@ -84,7 +105,7 @@
     {% for s in tc_summaries %}
     {% set rr = s.rr %}
     {% set st = rr.status if rr else 'never_run' %}
-    <div class="dash-tc-row">
+    <div class="dash-tc-row dash-tc-row-{{ st }}">
 
       <!-- Status dot -->
       <div class="dash-tc-dot">

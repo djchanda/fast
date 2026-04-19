@@ -2564,9 +2564,8 @@ body.dark-page {
 }
 .dash-kv-tests {
   display: flex;
-  align-items: center;
-  flex-direction: row;
-  gap: 0;
+  flex-direction: column;
+  align-items: flex-start;
   padding: 0 18px;
 }
 .dash-test-dot {
@@ -2581,8 +2580,8 @@ body.dark-page {
 /* Status dots */
 .dash-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -2610,10 +2609,15 @@ body.dark-page {
   gap: 14px;
   padding: 13px 20px;
   border-bottom: 1px solid var(--border);
-  transition: background .15s;
+  border-left: 3px solid transparent;
+  transition: background .15s, border-color .15s;
 }
 .dash-tc-row:last-child { border-bottom: none; }
 .dash-tc-row:hover { background: var(--surface-2); }
+.dash-tc-row-passed   { border-left-color: var(--success) !important; }
+.dash-tc-row-failed   { border-left-color: var(--danger)  !important; }
+.dash-tc-row-in_review,
+.dash-tc-row-running  { border-left-color: var(--warning) !important; }
 
 .dash-tc-dot { flex-shrink: 0; }
 
@@ -2733,3 +2737,63 @@ body.dark-page {
   margin-left: auto;
 }
 .dash-act-link:hover { text-decoration: underline; }
+
+/* ─── Trends page ───────────────────────────────────────────── */
+.tr-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.tr-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tr-filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.tr-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.tr-select:focus { border-color: var(--cgi-blue); }
+.tr-pill-row {
+  display: flex;
+  gap: 4px;
+}
+.tr-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+}
+.tr-pill:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
+.tr-pill-active {
+  background: rgba(59,130,246,.15);
+  border-color: rgba(59,130,246,.4);
+  color: #60a5fa;
+}

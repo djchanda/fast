@@ -921,24 +921,47 @@ def project_trends(project_id: int):
         return gate
 
     project = Project.query.get_or_404(project_id)
-    runs = Run.query.filter_by(project_id=project_id).order_by(Run.created_at.asc()).limit(50).all()
+    test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
 
-    trend_data = [{
-        "run_id": r.id,
-        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M"),
-        "errors": r.errors or 0,
-        "warnings": r.warnings or 0,
-        "passed": r.passed or 0,
-        "total": r.total or 0,
-        "status": r.status,
-    } for r in runs]
+    # Build per-test-case trend datasets (last 30 runs each)
+    tc_trend = {}
+    recent_results = []
+    for tc in test_cases:
+        rrs = (
+            RunResult.query
+            .filter_by(project_id=project_id, test_case_id=tc.id)
+            .order_by(RunResult.created_at.asc())
+            .limit(30).all()
+        )
+        points = []
+        for rr in rrs:
+            obs = (rr.errors or 0) + (rr.warnings or 0)
+            pts = {
+                "rr_id": rr.id,
+                "ts": rr.created_at.strftime("%Y-%m-%d %H:%M") if rr.created_at else "",
+                "status": rr.status or "unknown",
+                "obs": obs,
+                "errors": rr.errors or 0,
+                "warnings": rr.warnings or 0,
+            }
+            points.append(pts)
+            recent_results.append({
+                "rr_id": rr.id, "tc_name": tc.name, "tc_mode": tc.mode or "basic",
+                "ts": rr.created_at, "status": rr.status or "unknown",
+                "obs": obs, "errors": rr.errors or 0, "warnings": rr.warnings or 0,
+                "project_id": project_id,
+            })
+        tc_trend[str(tc.id)] = {"name": tc.name, "mode": tc.mode or "basic", "data": points}
+
+    recent_results.sort(key=lambda x: x["ts"] or __import__("datetime").datetime.min, reverse=True)
 
     return render_template(
         "trends.html",
         page_title=f"FAST | Trends — {project.name}",
         project=project,
-        trend_data_json=json.dumps(trend_data),
-        runs=runs,
+        test_cases=test_cases,
+        tc_trend_json=json.dumps(tc_trend),
+        recent_results=recent_results[:60],
         active="trends",
         user=session.get("user"),
     )
