@@ -6,12 +6,6 @@
 
 <div id="cp-wrap" data-theme="dark">
 
-<!-- ── Theme toggle ────────────────────────────────────────── -->
-<button id="cp-theme-btn" title="Toggle light / dark">
-  <svg id="cp-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-  <svg id="cp-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-</button>
-
 <!-- ── Hero ────────────────────────────────────────────────── -->
 <div class="cp-hero">
   <div class="cp-eyebrow">
@@ -236,31 +230,6 @@
   color: var(--cp-text);
   transition: background .25s, color .25s;
   padding-bottom: 60px;
-}
-
-/* ---- Theme toggle button --------------------------------- */
-#cp-theme-btn {
-  position: fixed;
-  top: 70px;
-  right: 24px;
-  z-index: 200;
-  background: var(--cp-surface);
-  border: 1px solid var(--cp-border);
-  border-radius: 50%;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--cp-sub);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transition: background .2s, color .2s, box-shadow .2s;
-}
-#cp-theme-btn:hover {
-  background: var(--cp-surface2);
-  color: var(--cp-text);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
 }
 
 /* ---- Hero ----------------------------------------------- */
@@ -541,24 +510,12 @@
 
 <script>
 (function () {
-  const wrap = document.getElementById('cp-wrap');
-  const btn  = document.getElementById('cp-theme-btn');
-  const sun  = document.getElementById('cp-sun');
-  const moon = document.getElementById('cp-moon');
-
-  const saved = localStorage.getItem('cp-theme') || 'dark';
-  setTheme(saved);
-
-  btn.addEventListener('click', () => {
-    setTheme(wrap.dataset.theme === 'dark' ? 'light' : 'dark');
-  });
-
-  function setTheme(t) {
-    wrap.dataset.theme = t;
-    localStorage.setItem('cp-theme', t);
-    sun.style.display  = t === 'light' ? 'block' : 'none';
-    moon.style.display = t === 'dark'  ? 'block' : 'none';
+  var wrap = document.getElementById('cp-wrap');
+  function syncTheme() {
+    wrap.dataset.theme = document.documentElement.getAttribute('data-theme') || 'dark';
   }
+  syncTheme();
+  new MutationObserver(syncTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
 
