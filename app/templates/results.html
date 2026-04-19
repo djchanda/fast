@@ -49,26 +49,35 @@
       <span class="runs-list-count">{{ runs|length }}</span>
     </div>
     {% for r in runs %}
-    <a class="run-list-item {% if selected_run and r.id == selected_run.id %}active{% endif %}"
-       href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">
-      <div class="run-list-top">
-        <span class="run-list-num">Run #{{ r.id }}</span>
-        <span class="run-list-status run-list-status-{{ r.status or 'unknown' }}">{{ r.status or "—" }}</span>
-      </div>
-      <div class="run-list-date">
-        {{ r.created_at | est("%b %d, %Y · %H:%M") if r.created_at else "—" }}
-        {% if r.triggered_by %} · {{ r.triggered_by }}{% endif %}
-      </div>
-      <div class="run-list-stats">
-        {% if r.errors %}
-          <span class="run-list-stat run-list-stat-red">{{ r.errors }} err</span>
-        {% endif %}
-        {% if r.warnings %}
-          <span class="run-list-stat run-list-stat-amber">{{ r.warnings }} warn</span>
-        {% endif %}
-        <span class="run-list-stat run-list-stat-green">{{ r.passed or 0 }} ok</span>
-      </div>
-    </a>
+    <div class="run-list-wrap {% if selected_run and r.id == selected_run.id %}active{% endif %}">
+      <a class="run-list-item"
+         href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">
+        <div class="run-list-top">
+          <span class="run-list-num">Run #{{ r.id }}</span>
+          <span class="run-list-status run-list-status-{{ r.status or 'unknown' }}">{{ r.status or "—" }}</span>
+        </div>
+        <div class="run-list-date">
+          {{ r.created_at | est("%b %d, %Y · %H:%M") if r.created_at else "—" }}
+          {% if r.triggered_by %} · {{ r.triggered_by }}{% endif %}
+        </div>
+        <div class="run-list-stats">
+          {% if r.errors %}
+            <span class="run-list-stat run-list-stat-red">{{ r.errors }} err</span>
+          {% endif %}
+          {% if r.warnings %}
+            <span class="run-list-stat run-list-stat-amber">{{ r.warnings }} warn</span>
+          {% endif %}
+          <span class="run-list-stat run-list-stat-green">{{ r.passed or 0 }} ok</span>
+        </div>
+      </a>
+      <form action="{{ url_for('web.delete_run', project_id=project.id, run_id=r.id) }}"
+            method="POST" class="run-delete-form">
+        <button type="submit" class="run-delete-btn" title="Delete Run #{{ r.id }}"
+                onclick="return confirm('Delete Run #{{ r.id }}?\nThis will also remove all results, findings and reviews for this run.')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </button>
+      </form>
+    </div>
     {% endfor %}
   </div>
 

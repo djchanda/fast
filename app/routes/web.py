@@ -934,6 +934,33 @@ def project_results(project_id: int):
     )
 
 
+@web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/delete", methods=["POST"])
+def delete_run(project_id: int, run_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+
+    run = Run.query.filter_by(id=run_id, project_id=project_id).first_or_404()
+
+    # Cascade: delete FindingComments → FindingReviews → RunResults → Run
+    from app.models.finding_review import FindingReview as _FR
+    from app.models.finding_comment import FindingComment as _FC
+    rrs = RunResult.query.filter_by(run_id=run_id).all()
+    for rr in rrs:
+        _FC.query.filter(
+            _FC.finding_review_id.in_(
+                db.session.query(_FR.id).filter_by(run_result_id=rr.id)
+            )
+        ).delete(synchronize_session=False)
+        _FR.query.filter_by(run_result_id=rr.id).delete(synchronize_session=False)
+        db.session.delete(rr)
+    db.session.delete(run)
+    db.session.commit()
+
+    flash(f"Run #{run_id} deleted.", "success")
+    return redirect(url_for("web.project_results", project_id=project_id))
+
+
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>", methods=["GET"])
 def result_detail(project_id: int, result_id: int):
     gate = require_login()

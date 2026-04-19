@@ -1785,21 +1785,40 @@ body.landing-body {
   border: 1px solid var(--border);
 }
 
+.run-list-wrap {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+.run-list-wrap:last-child { border-bottom: none; }
+.run-list-wrap:hover { background: var(--surface-2); }
+.run-list-wrap.active {
+  background: rgba(227,24,55,0.07);
+  border-left: 3px solid var(--cgi-red);
+}
+.run-list-wrap.active .run-list-item { padding-left: 13px; }
+.run-list-wrap:hover .run-delete-btn { opacity: 1; }
+
 .run-list-item {
   display: block;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 40px 12px 16px;
   text-decoration: none;
   transition: background 0.12s;
   cursor: pointer;
 }
-.run-list-item:last-child { border-bottom: none; }
-.run-list-item:hover { background: var(--surface-2); }
-.run-list-item.active {
-  background: rgba(227,24,55,0.07);
-  border-left: 3px solid var(--cgi-red);
-  padding-left: 13px;
+
+.run-delete-form { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); }
+.run-delete-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 5px;
+  transition: opacity .15s, color .15s, background .15s;
+  line-height: 1;
 }
+.run-delete-btn:hover { color: var(--danger); background: rgba(220,38,38,.1); }
 
 .run-list-top {
   display: flex;
