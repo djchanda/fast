@@ -310,6 +310,29 @@ def project_overview(project_id: int):
     total_passed = sum(r.passed or 0 for r in all_runs)
     pass_rate = round((total_passed / total_checks) * 100) if total_checks > 0 else 0
 
+    # Per-test-case summary for the dashboard table
+    test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
+    tc_summaries = []
+    for tc in test_cases:
+        latest_rr = (
+            RunResult.query.filter_by(project_id=project_id, test_case_id=tc.id)
+            .order_by(RunResult.created_at.desc())
+            .first()
+        )
+        if not latest_rr:
+            tc_summaries.append({"tc": tc, "rr": None, "total_obs": 0,
+                                  "pass_f": 0, "defect_f": 0, "pending_f": 0, "jira_keys": []})
+            continue
+        reviews = FindingReview.query.filter_by(run_result_id=latest_rr.id).all()
+        pass_f   = sum(1 for r in reviews if r.status == "false_positive")
+        defect_f = sum(1 for r in reviews if r.status == "resolved")
+        open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0)
+        total_obs = open_f + pass_f + defect_f
+        jira_keys = [r.jira_issue_key for r in reviews if r.status == "resolved" and r.jira_issue_key]
+        tc_summaries.append({"tc": tc, "rr": latest_rr, "total_obs": total_obs,
+                             "pass_f": pass_f, "defect_f": defect_f, "pending_f": open_f,
+                             "jira_keys": jira_keys})
+
     return render_template(
         "project_overview.html",
         page_title=f"FAST | {project.name}",
@@ -321,6 +344,7 @@ def project_overview(project_id: int):
         test_case_count=test_case_count,
         total_run_count=total_run_count,
         pass_rate=pass_rate,
+        tc_summaries=tc_summaries,
         user=session.get("user"),
     )
 

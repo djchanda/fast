@@ -66,60 +66,109 @@
   </div>
 </div>
 
-<!-- Recent runs -->
+<!-- Test Case Summary -->
 <div class="card">
   <div class="card-header">
-    <span>Recent Runs</span>
-    {% if last_summary.run_id %}
-    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
-      View Latest →
+    <span>Test Case Summary</span>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
+      Manage Test Cases →
     </a>
-    {% endif %}
   </div>
 
-  {% if recent_runs and recent_runs|length > 0 %}
+  {% if tc_summaries %}
   <div class="card-body p0">
     <table class="table">
       <thead>
         <tr>
-          <th>Run</th>
-          <th>When</th>
-          <th>By</th>
-          <th>Errors</th>
-          <th>Warnings</th>
-          <th>Passed</th>
+          <th>Test Case</th>
+          <th>Last Run</th>
+          <th>Status</th>
+          <th style="text-align:center;">Observations</th>
+          <th style="text-align:center;">Passed</th>
+          <th style="text-align:center;">Defects</th>
+          <th style="text-align:center;">Pending</th>
+          <th>Defect Tickets</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        {% for r in recent_runs %}
+        {% for s in tc_summaries %}
+        {% set rr = s.rr %}
+        {% set st = rr.status if rr else 'never_run' %}
         <tr>
-          <td><span class="run-badge">#{{ r.id }}</span></td>
-          <td class="text-muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
-          <td>{{ r.triggered_by or "—" }}</td>
+          <!-- Test case name + mode -->
           <td>
-            {% if r.errors %}
-              <span class="stat-pill stat-pill-red">{{ r.errors }}</span>
+            <div style="font-weight:600;font-size:13px;">{{ s.tc.name }}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ s.tc.mode | upper }}</div>
+          </td>
+          <!-- Last run date -->
+          <td class="text-muted" style="font-size:12px;">
+            {% if rr %}{{ rr.created_at.strftime("%Y-%m-%d %H:%M") if rr.created_at else "—" }}{% else %}Never{% endif %}
+          </td>
+          <!-- Status chip -->
+          <td>
+            {% if st == 'passed' %}
+              <span class="stat-pill stat-pill-green">PASSED</span>
+            {% elif st == 'failed' %}
+              <span class="stat-pill stat-pill-red">FAILED</span>
+            {% elif st == 'in_review' %}
+              <span class="stat-pill stat-pill-amber">IN REVIEW</span>
+            {% elif st == 'running' %}
+              <span class="stat-pill stat-pill-amber">RUNNING</span>
             {% else %}
-              <span class="stat-pill stat-pill-neutral">0</span>
+              <span class="stat-pill stat-pill-neutral">—</span>
             {% endif %}
           </td>
-          <td>
-            {% if r.warnings %}
-              <span class="stat-pill stat-pill-amber">{{ r.warnings }}</span>
+          <!-- Total observations -->
+          <td style="text-align:center;">
+            {% if s.total_obs %}
+              <span class="stat-pill stat-pill-neutral">{{ s.total_obs }}</span>
             {% else %}
-              <span class="stat-pill stat-pill-neutral">0</span>
+              <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td>
-            {% if r.passed %}
-              <span class="stat-pill stat-pill-green">{{ r.passed }}</span>
+          <!-- Passed / No Issue -->
+          <td style="text-align:center;">
+            {% if s.pass_f %}
+              <span class="stat-pill stat-pill-green">{{ s.pass_f }}</span>
             {% else %}
-              <span class="stat-pill stat-pill-neutral">0</span>
+              <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td class="right">
-            <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View →</a>
+          <!-- Confirmed Defects -->
+          <td style="text-align:center;">
+            {% if s.defect_f %}
+              <span class="stat-pill stat-pill-red">{{ s.defect_f }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <!-- Pending Review -->
+          <td style="text-align:center;">
+            {% if s.pending_f %}
+              <span class="stat-pill stat-pill-amber">{{ s.pending_f }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <!-- Jira defect tickets -->
+          <td>
+            {% if s.jira_keys %}
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                {% for key in s.jira_keys %}
+                  <span style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:monospace;">{{ key }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted" style="font-size:12px;">—</span>
+            {% endif %}
+          </td>
+          <!-- Actions -->
+          <td class="right" style="white-space:nowrap;">
+            {% if rr %}
+              <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="margin-right:4px;">Review</a>
+              <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_detail', project_id=project.id, result_id=rr.id) }}">Report →</a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -129,11 +178,45 @@
   {% else %}
   <div class="card-body">
     <div class="empty-state">
-      <p class="empty-title">No runs yet</p>
-      <p class="empty-text">Execute a test case to generate results.</p>
+      <p class="empty-title">No test cases yet</p>
+      <p class="empty-text">Create a test case and execute it to see results here.</p>
     </div>
   </div>
   {% endif %}
 </div>
+
+<!-- Recent Runs (compact) -->
+{% if recent_runs %}
+<div class="card" style="margin-top:16px;">
+  <div class="card-header">
+    <span>Recent Runs</span>
+    {% if last_summary.run_id %}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=last_summary.run_id) }}">
+      View Latest →
+    </a>
+    {% endif %}
+  </div>
+  <div class="card-body p0">
+    <table class="table">
+      <thead>
+        <tr><th>Run</th><th>When</th><th>By</th><th>Errors</th><th>Warnings</th><th>Passed</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in recent_runs %}
+        <tr>
+          <td><span class="run-badge">#{{ r.id }}</span></td>
+          <td class="text-muted">{{ r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—" }}</td>
+          <td>{{ r.triggered_by or "—" }}</td>
+          <td>{% if r.errors %}<span class="stat-pill stat-pill-red">{{ r.errors }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
+          <td>{% if r.warnings %}<span class="stat-pill stat-pill-amber">{{ r.warnings }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
+          <td>{% if r.passed %}<span class="stat-pill stat-pill-green">{{ r.passed }}</span>{% else %}<span class="stat-pill stat-pill-neutral">0</span>{% endif %}</td>
+          <td class="right"><a class="btn btn-outline btn-sm" href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
