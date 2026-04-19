@@ -684,6 +684,23 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                 result_json["visual_diff_error"] = vde
 
         result_json = _reconcile_visual_findings(result_json)
+
+        # Specific mode: clear buckets that are never populated by user assertions.
+        # The LLM sometimes adds out-of-scope findings (spelling, layout, etc.)
+        # despite the STRICT SCOPE instruction.  Only assertion-driven categories
+        # are allowed: value_mismatches, missing_content, format_issues,
+        # compliance_issues (for conditional assertions), extra_content.
+        if effective_mode == "specific":
+            for _oos_bucket in (
+                "spelling_errors",
+                "layout_anomalies",
+                "typography_issues",
+                "accessibility_issues",
+                "visual_mismatches",
+                "structural_changes",
+            ):
+                result_json[_oos_bucket] = []
+
         result_json = _refresh_summary_fields(result_json)
 
         # Annotate snapshots with problem-area boxes for basic/specific modes.
