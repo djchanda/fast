@@ -661,15 +661,21 @@ def execute_run(project_id: int):
             rr.result_json = json.dumps(out.get("result_json") or {}, ensure_ascii=False, indent=2)
             rr.summary_text = out.get("summary_text") or ""
 
-            result_obj = out.get("result_json") or {}
-            if isinstance(result_obj, dict) and result_obj.get("error"):
-                rr.status = "failed"
-            else:
-                rr.status = "completed"
-
             rr.errors = int(out.get("errors") or 0) if hasattr(rr, "errors") else 0
             rr.warnings = int(out.get("warnings") or 0) if hasattr(rr, "warnings") else 0
             rr.passed = int(out.get("passed") or 0) if hasattr(rr, "passed") else 0
+
+            result_obj = out.get("result_json") or {}
+            if isinstance(result_obj, dict) and result_obj.get("error"):
+                rr.status = "failed"
+            elif (rr.errors or 0) > 0 or (rr.warnings or 0) > 0:
+                # Findings exist — hold in human review until each is confirmed or dismissed.
+                rr.status = "in_review"
+                rr.passed = 0
+            else:
+                # No findings → automatically passed.
+                rr.status = "passed"
+                rr.passed = 1
 
             write_fn = out.get("write_report_fn")
             if callable(write_fn):
@@ -1013,7 +1019,24 @@ def _recompute_result_metrics(result_id: int) -> None:
 
         rr.errors = new_errors
         rr.warnings = new_warnings
-        rr.passed = 1 if new_errors == 0 else 0
+
+        # Determine the human-reviewed verdict.
+        open_count = global_idx - len(dismissed)   # findings still awaiting review
+        confirmed_defects = sum(
+            1 for r in reviews if r.status == "resolved"
+        )
+        if open_count > 0:
+            # Some findings not yet reviewed — keep in_review.
+            rr.status = "in_review"
+            rr.passed = 0
+        elif confirmed_defects > 0:
+            # Reviewer confirmed at least one real defect.
+            rr.status = "failed"
+            rr.passed = 0
+        else:
+            # All findings dismissed as false positives (or no findings).
+            rr.status = "passed"
+            rr.passed = 1
 
         # Propagate to the parent Run aggregate so dashboard KPIs update too.
         from app.models.run import Run

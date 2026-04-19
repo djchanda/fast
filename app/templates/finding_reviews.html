@@ -67,23 +67,42 @@
 </div>
 {% else %}
 
-<div class="stats-row">
-  <div class="stat-card">
-    <div class="stat-num text-danger">{{ findings | selectattr('review', 'none') | list | length + findings | selectattr('review.status', 'eq', 'open') | list | length }}</div>
-    <div class="stat-label">Open</div>
+{% set total_f = findings | length %}
+{% set pending_f = findings | selectattr('review', 'none') | list | length + findings | selectattr('review.status', 'eq', 'open') | list | length %}
+{% set defect_f = findings | selectattr('review') | selectattr('review.status', 'eq', 'resolved') | list | length %}
+{% set fp_f     = findings | selectattr('review') | selectattr('review.status', 'eq', 'false_positive') | list | length %}
+{% set reviewed_f = defect_f + fp_f %}
+
+<!-- Review progress banner -->
+<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+  <div style="flex:1;min-width:200px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Review Progress — {{ reviewed_f }} / {{ total_f }} findings reviewed</div>
+    <div style="background:var(--surface-2);border-radius:99px;height:6px;overflow:hidden;">
+      <div style="background:{% if pending_f == 0 and defect_f == 0 %}var(--success){% elif pending_f == 0 %}var(--danger){% else %}#d97706{% endif %};height:100%;width:{{ ((reviewed_f / total_f) * 100) | int }}%;transition:width .3s;"></div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-num text-warning">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'in_review') | list | length }}</div>
-    <div class="stat-label">In Review</div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="text-align:center;">
+      <div style="font-size:20px;font-weight:700;color:var(--danger);">{{ pending_f }}</div>
+      <div style="font-size:11px;color:var(--text-muted);">Pending</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:20px;font-weight:700;color:var(--danger);">{{ defect_f }}</div>
+      <div style="font-size:11px;color:var(--text-muted);">Confirmed Defects</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:20px;font-weight:700;color:var(--success);">{{ fp_f }}</div>
+      <div style="font-size:11px;color:var(--text-muted);">Passed / No Issue</div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-num text-success">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'resolved') | list | length }}</div>
-    <div class="stat-label">Resolved</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-num text-info">{{ findings | selectattr('review') | selectattr('review.status', 'eq', 'false_positive') | list | length }}</div>
-    <div class="stat-label">False Positives</div>
-  </div>
+  <!-- Verdict chip -->
+  {% if pending_f == 0 and defect_f == 0 %}
+    <span style="background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;">PASS</span>
+  {% elif pending_f == 0 and defect_f > 0 %}
+    <span style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;">FAIL — {{ defect_f }} defect{{ 's' if defect_f != 1 }}</span>
+  {% else %}
+    <span style="background:rgba(217,119,6,.15);color:#d97706;border:1px solid rgba(217,119,6,.3);padding:4px 14px;border-radius:99px;font-size:12px;font-weight:700;">IN REVIEW — {{ pending_f }} remaining</span>
+  {% endif %}
 </div>
 
 {% for f in findings %}
@@ -145,21 +164,35 @@
       </form>
     </details>
 
+    <!-- Confirm Defect → FAIL -->
     <details class="inline-details">
-      <summary class="btn btn-sm btn-success">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg>
-        Resolve
+      <summary class="btn btn-sm btn-danger" style="background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Confirm Defect
       </summary>
       <form method="POST" action="{{ url_for('web.resolve_finding', project_id=project.id, result_id=rr.id) }}" class="inline-form">
         <input type="hidden" name="finding_index" value="{{ f.index }}">
         <input type="hidden" name="finding_category" value="{{ f.category }}">
         <input type="hidden" name="finding_description" value="{{ item.description | default('') | e }}">
-        <select name="status" class="input" style="width:100%;margin-bottom:8px">
-          <option value="resolved">Resolved</option>
-          <option value="false_positive">False Positive (suppress future)</option>
-        </select>
-        <textarea name="resolution_note" class="input" style="width:100%;resize:vertical;margin-bottom:8px;height:60px" placeholder="Resolution note..."></textarea>
-        <button type="submit" class="btn btn-sm btn-success">Save</button>
+        <input type="hidden" name="status" value="resolved">
+        <textarea name="resolution_note" class="input" style="width:100%;resize:vertical;margin-bottom:8px;height:56px" placeholder="Describe the defect or next steps..."></textarea>
+        <button type="submit" class="btn btn-sm" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);">Mark as Defect (FAIL)</button>
+      </form>
+    </details>
+
+    <!-- Pass / Not an issue -->
+    <details class="inline-details">
+      <summary class="btn btn-sm btn-success">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-1px"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark as Pass
+      </summary>
+      <form method="POST" action="{{ url_for('web.resolve_finding', project_id=project.id, result_id=rr.id) }}" class="inline-form">
+        <input type="hidden" name="finding_index" value="{{ f.index }}">
+        <input type="hidden" name="finding_category" value="{{ f.category }}">
+        <input type="hidden" name="finding_description" value="{{ item.description | default('') | e }}">
+        <input type="hidden" name="status" value="false_positive">
+        <textarea name="resolution_note" class="input" style="width:100%;resize:vertical;margin-bottom:8px;height:56px" placeholder="Optional: why this is not an issue..."></textarea>
+        <button type="submit" class="btn btn-sm btn-success">Pass / Not an Issue</button>
       </form>
     </details>
     {% endif %}
@@ -203,9 +236,15 @@
     {% endif %}
   </div>
   {% else %}
-  <div class="finding-resolved-note">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>
-    {{ status.replace('_', ' ').title() }} by {{ review.resolved_by }} — {{ review.resolution_note or '' }}
+  <div class="finding-resolved-note" style="{% if status == 'resolved' %}color:var(--danger){% else %}color:var(--success){% endif %}">
+    {% if status == 'resolved' %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Confirmed Defect (FAIL)
+    {% else %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>
+      Passed / No Issue
+    {% endif %}
+    — {{ review.resolved_by }}{% if review.resolution_note %}: {{ review.resolution_note }}{% endif %}
   </div>
   {% endif %}
 </div>
