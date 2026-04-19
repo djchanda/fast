@@ -630,7 +630,25 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                     original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
                     expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
                     result_id=f"run{run_id}_rr{rr_id}",
+                    dpi=150,
                 ) or []
+
+                # Fallback: if detailed comparison produced nothing (e.g. large PDFs
+                # caused a timeout), render the main form's pages individually so the
+                # decision table at least has snapshot links for mismatch rows.
+                if not visual:
+                    logger.warning(
+                        "compare_pdfs_detailed returned no rows for run %d — "
+                        "falling back to single-panel snapshots.",
+                        run_id,
+                    )
+                    try:
+                        visual = vd.render_pages(
+                            pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                            result_id=f"run{run_id}_rr{rr_id}_fb",
+                        ) or []
+                    except Exception as _fbe:
+                        logger.warning("Fallback render_pages failed: %s", _fbe)
 
                 # Document-level comparison: metadata and form field structure
                 metadata_diff = {}

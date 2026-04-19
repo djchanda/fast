@@ -606,7 +606,8 @@ class VisualDiff:
         threshold = 25
         mask = diff.point(lambda x: 255 if x > threshold else 0)
 
-        diff_pixels = sum(1 for px in mask.getdata() if px > 0)
+        hist = mask.histogram()           # 256 buckets; [0] = unchanged pixels
+        diff_pixels = sum(hist[1:])
         total_pixels = actual.width * actual.height if actual.width and actual.height else 0
 
         diff_pct = (diff_pixels / total_pixels) * 100.0 if total_pixels else 0.0

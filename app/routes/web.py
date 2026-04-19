@@ -1,8 +1,11 @@
 # app/routes/web.py
 import io
+import logging
 import os
 import json
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import Optional
 
 from flask import (
@@ -964,6 +967,68 @@ def assign_finding(project_id: int, result_id: int):
     return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
 
 
+def _recompute_result_metrics(result_id: int) -> None:
+    """Recompute errors/warnings/passed for a RunResult after a finding review action.
+
+    Findings that have been resolved or marked false_positive are excluded from
+    the error/warning count, updating the run dashboard immediately.
+    """
+    try:
+        rr = RunResult.query.get(result_id)
+        if not rr or not rr.result_json:
+            return
+
+        result_obj = json.loads(rr.result_json)
+
+        # Same ordering used by result_reviews to build finding_index values.
+        REVIEW_CATEGORIES = [
+            "spelling_errors", "format_issues", "value_mismatches",
+            "missing_content", "extra_content", "layout_anomalies",
+            "compliance_issues", "visual_mismatches",
+        ]
+        ERROR_BUCKETS = {
+            "spelling_errors", "format_issues", "value_mismatches",
+            "missing_content", "compliance_issues", "visual_mismatches",
+        }
+
+        reviews = FindingReview.query.filter_by(run_result_id=result_id).all()
+        dismissed = {r.finding_index for r in reviews if r.status in ("resolved", "false_positive")}
+
+        global_idx = 0
+        new_errors = 0
+        new_warnings = 0
+        for cat in REVIEW_CATEGORIES:
+            for _item in result_obj.get(cat, []) or []:
+                if global_idx not in dismissed:
+                    if cat in ERROR_BUCKETS:
+                        new_errors += 1
+                    else:
+                        new_warnings += 1
+                global_idx += 1
+
+        # Buckets not exposed in the review UI — always counted at face value.
+        new_errors += len(result_obj.get("structural_changes", []) or [])
+        new_warnings += len(result_obj.get("typography_issues", []) or [])
+        new_warnings += len(result_obj.get("accessibility_issues", []) or [])
+
+        rr.errors = new_errors
+        rr.warnings = new_warnings
+        rr.passed = 1 if new_errors == 0 else 0
+
+        # Propagate to the parent Run aggregate so dashboard KPIs update too.
+        from app.models.run import Run
+        run = Run.query.get(rr.run_id) if rr.run_id else None
+        if run:
+            all_rrs = RunResult.query.filter_by(run_id=rr.run_id).all()
+            run.errors = sum(r.errors or 0 for r in all_rrs)
+            run.warnings = sum(r.warnings or 0 for r in all_rrs)
+            run.passed = sum(r.passed or 0 for r in all_rrs)
+
+        db.session.commit()
+    except Exception as _e:
+        logger.warning("_recompute_result_metrics failed for result %d: %s", result_id, _e)
+
+
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>/reviews/resolve", methods=["POST"])
 def resolve_finding(project_id: int, result_id: int):
     gate = require_login()
@@ -1000,6 +1065,10 @@ def resolve_finding(project_id: int, result_id: int):
     review.resolved_at = datetime.utcnow()
     review.resolution_note = resolution_note
     db.session.commit()
+
+    # Recompute RunResult errors/warnings/passed after every review action
+    # so the results dashboard reflects the dismissed findings immediately.
+    _recompute_result_metrics(result_id)
 
     # Auto-learn from false positives
     if new_status == "false_positive":
