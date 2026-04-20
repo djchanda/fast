@@ -922,6 +922,51 @@ def execute_run(project_id: int):
 # -----------------------
 # Results
 # -----------------------
+_REVIEW_CATS = [
+    "spelling_errors", "format_issues", "value_mismatches",
+    "missing_content", "extra_content", "layout_anomalies",
+    "compliance_issues", "visual_mismatches",
+]
+
+
+def _compute_run_review_stats(results):
+    """Return finding-level review stats across all RunResults in a run.
+
+    Returns a dict with keys: total, pending, defects, no_issue.
+    These match the counts shown in the Finding Review Workflow so the
+    Results page KPIs stay in sync with the reviewer's view.
+    """
+    rs = {"total": 0, "pending": 0, "defects": 0, "no_issue": 0}
+    if not results:
+        return rs
+    rr_ids = [rr.id for rr in results]
+    raw_reviews = FindingReview.query.filter(
+        FindingReview.run_result_id.in_(rr_ids)
+    ).all()
+    rv_map = {(rv.run_result_id, rv.finding_index): rv for rv in raw_reviews}
+    for rr in results:
+        if not rr.result_json:
+            continue
+        try:
+            robj = json.loads(rr.result_json)
+        except Exception:
+            continue
+        idx = 0
+        for cat in _REVIEW_CATS:
+            for _ in robj.get(cat, []) or []:
+                rs["total"] += 1
+                rv = rv_map.get((rr.id, idx))
+                st = rv.status if rv else "open"
+                if st == "resolved":
+                    rs["defects"] += 1
+                elif st == "false_positive":
+                    rs["no_issue"] += 1
+                else:
+                    rs["pending"] += 1
+                idx += 1
+    return rs
+
+
 @web_bp.route("/projects/<int:project_id>/results", methods=["GET"])
 def project_results(project_id: int):
     gate = require_login()
@@ -959,6 +1004,7 @@ def project_results(project_id: int):
         selected_run=selected_run,
         results=results,
         tc_map=tc_map,
+        rs=_compute_run_review_stats(results),
         active="results",
         user=session.get("user"),
     )
@@ -1319,49 +1365,37 @@ def _recompute_result_metrics(result_id: int) -> None:
             "missing_content", "extra_content", "layout_anomalies",
             "compliance_issues", "visual_mismatches",
         ]
-        ERROR_BUCKETS = {
-            "spelling_errors", "format_issues", "value_mismatches",
-            "missing_content", "compliance_issues", "visual_mismatches",
-        }
 
         reviews = FindingReview.query.filter_by(run_result_id=result_id).all()
-        dismissed = {r.finding_index for r in reviews if r.status in ("resolved", "false_positive")}
+        rv_map = {r.finding_index: r for r in reviews}
 
         global_idx = 0
-        new_errors = 0
-        new_warnings = 0
+        new_errors = 0   # confirmed defects (status="resolved")
+        new_warnings = 0  # pending / unreviewed findings
         for cat in REVIEW_CATEGORIES:
             for _item in result_obj.get(cat, []) or []:
-                if global_idx not in dismissed:
-                    if cat in ERROR_BUCKETS:
-                        new_errors += 1
-                    else:
-                        new_warnings += 1
+                rv = rv_map.get(global_idx)
+                st = rv.status if rv else "open"
+                if st == "resolved":
+                    new_errors += 1
+                elif st != "false_positive":  # open / in_review = still pending
+                    new_warnings += 1
+                # false_positive: cleared — not counted as error or warning
                 global_idx += 1
 
-        # Buckets not exposed in the review UI — always counted at face value.
-        new_errors += len(result_obj.get("structural_changes", []) or [])
-        new_warnings += len(result_obj.get("typography_issues", []) or [])
-        new_warnings += len(result_obj.get("accessibility_issues", []) or [])
-
-        rr.errors = new_errors
-        rr.warnings = new_warnings
+        rr.errors = new_errors      # confirmed defects
+        rr.warnings = new_warnings  # pending / unreviewed
 
         # Determine the human-reviewed verdict.
-        open_count = global_idx - len(dismissed)   # findings still awaiting review
-        confirmed_defects = sum(
-            1 for r in reviews if r.status == "resolved"
-        )
-        if open_count > 0:
-            # Some findings not yet reviewed — keep in_review.
+        # new_warnings == pending count; new_errors == confirmed defects.
+        if new_warnings > 0:
             rr.status = "in_review"
             rr.passed = 0
-        elif confirmed_defects > 0:
-            # Reviewer confirmed at least one real defect.
+        elif new_errors > 0:
             rr.status = "failed"
             rr.passed = 0
         else:
-            # All findings dismissed as false positives (or no findings).
+            # All findings cleared as false positives, or no findings.
             rr.status = "passed"
             rr.passed = 1
 

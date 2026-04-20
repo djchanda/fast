@@ -87,27 +87,27 @@
   <div class="run-detail-panel">
     {% if selected_run %}
 
-    <!-- KPI cards for selected run -->
-    {% set _total = selected_run.total or (results|length) or 1 %}
-    {% set _passed = selected_run.passed or 0 %}
-    {% set _pass_pct = ((_passed / _total) * 100) | round | int %}
-    {% set _failed_rrs = results | selectattr('status', 'in', ['failed', 'error']) | list %}
+    <!-- KPI cards for selected run — driven by Finding Review stats so numbers
+         match the Finding Review Workflow exactly. -->
+    {% set _rs_total = rs.total if rs.total > 0 else 1 %}
+    {% set _pass_pct = ((rs.no_issue / _rs_total) * 100) | round | int %}
+    {% set _failed_rrs = results | selectattr('status', 'in', ['failed', 'error', 'in_review']) | list %}
     <div class="results-summary-row">
       <div class="results-kpi results-kpi-red">
-        <div class="results-kpi-num">{{ selected_run.errors or 0 }}</div>
-        <div class="results-kpi-label">Errors</div>
+        <div class="results-kpi-num">{{ rs.defects }}</div>
+        <div class="results-kpi-label">Defects</div>
       </div>
       <div class="results-kpi results-kpi-amber">
-        <div class="results-kpi-num">{{ selected_run.warnings or 0 }}</div>
-        <div class="results-kpi-label">Warnings</div>
+        <div class="results-kpi-num">{{ rs.pending }}</div>
+        <div class="results-kpi-label">Pending</div>
       </div>
       <div class="results-kpi results-kpi-green">
-        <div class="results-kpi-num">{{ selected_run.passed or 0 }}</div>
+        <div class="results-kpi-num">{{ rs.no_issue }}</div>
         <div class="results-kpi-label">Passed</div>
       </div>
       <div class="results-kpi results-kpi-blue">
-        <div class="results-kpi-num">{{ _total }}</div>
-        <div class="results-kpi-label">Total Checks</div>
+        <div class="results-kpi-num">{{ rs.total }}</div>
+        <div class="results-kpi-label">Findings</div>
       </div>
       <!-- Health Score Ring -->
       <div class="run-health-score {% if _pass_pct >= 90 %}health-good{% elif _pass_pct >= 50 %}health-warn{% else %}health-bad{% endif %}">
