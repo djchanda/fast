@@ -1168,9 +1168,10 @@ def delete_run(project_id: int, run_id: int):
 
     run = Run.query.filter_by(id=run_id, project_id=project_id).first_or_404()
 
-    # Cascade: delete FindingComments → FindingReviews → RunResults → Run
+    # Cascade: delete FindingComments → FindingReviews → RunResults → ApprovalGate → Run
     from app.models.finding_review import FindingReview as _FR
     from app.models.finding_comment import FindingComment as _FC
+    from app.models.approval_gate import ApprovalGate as _AG
     rrs = RunResult.query.filter_by(run_id=run_id).all()
     for rr in rrs:
         _FC.query.filter(
@@ -1180,6 +1181,7 @@ def delete_run(project_id: int, run_id: int):
         ).delete(synchronize_session=False)
         _FR.query.filter_by(run_result_id=rr.id).delete(synchronize_session=False)
         db.session.delete(rr)
+    _AG.query.filter_by(run_id=run_id).delete(synchronize_session=False)
     db.session.delete(run)
     db.session.commit()
 
