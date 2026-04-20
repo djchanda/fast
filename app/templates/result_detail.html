@@ -82,7 +82,13 @@
           <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:8px;margin-bottom:10px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
             <span style="font-size:13px;font-weight:700;color:#ef4444;">FAILED</span>
-            <span style="font-size:12px;color:var(--text-muted);">Confirmed defects found. See Review Findings for details.</span>
+            {% if has_confirmed_defects %}
+              <span style="font-size:12px;color:var(--text-muted);">Confirmed defects found. See <a href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="color:#ef4444;">Review Findings</a> for details.</span>
+            {% elif llm_failed_msg %}
+              <span style="font-size:12px;color:var(--text-muted);">LLM classification unavailable — no findings could be extracted. <a href="{{ url_for('web.project_execute', project_id=project.id) }}" style="color:#ef4444;">Re-run</a> when the LLM is available.</span>
+            {% else %}
+              <span style="font-size:12px;color:var(--text-muted);">Run failed. See the report below for details.</span>
+            {% endif %}
           </div>
         {% elif _s == 'in_review' %}
           <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.3);border-radius:8px;margin-bottom:10px;">

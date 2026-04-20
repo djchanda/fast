@@ -54,8 +54,8 @@ def _safe_json_loads(raw: str) -> Dict[str, Any]:
 def _is_retryable(exc: Exception) -> bool:
     """Return True for transient errors worth retrying."""
     msg = str(exc).lower()
-    retryable_signals = ("timeout", "timed out", "rate limit", "429", "503",
-                         "connection", "network", "overloaded", "unavailable")
+    retryable_signals = ("timeout", "timed out", "rate limit", "429", "503", "504",
+                         "deadline", "connection", "network", "overloaded", "unavailable")
     return any(s in msg for s in retryable_signals)
 
 

@@ -856,11 +856,16 @@ def execute_run(project_id: int):
             rr.passed = int(out.get("passed") or 0) if hasattr(rr, "passed") else 0
 
             result_obj = out.get("result_json") or {}
-            if isinstance(result_obj, dict) and result_obj.get("error"):
-                rr.status = "failed"
-            elif (rr.errors or 0) > 0 or (rr.warnings or 0) > 0:
-                # Findings exist — hold in human review until each is confirmed or dismissed.
+            has_findings = (rr.errors or 0) > 0 or (rr.warnings or 0) > 0
+            llm_errored = bool(isinstance(result_obj, dict) and result_obj.get("error"))
+            if has_findings:
+                # Findings present (even via deterministic fallback after LLM error)
+                # — human review required before a verdict can be issued.
                 rr.status = "in_review"
+                rr.passed = 0
+            elif llm_errored:
+                # LLM failed and no findings at all — complete run failure.
+                rr.status = "failed"
                 rr.passed = 0
             else:
                 # No findings → automatically passed.
@@ -1128,6 +1133,20 @@ def result_detail(project_id: int, result_id: int):
     if getattr(rr, "report_html_path", None):
         report_url = url_for("web.serve_report", project_id=project_id, filename=rr.report_html_path)
 
+    # Determine failure cause so the banner shows the right message.
+    has_confirmed_defects = False
+    llm_failed_msg = None
+    if rr.status == "failed":
+        has_confirmed_defects = FindingReview.query.filter_by(
+            run_result_id=rr.id, status="resolved"
+        ).first() is not None
+        if not has_confirmed_defects and rr.result_json:
+            try:
+                _robj = json.loads(rr.result_json)
+                llm_failed_msg = _robj.get("error") or None
+            except Exception:
+                pass
+
     return render_template(
         "result_detail.html",
         page_title="FAST | Result Detail",
@@ -1135,6 +1154,8 @@ def result_detail(project_id: int, result_id: int):
         rr=rr,
         tc=tc,
         report_url=report_url,
+        has_confirmed_defects=has_confirmed_defects,
+        llm_failed_msg=llm_failed_msg,
         active="results",
         user=session.get("user"),
     )
