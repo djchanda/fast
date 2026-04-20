@@ -3111,3 +3111,248 @@ html[data-theme="light"] .runs-list-panel { box-shadow: 0 1px 3px rgba(0,0,0,0.0
   text-transform: uppercase;
   margin-top: 2px;
 }
+
+/* ============================================================
+   FAST Design 2.0 — Premium Visual Layer
+   ============================================================ */
+
+/* ── JetBrains Mono for all tabular numbers ───────────────── */
+.kpi-num, .ov-kpi-num, .db-kpi-num, .results-kpi-num,
+.stat-num, .health-pct, .dash-kv-num, .run-list-num,
+.results-run-id {
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tighter heading letter-spacing ──────────────────────── */
+.ov-project-name, .dashboard-title, .db-title, .cp-title,
+.landing-hero-title, .exec-modal-title, .rd-title, .page-title,
+.page-header h1, h1 {
+  letter-spacing: -0.03em;
+}
+
+/* ── Button premium hover: lift + glow ────────────────────── */
+.btn-primary {
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.2s, transform 0.12s;
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(200, 25, 42, 0.45), 0 1px 4px rgba(200, 25, 42, 0.2);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: none; }
+
+.btn-new-project {
+  transition: background 0.15s, box-shadow 0.2s, transform 0.12s;
+}
+.btn-new-project:hover { transform: translateY(-1px); }
+.btn-new-project:active { transform: translateY(0); }
+
+/* ── KPI card hover micro-lift ───────────────────────────── */
+.ov-kpi, .results-kpi, .kpi-card {
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s, background 0.2s;
+}
+.ov-kpi:hover, .results-kpi:hover, .kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.07);
+}
+
+/* ── Project card hover ──────────────────────────────────── */
+.project-card {
+  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* ── Finding card hover lift ─────────────────────────────── */
+.finding-card {
+  transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s, opacity 0.3s;
+}
+.finding-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+/* ── Result row: left content nudge on hover ──────────────── */
+.result-row-left { transition: transform 0.15s ease; }
+.result-row:hover .result-row-left { transform: translateX(3px); }
+
+/* ── Topbar subtle gradient ──────────────────────────────── */
+.topbar {
+  background: linear-gradient(90deg, #06080f 0%, #0f1623 35%, #0f1623 65%, #0c0a12 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── Sidebar active item: inset glow ─────────────────────── */
+.nav-item.active {
+  box-shadow: inset 0 0 24px rgba(200, 25, 42, 0.07);
+}
+
+/* ── User chip hover glow ────────────────────────────────── */
+.user-chip {
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.2s;
+}
+.user-chip:hover {
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 0 14px rgba(200,25,42,0.18);
+}
+
+/* ── Pulsing dot for running status ─────────────────────────── */
+@keyframes pulseDot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.5); }
+  60%      { box-shadow: 0 0 0 5px rgba(2, 132, 199, 0); }
+}
+.result-dot-running {
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+@keyframes pulseDotGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  60%      { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+}
+.db-status-active .db-status-dot { animation: pulseDotGreen 1.6s ease-in-out infinite; }
+
+/* ── Exec bar shimmer ────────────────────────────────────── */
+.exec-bar-fill {
+  background: linear-gradient(90deg, #a81423 0%, #c8192a 40%, #e84355 70%, #c8192a 100%);
+  background-size: 200% 100%;
+  animation: execBarShimmer 1.8s linear infinite;
+}
+@keyframes execBarShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Landing FAST wordmark: gradient text ────────────────── */
+.landing-wordmark {
+  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-image: linear-gradient(135deg, #c8192a 0%, #e84355 40%, #ff6b7a 70%, #c8192a 100%);
+  background-size: 200% 200%;
+  animation: wordmarkShimmer 4s ease infinite;
+  letter-spacing: -5px;
+}
+@keyframes wordmarkShimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Health ring smooth entrance ─────────────────────────── */
+.health-ring-fill {
+  transition: stroke-dasharray 1.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Dark mode: glassmorphism cards ──────────────────────── */
+html[data-theme="dark"] .card {
+  background: rgba(20, 25, 38, 0.82);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+html[data-theme="dark"] .ov-kpi,
+html[data-theme="dark"] .results-kpi {
+  background: rgba(20, 25, 38, 0.82);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+html[data-theme="dark"] .runs-list-panel {
+  background: rgba(20, 25, 38, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html[data-theme="dark"] .exec-modal {
+  background: rgba(20, 25, 38, 0.95);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ── Dark mode: card hover adds glow ────────────────────── */
+html[data-theme="dark"] .ov-kpi:hover {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
+  border-color: rgba(255,255,255,0.12);
+}
+html[data-theme="dark"] .card:hover {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* ── Dark mode: button primary richer glow ───────────────── */
+html[data-theme="dark"] .btn-primary:hover {
+  box-shadow: 0 4px 20px rgba(200, 25, 42, 0.55), 0 1px 6px rgba(200, 25, 42, 0.3);
+}
+
+/* ── Custom scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.45); }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ── Page content fade-up on load ────────────────────────── */
+@keyframes fastFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ov-header, .ov-kpi-row, .results-summary-row, .results-layout,
+.db-header, .db-kpi-row, .db-table-card, .dash-strip,
+.card, .finding-card, .exec-modal {
+  animation: fastFadeUp 0.35s ease-out both;
+}
+.ov-kpi-row .ov-kpi:nth-child(1) { animation-delay: 0.0s; }
+.ov-kpi-row .ov-kpi:nth-child(2) { animation-delay: 0.05s; }
+.ov-kpi-row .ov-kpi:nth-child(3) { animation-delay: 0.1s; }
+.ov-kpi-row .ov-kpi:nth-child(4) { animation-delay: 0.15s; }
+.results-summary-row .results-kpi:nth-child(1) { animation-delay: 0.0s; }
+.results-summary-row .results-kpi:nth-child(2) { animation-delay: 0.05s; }
+.results-summary-row .results-kpi:nth-child(3) { animation-delay: 0.1s; }
+.results-summary-row .results-kpi:nth-child(4) { animation-delay: 0.15s; }
+
+/* ── Flash messages ──────────────────────────────────────── */
+.flash { animation: fastFadeUp 0.3s ease-out both; }
+
+/* ── Status badge subtle glow ────────────────────────────── */
+.badge-success, .pill-green,
+.results-status-passed, .results-status-completed,
+.run-list-status-passed, .run-list-status-completed {
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.18);
+}
+.badge-danger, .pill-red,
+.results-status-failed, .run-list-status-failed {
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.18);
+}
+
+/* ── Light mode: topbar keeps dark brand ─────────────────── */
+html[data-theme="light"] .topbar {
+  background: linear-gradient(90deg, #060810 0%, #0f1623 35%, #0f1623 65%, #0c0a12 100%);
+}
+
+/* ── Light mode: card hover shadow ──────────────────────── */
+html[data-theme="light"] .card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+}
+html[data-theme="light"] .ov-kpi:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* ── Run list staggered entrance ─────────────────────────── */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.run-list-wrap:nth-child(1) { animation: slideDown 0.2s ease-out 0.0s both; }
+.run-list-wrap:nth-child(2) { animation: slideDown 0.2s ease-out 0.04s both; }
+.run-list-wrap:nth-child(3) { animation: slideDown 0.2s ease-out 0.08s both; }
+.run-list-wrap:nth-child(4) { animation: slideDown 0.2s ease-out 0.12s both; }
+.run-list-wrap:nth-child(5) { animation: slideDown 0.2s ease-out 0.16s both; }
+.run-list-wrap:nth-child(n+6) { animation: slideDown 0.2s ease-out 0.20s both; }

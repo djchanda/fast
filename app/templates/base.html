@@ -6,7 +6,7 @@
   <title>{{ page_title or "FAST" }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fast.css') }}" />
   <script>
     /* Apply saved theme before first paint to avoid flash */
@@ -177,7 +177,33 @@
       localStorage.setItem('fast-theme', next);
     });
   })();
+
+  /* KPI counter animation — runs on every page */
+  (function () {
+    function animateCount(el) {
+      var raw = el.textContent.trim();
+      var target = parseInt(raw, 10);
+      if (isNaN(target) || target < 2) return;
+      var start = performance.now();
+      var duration = Math.min(300 + target * 3, 900);
+      el.textContent = '0';
+      (function step(now) {
+        var p = Math.min((now - start) / duration, 1);
+        var ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(ease * target);
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = target;
+      })(start);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      var sel = '.kpi-num,.ov-kpi-num,.db-kpi-num,.results-kpi-num,.stat-num,.dash-kv-num';
+      document.querySelectorAll(sel).forEach(function (el) {
+        requestAnimationFrame(function () { animateCount(el); });
+      });
+    });
+  })();
   </script>
 
+  {% block scripts %}{% endblock %}
 </body>
 </html>

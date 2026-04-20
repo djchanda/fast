@@ -203,3 +203,22 @@
 {% endif %}
 
 {% endblock %}
+
+{% block scripts %}
+<script>
+/* Health ring entrance: animate from 0 to real value on page load */
+(function () {
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.health-ring-fill').forEach(function (path) {
+      var target = path.getAttribute('stroke-dasharray'); /* e.g. "75, 100" */
+      path.setAttribute('stroke-dasharray', '0, 100');
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          path.setAttribute('stroke-dasharray', target);
+        });
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}
