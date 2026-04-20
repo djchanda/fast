@@ -7,10 +7,10 @@ class RunResult(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    run_id = db.Column(db.Integer, db.ForeignKey("runs.id"), nullable=False)
-    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
+    run_id = db.Column(db.Integer, db.ForeignKey("runs.id"), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False, index=True)
 
-    test_case_id = db.Column(db.Integer, db.ForeignKey("test_cases.id"), nullable=False)
+    test_case_id = db.Column(db.Integer, db.ForeignKey("test_cases.id"), nullable=False, index=True)
     form_id = db.Column(db.Integer, db.ForeignKey("forms.id"), nullable=True)
 
     mode = db.Column(db.String(20))

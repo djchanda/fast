@@ -3067,3 +3067,47 @@ html[data-theme="light"] .runs-list-panel { box-shadow: 0 1px 3px rgba(0,0,0,0.0
   transition: color .12s;
 }
 .member-badge button:hover { color: var(--danger); }
+
+/* ── Run Health Score Ring ────────────────────────────── */
+.run-health-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 72px;
+  flex-shrink: 0;
+}
+.health-ring { width: 60px; height: 60px; transform: rotate(-90deg); }
+.health-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 3.5;
+}
+.health-ring-fill {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dasharray .6s ease;
+}
+.health-good  .health-ring-fill { stroke: #22c55e; }
+.health-warn  .health-ring-fill { stroke: #f59e0b; }
+.health-bad   .health-ring-fill { stroke: #ef4444; }
+.health-pct {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -58%);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.health-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}

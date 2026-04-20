@@ -25,6 +25,10 @@ class FalsePositive(db.Model):
 
     is_active = db.Column(db.Boolean, default=True)
 
+    __table_args__ = (
+        db.UniqueConstraint("project_id", "category", "form_id", "pattern", name="uq_fp_project_cat_form_pattern"),
+    )
+
     project = db.relationship("Project", backref=db.backref("false_positives", lazy="dynamic"))
 
     def __repr__(self):

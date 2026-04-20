@@ -261,7 +261,7 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             act_pg = v.get("actual_page_num")
             out_pg = v.get("page")
             label_pg = act_pg if act_pg is not None else out_pg
-            is_blank = bool(v.get("is_blank_page"))
+            is_blank = v.get("is_blank_page") is True
             if is_blank:
                 result_json["extra_content"].append({
                     "page": label_pg,
@@ -413,20 +413,6 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
                     "page": p,
                     "description": description,
                     "_bucket": "visual_mismatches",
-                }
-            )
-        if v.get("signature_candidate") and sig_conf in {"high", "medium"} and not already_signature_like:
-            label = v.get("signature_label") or "signature"
-            reason = v.get("signature_reason") or f"Visual diff is near '{label}' in a signature zone."
-
-            result_json["missing_content"].append(
-                {
-                    "page": p,
-                    "severity": "high",
-                    "field_name": f"{str(label).lower()}_signature",
-                    "category": "Signature / approval block",
-                    "description": f"Signature missing or changed near {label}.",
-                    "evidence": reason,
                 }
             )
     return result_json

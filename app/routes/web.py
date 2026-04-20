@@ -964,6 +964,83 @@ def project_results(project_id: int):
     )
 
 
+@web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/rerun_failures", methods=["POST"])
+def rerun_failures(project_id: int, run_id: int):
+    """Create a new run with only the failed/error test cases from a previous run."""
+    gate = require_login() or require_role("reviewer")
+    if gate:
+        return gate
+
+    run = Run.query.filter_by(id=run_id, project_id=project_id).first_or_404()
+    failed_rrs = RunResult.query.filter_by(run_id=run_id).filter(
+        RunResult.status.in_(["failed", "error"])
+    ).all()
+
+    if not failed_rrs:
+        flash("No failed test cases to rerun.", "info")
+        return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
+
+    tc_ids = [rr.test_case_id for rr in failed_rrs if rr.test_case_id]
+    test_cases = TestCase.query.filter(
+        TestCase.project_id == project_id,
+        TestCase.id.in_(tc_ids),
+    ).all()
+
+    if not test_cases:
+        flash("Test cases for failed runs could not be found.", "error")
+        return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
+
+    new_run = Run(
+        project_id=project_id,
+        triggered_by=f"{session.get('user')} (rerun of #{run_id})",
+        status="running",
+        total=len(test_cases),
+    )
+    db.session.add(new_run)
+    db.session.commit()
+
+    import threading
+    from app.services.runner import run_testcase as _run_tc
+
+    def _execute():
+        import json as _json
+        from app import create_app
+        app = create_app()
+        with app.app_context():
+            for tc in test_cases:
+                rr = RunResult(
+                    run_id=new_run.id,
+                    project_id=project_id,
+                    test_case_id=tc.id,
+                    form_id=tc.form_id,
+                    mode=tc.mode,
+                    status="running",
+                )
+                db.session.add(rr)
+                db.session.commit()
+                try:
+                    out = _run_tc(project_id=project_id, tc=tc, run_id=new_run.id, rr_id=rr.id)
+                    rr.result_json = _json.dumps(out.get("result_json") or {}, ensure_ascii=False)
+                    rr.summary_text = out.get("summary_text") or ""
+                    rr.errors = int(out.get("errors") or 0)
+                    rr.warnings = int(out.get("warnings") or 0)
+                    rr.passed = int(out.get("passed") or 0)
+                    rr.status = "completed"
+                except Exception as exc:
+                    rr.status = "failed"
+                    rr.error_message = str(exc)
+                    rr.errors = 1
+                db.session.add(rr)
+                db.session.commit()
+            new_run.status = "completed"
+            db.session.commit()
+
+    threading.Thread(target=_execute, daemon=True).start()
+
+    flash(f"Re-running {len(test_cases)} failed test case(s) as Run #{new_run.id}.", "success")
+    return redirect(url_for("web.project_results", project_id=project_id, run_id=new_run.id))
+
+
 @web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/delete", methods=["POST"])
 def delete_run(project_id: int, run_id: int):
     gate = require_login() or require_role("admin")

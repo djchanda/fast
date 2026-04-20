@@ -5,11 +5,15 @@ Model is selected via the LLM_PROVIDER env var (default: gemini).
 import os
 import json
 import re
+import time
+import logging
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # JSON helpers (shared)
@@ -40,7 +44,40 @@ def _safe_json_loads(raw: str) -> Dict[str, Any]:
         return json.loads(raw)
     except Exception:
         candidate = _extract_json_object(raw)
-        return json.loads(candidate)
+        try:
+            return json.loads(candidate)
+        except Exception:
+            # LLM returned non-JSON — wrap as error so callers can handle gracefully
+            return {"error": "LLM returned non-JSON response", "raw_response": raw[:500]}
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Return True for transient errors worth retrying."""
+    msg = str(exc).lower()
+    retryable_signals = ("timeout", "timed out", "rate limit", "429", "503",
+                         "connection", "network", "overloaded", "unavailable")
+    return any(s in msg for s in retryable_signals)
+
+
+def _call_with_retry(fn, messages: List[Dict], max_retries: int = 2) -> Dict[str, Any]:
+    """Call fn(messages) with exponential-backoff retry for transient failures."""
+    delay = 4.0
+    last_exc = None
+    for attempt in range(max_retries + 1):
+        try:
+            return fn(messages)
+        except ValueError:
+            raise  # config errors (missing API key) — don't retry
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_retries and _is_retryable(exc):
+                logger.warning("LLM transient error (attempt %d/%d): %s — retrying in %.0fs",
+                               attempt + 1, max_retries + 1, exc, delay)
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
+    raise last_exc  # unreachable but satisfies type checkers
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +107,7 @@ def _run_gemini(messages: List[Dict]) -> Dict[str, Any]:
             "temperature": 0.0,
             "response_mime_type": "application/json",
         },
+        request_options={"timeout": 180},
     )
     raw = getattr(response, "text", "") or ""
     return _safe_json_loads(raw)
@@ -83,7 +121,7 @@ def _run_openai(messages: List[Dict]) -> Dict[str, Any]:
     if not api_key:
         raise ValueError("Missing OPENAI_API_KEY in environment")
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, timeout=180.0)
     response = client.chat.completions.create(
         model=model_name,
         messages=messages,
@@ -96,13 +134,13 @@ def _run_openai(messages: List[Dict]) -> Dict[str, Any]:
 
 def _run_claude(messages: List[Dict]) -> Dict[str, Any]:
     import anthropic
+    import httpx
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
     if not api_key:
         raise ValueError("Missing ANTHROPIC_API_KEY in environment")
 
-    import httpx
     client = anthropic.Anthropic(
         api_key=api_key,
         timeout=httpx.Timeout(180.0, connect=15.0),
@@ -173,8 +211,12 @@ def run_validation(messages: List[Dict], provider: str = None) -> Dict[str, Any]
         return {"error": "Validation aborted", "details": "Prompt was empty."}
 
     try:
-        return fn(messages)
+        return _call_with_retry(fn, messages)
+    except ValueError as e:
+        # Config error (missing API key) — surface directly
+        return {"error": f"LLM configuration error ({provider})", "details": str(e)}
     except Exception as e:
+        logger.error("LLM request failed (%s) after retries: %s", provider, e, exc_info=True)
         return {"error": f"LLM request failed ({provider})", "details": str(e)}
 
 

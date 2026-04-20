@@ -88,6 +88,10 @@
     {% if selected_run %}
 
     <!-- KPI cards for selected run -->
+    {% set _total = selected_run.total or (results|length) or 1 %}
+    {% set _passed = selected_run.passed or 0 %}
+    {% set _pass_pct = ((_passed / _total) * 100) | round | int %}
+    {% set _failed_rrs = results | selectattr('status', 'in', ['failed', 'error']) | list %}
     <div class="results-summary-row">
       <div class="results-kpi results-kpi-red">
         <div class="results-kpi-num">{{ selected_run.errors or 0 }}</div>
@@ -102,8 +106,18 @@
         <div class="results-kpi-label">Passed</div>
       </div>
       <div class="results-kpi results-kpi-blue">
-        <div class="results-kpi-num">{{ selected_run.total or (results|length) }}</div>
+        <div class="results-kpi-num">{{ _total }}</div>
         <div class="results-kpi-label">Total Checks</div>
+      </div>
+      <!-- Health Score Ring -->
+      <div class="run-health-score {% if _pass_pct >= 90 %}health-good{% elif _pass_pct >= 50 %}health-warn{% else %}health-bad{% endif %}">
+        <svg viewBox="0 0 36 36" class="health-ring">
+          <path class="health-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+          <path class="health-ring-fill" stroke-dasharray="{{ _pass_pct }}, 100"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+        </svg>
+        <div class="health-pct">{{ _pass_pct }}%</div>
+        <div class="health-label">Quality</div>
       </div>
       <div class="results-run-meta">
         <div class="results-run-id">Run #{{ selected_run.id }}</div>
@@ -116,6 +130,19 @@
         </span>
       </div>
     </div>
+
+    <!-- Re-run failures button -->
+    {% if _failed_rrs and session.get('role') in ('admin', 'reviewer') %}
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <form method="POST" action="{{ url_for('web.rerun_failures', project_id=project.id, run_id=selected_run.id) }}">
+        <button type="submit" class="btn btn-outline" style="font-size:12px;gap:6px;display:flex;align-items:center;"
+                onclick="return confirm('Re-run {{ _failed_rrs|length }} failed test case(s) as a new run?')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+          Re-run {{ _failed_rrs|length }} Failed
+        </button>
+      </form>
+    </div>
+    {% endif %}
 
     <!-- Test results list -->
     <div class="card">
@@ -135,6 +162,11 @@
               <div class="result-name">{{ tc.name if tc else ("Test Case #" ~ rr.test_case_id) }}</div>
               <div class="result-meta">
                 {% if tc and tc.form %}{{ tc.form.original_filename }}{% endif %}
+                {% if rr.status == 'failed' and rr.error_message %}
+                <span style="color:var(--danger);font-size:11px;margin-left:6px;" title="{{ rr.error_message }}">
+                  ⚠ {{ rr.error_message[:80] }}{% if rr.error_message|length > 80 %}…{% endif %}
+                </span>
+                {% endif %}
               </div>
             </div>
           </div>
