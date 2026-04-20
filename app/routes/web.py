@@ -763,6 +763,74 @@ def delete_testcase(project_id: int, testcase_id: int):
     return redirect(url_for("web.project_testcases", project_id=project_id))
 
 
+@web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>", methods=["GET"])
+def testcase_view(project_id: int, testcase_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    tc = TestCase.query.filter_by(id=testcase_id, project_id=project_id).first_or_404()
+    forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
+    form_map = {f.id: f for f in forms}
+
+    return render_template(
+        "test_case_view.html",
+        page_title=f"FAST | {tc.name}",
+        project=project,
+        tc=tc,
+        form_map=form_map,
+        active="testcases",
+        user=session.get("user"),
+    )
+
+
+@web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>/edit", methods=["GET", "POST"])
+def edit_testcase(project_id: int, testcase_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    tc = TestCase.query.filter_by(id=testcase_id, project_id=project_id).first_or_404()
+    forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        mode = (request.form.get("mode") or "").strip().lower()
+        form_id = request.form.get("form_id") or None
+        benchmark_form_id = request.form.get("benchmark_form_id") or None
+        prompt_text = (request.form.get("prompt_text") or "").strip()
+
+        if not name:
+            flash("Test case name is required.", "error")
+        elif mode not in {"basic", "specific", "benchmark"}:
+            flash("Invalid mode selected.", "error")
+        elif mode == "benchmark" and not benchmark_form_id:
+            flash("Benchmark (golden copy) is required for Benchmark mode.", "error")
+        elif mode == "benchmark" and not prompt_text:
+            flash("Prompt/Test steps are required for Benchmark.", "error")
+        else:
+            tc.name = name
+            tc.mode = mode
+            tc.form_id = int(form_id) if form_id else None
+            tc.benchmark_form_id = int(benchmark_form_id) if benchmark_form_id else None
+            tc.prompt_text = prompt_text if prompt_text else None
+            db.session.commit()
+            flash("Test case updated.", "success")
+            return redirect(url_for("web.project_testcases", project_id=project_id))
+
+    return render_template(
+        "test_case_edit.html",
+        page_title=f"FAST | Edit {tc.name}",
+        project=project,
+        tc=tc,
+        forms=forms,
+        active="testcases",
+        user=session.get("user"),
+    )
+
+
 # -----------------------
 # Execute
 # -----------------------
