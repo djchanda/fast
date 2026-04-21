@@ -115,9 +115,11 @@ def require_login() -> Optional[object]:
 # -----------------------
 @web_bp.route("/")
 def marketing():
-    if is_logged_in():
-        return redirect(url_for("web.home"))
-    return render_template("marketing.html", page_title="FAST | AI-Powered Forms Testing")
+    return render_template(
+        "marketing.html",
+        page_title="FAST | AI-Powered Forms Testing",
+        logged_in=is_logged_in(),
+    )
 
 
 @web_bp.route("/login", methods=["GET", "POST"])
@@ -1243,16 +1245,7 @@ def result_detail(project_id: int, result_id: int):
 # -----------------------
 @web_bp.route("/contact")
 def contact():
-    gate = require_login()
-    if gate:
-        return gate
-
-    return render_template(
-        "contact.html",
-        page_title="FAST | Contact Us",
-        user=session.get("user"),
-        active="contact",
-    )
+    return redirect(url_for("web.marketing"))
 
 
 # ===========================================================================

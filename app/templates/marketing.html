@@ -478,7 +478,11 @@
       <li><a href="#features">Features</a></li>
       <li><a href="#how-it-works">How It Works</a></li>
       <li><a href="#capabilities">Capabilities</a></li>
-      <li><a class="nav-cta" href="{{ url_for('web.login') }}">Sign In →</a></li>
+      {% if logged_in %}
+      <li><a class="nav-cta" href="{{ url_for('web.home') }}">Dashboard →</a></li>
+      {% else %}
+      <li><a class="nav-cta" href="{{ url_for('web.login') }}">Launch App →</a></li>
+      {% endif %}
     </ul>
   </nav>
 
@@ -503,10 +507,17 @@
       </p>
 
       <div class="hero-actions">
-        <a class="btn-primary-hero" href="{{ url_for('web.login') }}">
-          Sign In
+        {% if logged_in %}
+        <a class="btn-primary-hero" href="{{ url_for('web.home') }}">
+          Go to Dashboard
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
+        {% else %}
+        <a class="btn-primary-hero" href="{{ url_for('web.login') }}">
+          Launch App
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        {% endif %}
         <a class="btn-secondary-hero" href="#how-it-works">
           See How It Works
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -641,10 +652,17 @@
     <div class="cta-strip">
       <h2 class="cta-strip-title">Ready to validate smarter?</h2>
       <p class="cta-strip-sub">Sign in and run your first test case in under 5 minutes.</p>
+      {% if logged_in %}
+      <a class="btn-primary-hero" href="{{ url_for('web.home') }}">
+        Go to Dashboard
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      {% else %}
       <a class="btn-primary-hero" href="{{ url_for('web.login') }}">
         Launch FAST
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
+      {% endif %}
     </div>
 
   </div><!-- /page -->
