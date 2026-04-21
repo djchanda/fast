@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title or "FAST | AI-Powered Forms Testing" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0a0b0f;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Background effects ──────────────────────────── */
+    .bg-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-glow::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 600px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(227,24,55,0.18) 0%, transparent 65%);
+    }
+    .bg-glow::after {
+      content: '';
+      position: absolute;
+      bottom: -100px;
+      right: -100px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(227,24,55,0.07) 0%, transparent 70%);
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Topnav ─────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 60px;
+      background: rgba(10,11,15,0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-cgi {
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #e31837;
+      line-height: 1;
+    }
+    .nav-divider {
+      width: 1px;
+      height: 16px;
+      background: rgba(255,255,255,0.18);
+    }
+    .nav-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e2e8f0;
+      letter-spacing: 0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: #e2e8f0; }
+
+    .nav-cta {
+      background: #e31837;
+      color: #fff !important;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .nav-cta:hover {
+      background: #c41530;
+      box-shadow: 0 4px 20px rgba(227,24,55,0.45);
+      transform: translateY(-1px);
+    }
+
+    /* ── Sections wrapper ────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── HERO ────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(227,24,55,0.12);
+      border: 1px solid rgba(227,24,55,0.28);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #f87171;
+      letter-spacing: 0.04em;
+      margin-bottom: 36px;
+      text-transform: uppercase;
+    }
+    .hero-pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #e31837;
+      box-shadow: 0 0 8px rgba(227,24,55,0.8);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .hero-headline {
+      font-size: clamp(52px, 7.5vw, 96px);
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1.02;
+      color: #f1f5f9;
+      margin-bottom: 0;
+    }
+    .hero-headline-red {
+      color: #e31837;
+      display: block;
+    }
+
+    .hero-sub {
+      max-width: 580px;
+      font-size: clamp(15px, 2vw, 18px);
+      font-weight: 400;
+      color: #64748b;
+      line-height: 1.65;
+      margin: 28px auto 44px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 56px;
+    }
+
+    .btn-primary-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #e31837;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 10px;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      transition: background 0.15s, box-shadow 0.2s, transform 0.1s;
+    }
+    .btn-primary-hero:hover {
+      background: #c41530;
+      box-shadow: 0 6px 28px rgba(227,24,55,0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      text-decoration: none;
+      border-radius: 10px;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .btn-secondary-hero:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+      transform: translateY(-1px);
+    }
+
+    /* Stat badges */
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 100px;
+      padding: 7px 16px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+    .badge-pill svg {
+      width: 13px;
+      height: 13px;
+      color: #e31837;
+      flex-shrink: 0;
+    }
+
+    /* ── Divider ─────────────────────────────────────── */
+    .section-divider {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    }
+
+    /* ── HOW IT WORKS ────────────────────────────────── */
+    .section {
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #e31837;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: clamp(30px, 4vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      color: #f1f5f9;
+      text-align: center;
+      margin-bottom: 56px;
+    }
+    .section-title span { color: #e31837; }
+
+    /* Step cards */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 540px) {
+      .steps-grid { grid-template-columns: 1fr; }
+    }
+
+    .step-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      position: relative;
+    }
+    .step-card:hover {
+      border-color: rgba(227,24,55,0.3);
+      background: rgba(227,24,55,0.04);
+      transform: translateY(-3px);
+    }
+
+    .step-num {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #e31837;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .step-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(227,24,55,0.1);
+      border: 1px solid rgba(227,24,55,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: #f87171;
+    }
+    .step-icon svg { width: 20px; height: 20px; }
+
+    .step-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* ── CAPABILITIES ────────────────────────────────── */
+    .caps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .caps-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 540px) {
+      .caps-grid { grid-template-columns: 1fr; }
+    }
+
+    .cap-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+    .cap-card:hover {
+      border-color: rgba(227,24,55,0.28);
+      background: rgba(227,24,55,0.04);
+      transform: translateY(-3px);
+    }
+
+    .cap-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(227,24,55,0.1);
+      border: 1px solid rgba(227,24,55,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: #f87171;
+    }
+    .cap-icon svg { width: 20px; height: 20px; }
+
+    .cap-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+    }
+    .cap-desc {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    /* ── CTA STRIP ───────────────────────────────────── */
+    .cta-strip {
+      padding: 80px 24px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .cta-strip-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+    }
+    .cta-strip-sub {
+      font-size: 16px;
+      color: #64748b;
+      margin-bottom: 36px;
+    }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    /* ── Mobile nav ─────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 0 24px; }
+      .nav-links { display: none; }
+      footer { flex-direction: column; gap: 8px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="bg-grid"></div>
+
+  <!-- ── NAV ──────────────────────────────────────────────── -->
+  <nav>
+    <a class="nav-brand" href="{{ url_for('web.marketing') }}">
+      <span class="nav-cgi">CGI</span>
+      <span class="nav-divider"></span>
+      <span class="nav-name">FAST</span>
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#capabilities">Capabilities</a></li>
+      <li><a class="nav-cta" href="{{ url_for('web.login') }}">Sign In →</a></li>
+    </ul>
+  </nav>
+
+  <div class="page">
+
+    <!-- ── HERO ─────────────────────────────────────────────── -->
+    <section class="hero">
+      <div class="hero-pill">
+        <span class="hero-pill-dot"></span>
+        AI-Assisted Forms Testing &amp; Validation
+      </div>
+
+      <h1 class="hero-headline">
+        AI-Powered Forms Validation.
+        <span class="hero-headline-red">No Code Required.</span>
+      </h1>
+
+      <p class="hero-sub">
+        Upload PDFs. Write test cases in plain English. The AI validates fields,
+        detects defects, compares against golden copies, and generates
+        audit-ready evidence reports — automatically.
+      </p>
+
+      <div class="hero-actions">
+        <a class="btn-primary-hero" href="{{ url_for('web.login') }}">
+          Sign In
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <a class="btn-secondary-hero" href="#how-it-works">
+          See How It Works
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </a>
+      </div>
+
+      <div class="hero-badges">
+        <span class="badge-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          10x Faster than Manual
+        </span>
+        <span class="badge-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M4 9h1M4 12h1M4 15h1M19 9h1M19 12h1M19 15h1M9 4v1M12 4v1M15 4v1M9 19v1M12 19v1M15 19v1"/><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          Multi-Model AI
+        </span>
+        <span class="badge-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Visual Diff Evidence
+        </span>
+        <span class="badge-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Enterprise Ready
+        </span>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ── HOW IT WORKS ─────────────────────────────────────── -->
+    <section class="section" id="how-it-works">
+      <div class="section-label">Process</div>
+      <h2 class="section-title">How It <span>Works</span></h2>
+
+      <div class="steps-grid" id="features">
+        <div class="step-card">
+          <div class="step-num">Step 01</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="step-title">Upload Forms</div>
+          <div class="step-desc">Upload your PDF forms or specify the form type. FAST supports multi-page forms, signatures, and complex layouts.</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">Step 02</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="step-title">Define Test Cases</div>
+          <div class="step-desc">Write test cases in plain English — no scripting, no code. Describe exactly what to check and the AI handles the rest.</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">Step 03</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="step-title">AI Validates</div>
+          <div class="step-desc">The AI engine analyses fields, formats, values, and visual layout. Gemini, GPT-4o, or Claude — your choice of model.</div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">Step 04</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
+          <div class="step-title">Review &amp; Approve</div>
+          <div class="step-desc">Review findings with your team, resolve or flag false positives, then approve through the full audit-trail workflow.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ── CAPABILITIES ─────────────────────────────────────── -->
+    <section class="section" id="capabilities">
+      <div class="section-label">Platform</div>
+      <h2 class="section-title">Built for <span>Enterprise</span></h2>
+
+      <div class="caps-grid">
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M4 9h1M4 12h1M4 15h1M19 9h1M19 12h1M19 15h1M9 4v1M12 4v1M15 4v1M9 19v1M12 19v1M15 19v1"/><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          </div>
+          <div class="cap-title">Multi-Model AI</div>
+          <div class="cap-desc">Switch between Gemini 2.5 Flash, GPT-4o, or Claude — or configure per-project. Never locked into one vendor.</div>
+        </div>
+
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div class="cap-title">Visual Diff Engine</div>
+          <div class="cap-desc">Page-by-page pixel comparison with signature detection. Catch layout shifts, missing fields, and format regressions.</div>
+        </div>
+
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="cap-title">Jira Integration</div>
+          <div class="cap-desc">One-click defect filing to Jira Cloud. Attach evidence screenshots, annotated PDFs, and classification details automatically.</div>
+        </div>
+
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="cap-title">Scheduled Runs</div>
+          <div class="cap-desc">Set cron-style schedules to run validation automatically overnight or on every release. CI/CD-ready via webhook triggers.</div>
+        </div>
+
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="cap-title">Evidence Bundle</div>
+          <div class="cap-desc">Export audit-ready ZIP bundles with annotated PDFs, diff images, and JSON summaries for compliance and sign-off.</div>
+        </div>
+
+        <div class="cap-card">
+          <div class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="cap-title">Review Workflow</div>
+          <div class="cap-desc">Assign findings to team members, mark defects or false positives, and gate approvals with a complete audit log.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA STRIP ─────────────────────────────────────────── -->
+    <div class="cta-strip">
+      <h2 class="cta-strip-title">Ready to validate smarter?</h2>
+      <p class="cta-strip-sub">Sign in and run your first test case in under 5 minutes.</p>
+      <a class="btn-primary-hero" href="{{ url_for('web.login') }}">
+        Launch FAST
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+    </div>
+
+  </div><!-- /page -->
+
+  <footer>
+    <span>© CGI Group Inc. — FAST · AI Assisted Forms Testing</span>
+    <span>Powered by CGI</span>
+  </footer>
+
+</body>
+</html>

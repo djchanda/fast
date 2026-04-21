@@ -13,7 +13,7 @@
     (function(){var t=localStorage.getItem('fast-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
   </script>
 </head>
-<body class="{% if request.endpoint == 'web.landing' %}landing-body{% endif %}{% if dark_page is defined and dark_page %} dark-page{% endif %}">
+<body class="{% if request.endpoint in ('web.login', 'web.marketing') %}landing-body{% endif %}{% if dark_page is defined and dark_page %} dark-page{% endif %}">
 
   <div class="watermark"></div>
 

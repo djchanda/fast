@@ -106,22 +106,29 @@ def _enforce_project_access():
 
 def require_login() -> Optional[object]:
     if not is_logged_in():
-        return redirect(url_for("web.landing"))
+        return redirect(url_for("web.login"))
     return None
 
 
 # -----------------------
 # Auth / Landing
 # -----------------------
-@web_bp.route("/", methods=["GET", "POST"])
-def landing():
+@web_bp.route("/")
+def marketing():
+    if is_logged_in():
+        return redirect(url_for("web.home"))
+    return render_template("marketing.html", page_title="FAST | AI-Powered Forms Testing")
+
+
+@web_bp.route("/login", methods=["GET", "POST"])
+def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = (request.form.get("password") or "").strip()
 
         if not username or not password:
             flash("Please enter username and password.", "error")
-            return redirect(url_for("web.landing"))
+            return redirect(url_for("web.login"))
 
         # Real authentication against users table
         user = User.query.filter_by(username=username, is_active=True).first()
@@ -137,7 +144,7 @@ def landing():
         else:
             flash("Invalid username or password.", "error")
             log_action("auth.login_failed", detail={"username": username})
-            return redirect(url_for("web.landing"))
+            return redirect(url_for("web.login"))
 
     if is_logged_in():
         return redirect(url_for("web.home"))
@@ -150,7 +157,7 @@ def logout():
     log_action("auth.logout")
     session.clear()
     flash("Logged out.", "info")
-    return redirect(url_for("web.landing"))
+    return redirect(url_for("web.login"))
 
 
 def require_role(min_role: str):
