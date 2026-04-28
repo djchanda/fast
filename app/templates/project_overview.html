@@ -30,6 +30,56 @@
   </div>
 </div>
 
+<!-- ── Offerings ────────────────────────────────────────────── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+
+  <!-- Validation & Testing -->
+  <div style="border-radius:12px;border:1px solid var(--border);background:var(--card);padding:20px 22px;display:flex;gap:16px;align-items:flex-start;position:relative;overflow:hidden;">
+    <div style="flex-shrink:0;width:42px;height:42px;border-radius:10px;background:rgba(227,24,55,.12);border:1px solid rgba(227,24,55,.25);display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e31837" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Form Validation & Testing</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Automate PDF form quality assurance — catch spelling errors, field issues, compliance gaps, and layout anomalies before they reach customers.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="btn btn-outline" style="font-size:12px;padding:6px 12px;" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Test Case
+        </a>
+        <a class="btn btn-primary" style="font-size:12px;padding:6px 12px;" href="{{ url_for('web.project_execute', project_id=project.id) }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Execute Tests
+        </a>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:-10px;right:-10px;opacity:.04;">
+      <svg width="90" height="90" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    </div>
+  </div>
+
+  <!-- PDF Rebranding -->
+  <div style="border-radius:12px;border:1px solid var(--border);background:var(--card);padding:20px 22px;display:flex;gap:16px;align-items:flex-start;position:relative;overflow:hidden;">
+    <div style="flex-shrink:0;width:42px;height:42px;border-radius:10px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">PDF Rebranding</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">Apply new logos, brand colours, and company identity across all PDF forms in bulk — ideal after acquisitions or corporate rebranding.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="btn" style="font-size:12px;padding:6px 14px;background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);border-radius:8px;text-decoration:none;display:flex;align-items:center;gap:6px;"
+           href="{{ url_for('web.project_rebrand', project_id=project.id) }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+          Go to Rebranding
+        </a>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:-10px;right:-10px;opacity:.04;">
+      <svg width="90" height="90" viewBox="0 0 24 24" fill="currentColor"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+    </div>
+  </div>
+
+</div>
+
 <!-- ── Stat strip ───────────────────────────────────────────── -->
 <div class="dash-strip">
   <div class="dash-kv">
