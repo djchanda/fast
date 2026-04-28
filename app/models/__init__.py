@@ -15,6 +15,7 @@ from .false_positive import FalsePositive
 from .field_inventory import FieldInventory
 from .api_key import ApiKey
 from .project_member import ProjectMember
+from .branding_profile import BrandingProfile
 
 __all__ = [
     "Project", "Form", "TestCase", "Run", "RunResult",
@@ -23,5 +24,6 @@ __all__ = [
     "WebhookConfig", "ScheduledRun",
     "ComplianceStandard", "ComplianceRequirement",
     "FalsePositive", "FieldInventory", "ApiKey",
-    "ProjectMember",
+    "ProjectMember", "BrandingProfile",
 ]
+

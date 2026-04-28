@@ -2662,6 +2662,143 @@ def admin_remove_project_member(project_id: int, user_id: int):
 
 
 # -----------------------
+# Rebrand
+# -----------------------
+@web_bp.route("/projects/<int:project_id>/rebrand", methods=["GET"])
+def project_rebrand(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+    from app.models.form import Form as _Form
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    forms = _Form.query.filter_by(project_id=project_id).order_by(_Form.uploaded_at.desc()).all()
+
+    # Check if a fresh ZIP is available in the session
+    zip_ready = session.pop("rebrand_zip_ready", False)
+    zip_filename = session.pop("rebrand_zip_filename", None)
+    rebranded_count = session.pop("rebrand_count", 0)
+
+    return render_template(
+        "rebrand.html",
+        page_title=f"FAST | Rebrand — {project.name}",
+        project=project,
+        profile=profile,
+        forms=forms,
+        zip_ready=zip_ready,
+        zip_filename=zip_filename,
+        rebranded_count=rebranded_count,
+        active="rebrand",
+        user=session.get("user"),
+    )
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/save", methods=["POST"])
+def save_branding_profile(project_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    if not profile:
+        profile = BrandingProfile(project_id=project_id)
+        db.session.add(profile)
+
+    from datetime import datetime as _dt
+    profile.company_name  = (request.form.get("company_name") or "").strip() or None
+    profile.tagline       = (request.form.get("tagline") or "").strip() or None
+    profile.primary_color = (request.form.get("primary_color") or "#003087").strip()
+    profile.header_height = int(request.form.get("header_height") or 60)
+    profile.footer_text   = (request.form.get("footer_text") or "").strip() or None
+    profile.updated_at    = _dt.utcnow()
+
+    # Logo upload
+    logo_file = request.files.get("logo")
+    if logo_file and logo_file.filename:
+        from werkzeug.utils import secure_filename as _sf
+        ext = os.path.splitext(_sf(logo_file.filename))[1].lower()
+        if ext in {".png", ".jpg", ".jpeg", ".svg"}:
+            logo_dir = os.path.join(current_app.instance_path, "uploads", f"project_{project_id}", "branding")
+            os.makedirs(logo_dir, exist_ok=True)
+            logo_abs = os.path.join(logo_dir, f"logo{ext}")
+            logo_file.save(logo_abs)
+            profile.logo_path = logo_abs
+        else:
+            flash("Logo must be a PNG, JPG, or SVG file.", "error")
+
+    db.session.commit()
+    flash("Branding profile saved.", "success")
+    return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/apply", methods=["POST"])
+def apply_rebrand(project_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+    from app.services.rebrand import bulk_rebrand
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    if not profile:
+        flash("No branding profile configured. Please save a profile first.", "error")
+        return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+    form_ids = [int(fid) for fid in request.form.getlist("form_ids") if fid.isdigit()]
+    if not form_ids:
+        flash("No forms selected.", "error")
+        return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+    result = bulk_rebrand(form_ids, profile, project_id, current_app.instance_path)
+
+    # Persist ZIP to disk so the download route can serve it
+    from datetime import datetime as _dt2
+    rebrand_dir = os.path.join(current_app.instance_path, "rebrands", f"project_{project_id}")
+    os.makedirs(rebrand_dir, exist_ok=True)
+    ts = _dt2.utcnow().strftime("%Y%m%d%H%M%S")
+    zip_filename = f"rebranded_{ts}.zip"
+    zip_path = os.path.join(rebrand_dir, zip_filename)
+    with open(zip_path, "wb") as fp:
+        fp.write(result["zip_bytes"])
+
+    n = len(result["saved_form_ids"])
+    session["rebrand_zip_ready"] = True
+    session["rebrand_zip_filename"] = zip_filename
+    session["rebrand_count"] = n
+
+    if result["errors"]:
+        for err in result["errors"]:
+            flash(f"Warning: {err}", "warning")
+
+    if n > 0:
+        flash(f"{n} form(s) rebranded. New forms saved to project. Download ZIP below.", "success")
+    else:
+        flash("No forms were rebranded. Check warnings above.", "error")
+
+    return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/download/<filename>", methods=["GET"])
+def download_rebrand_zip(project_id: int, filename: str):
+    gate = require_login()
+    if gate:
+        return gate
+
+    from werkzeug.utils import secure_filename as _sf
+    safe = _sf(filename)
+    rebrand_dir = os.path.join(current_app.instance_path, "rebrands", f"project_{project_id}")
+    return send_from_directory(rebrand_dir, safe, as_attachment=True, download_name="rebranded_forms.zip")
+
+
+# -----------------------
 # Audit Log (read-only)
 # -----------------------
 @web_bp.route("/projects/<int:project_id>/audit-log")
