@@ -666,12 +666,22 @@ Apply ALL six change categories from the system rules:
 3. LAYOUT & POSITIONAL CHANGES — field movement/resizing, reflow cascades (group by root cause).
 4. STRUCTURAL CHANGES — use FORM FIELD STRUCTURE signal for added/removed fields; section/page additions/removals.
 5. METADATA & INVISIBLE CHANGES — use METADATA signal for document properties and field type changes.
-6. FORMATTING & STYLE CHANGES — border/color/logo/watermark changes.
+6. FORMATTING & STYLE CHANGES — border/color/logo/watermark changes, watermarks present/absent.
 
 Use the LINE DIFF as the primary accuracy signal.
 For CHANGED lines: report "Changed from '<was>' to '<now>'".
 For STRUCTURAL and METADATA signals: translate each entry into a finding in the appropriate category.
 Group reflow cascades as a single finding with affected element count and root cause.
+
+PAGE COUNT & IMAGE PAIRING — CRITICAL RULES:
+- The VISUAL DIFF SUMMARY already identifies DELETED and INSERTED pages using sequence alignment.
+  Do NOT re-report page removals or insertions as your own findings — they are handled by the system.
+- Page images are labeled "BASELINE page X matched to CURRENT page Y" where X and Y may differ
+  when content has been redistributed across a different number of pages. A difference in page
+  numbers does NOT mean a page was removed — it means content was reformatted.
+- When comparing images labeled with different page numbers (e.g. "BASELINE page 4 matched to
+  CURRENT page 3"), focus on WHAT CHANGED between those two pages, not on the numbering.
+- Only report page-count findings if the VISUAL DIFF SUMMARY explicitly marks a page as DELETED.
 {doc_level_note}
 
 User-provided additional instructions:
@@ -709,7 +719,7 @@ Form fields: {current_fields}
     # to catch watermarks, table structure, section ordering, and other layout
     # details that text extraction alone misses.
     user_content_block = _build_user_content_with_images(
-        user_content, mode, baseline_images, current_images
+        user_content, mode, baseline_images, current_images, current_visual_diffs
     )
     return [
         system_msg,
@@ -722,41 +732,74 @@ def _build_user_content_with_images(
     mode: str,
     baseline_images: Optional[List[Dict[str, Any]]],
     current_images: Optional[List[Dict[str, Any]]],
+    visual_diffs: Optional[List[Dict[str, Any]]] = None,
 ) -> Any:
     """
     Return a list of content blocks (text + images) when images are provided for
     benchmark mode, or the plain text string otherwise.
 
+    Images are paired according to the sequence-alignment data (visual_diffs) so
+    the LLM sees BASELINE page X next to the CURRENT page it was actually matched
+    to — not naively paired by page number. This prevents the LLM from
+    hallucinating page removals when the current PDF has fewer pages than the
+    baseline.
+
     Content block format (OpenAI / Anthropic compatible):
       {"type": "text", "text": "..."}
       {"type": "image", "mime": "image/jpeg", "b64": "...", "label": "..."}
 
-    The LLM client translates these provider-specific payloads.
+    The LLM client translates these into provider-specific payloads.
     """
     if mode != "benchmark" or not (baseline_images or current_images):
         return text_content
 
     blocks: list = [{"type": "text", "text": text_content}]
 
-    # Interleave baseline and current page images so the LLM sees them paired.
     baseline_map = {img["page"]: img for img in (baseline_images or [])}
     current_map  = {img["page"]: img for img in (current_images or [])}
-    all_pages = sorted(set(baseline_map) | set(current_map))
 
-    for pg in all_pages:
-        if pg in baseline_map:
+    # Build alignment-aware pairs from visual_diffs when available.
+    # Each entry maps (baseline_page, current_page, op) so we label images with
+    # their alignment context rather than raw page numbers.
+    pairs: list = []  # list of (baseline_pg | None, current_pg | None, label_prefix)
+    if visual_diffs:
+        for v in visual_diffs:
+            op = str(v.get("alignment_op") or "matched").lower()
+            exp_pg = v.get("expected_page_num")
+            act_pg = v.get("actual_page_num")
+            pg     = v.get("page")
+
+            if op == "deleted":
+                b_pg = exp_pg if exp_pg is not None else pg
+                pairs.append((b_pg, None, f"BASELINE page {b_pg} — DELETED (no match in current)"))
+            elif op == "inserted":
+                c_pg = act_pg if act_pg is not None else pg
+                pairs.append((None, c_pg, f"CURRENT page {c_pg} — INSERTED (no match in baseline)"))
+            else:
+                b_pg = exp_pg if exp_pg is not None else pg
+                c_pg = act_pg if act_pg is not None else pg
+                label = f"BASELINE page {b_pg} matched to CURRENT page {c_pg}"
+                pairs.append((b_pg, c_pg, label))
+    else:
+        # Fallback: pair by page number
+        all_pages = sorted(set(baseline_map) | set(current_map))
+        for pg in all_pages:
+            pairs.append((pg, pg, f"page {pg}"))
+
+    for b_pg, c_pg, label in pairs:
+        if b_pg is not None and b_pg in baseline_map:
             blocks.append({
                 "type": "image",
-                "mime": baseline_map[pg]["mime"],
-                "b64":  baseline_map[pg]["b64"],
-                "label": f"BASELINE page {pg}",
+                "mime": baseline_map[b_pg]["mime"],
+                "b64":  baseline_map[b_pg]["b64"],
+                "label": f"BASELINE — {label}",
             })
-        if pg in current_map:
+        if c_pg is not None and c_pg in current_map:
             blocks.append({
                 "type": "image",
-                "mime": current_map[pg]["mime"],
-                "b64":  current_map[pg]["b64"],
-                "label": f"CURRENT page {pg}",
+                "mime": current_map[c_pg]["mime"],
+                "b64":  current_map[c_pg]["b64"],
+                "label": f"CURRENT — {label}",
             })
 
     return blocks

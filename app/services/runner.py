@@ -480,14 +480,27 @@ def _reconcile_benchmark_visual(result_json: Dict[str, Any]) -> Dict[str, Any]:
     """For benchmark runs: add visual_mismatch entries for pages with >=2% pixel
     diff that the LLM did not produce a finding for (missed detections, not FP-suppressed items)."""
     visual = result_json.get("visual_validation") or []
+    # Check ALL finding buckets — a page already covered by missing_content,
+    # structural_changes, value_mismatches, etc. must not also get a spurious
+    # "not classified by LLM" visual_mismatch entry.
+    all_buckets = [
+        "visual_mismatches", "missing_content", "extra_content",
+        "value_mismatches", "format_issues", "layout_anomalies",
+        "structural_changes", "spelling_errors", "typography_issues",
+    ]
     existing_pages = {
         item.get("page")
-        for item in (result_json.get("visual_mismatches") or [])
-        if item.get("page") is not None
+        for bucket in all_buckets
+        for item in (result_json.get(bucket) or [])
+        if isinstance(item, dict) and item.get("page") is not None
     }
     added = []
     for entry in visual:
         if not entry.get("major"):
+            continue
+        # Deleted/inserted pages are already handled by _reconcile_visual_findings
+        op = str(entry.get("alignment_op") or "matched").lower()
+        if op in ("deleted", "inserted"):
             continue
         page = entry.get("page") or entry.get("actual_page_num")
         if page is None or page in existing_pages:
