@@ -101,6 +101,74 @@ def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
     return base
 
 
+def _levenshtein(a: str, b: str) -> int:
+    """Levenshtein edit distance, capped at 100 chars per string."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    a, b = a[:100], b[:100]
+    m, n = len(a), len(b)
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        curr = [i] + [0] * n
+        for j in range(1, n + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+        prev = curr
+    return prev[n]
+
+
+def _is_ocr_artifact(before: str, after: str) -> bool:
+    """Return True when before→after looks like a 1-3 char OCR misread within a single word.
+
+    Conditions: both non-empty, no spaces (multi-word strings can carry real semantic
+    changes), at least 5 chars, similar length (≤1.4×), no digits (numeric changes are
+    always real), and edit distance ≤ max(2, len//3).
+    """
+    if not before or not after:
+        return False
+    if " " in before or " " in after:
+        return False
+    shorter = min(len(before), len(after))
+    longer = max(len(before), len(after))
+    if shorter < 5 or longer / shorter > 1.4:
+        return False
+    if any(c.isdigit() for c in before) or any(c.isdigit() for c in after):
+        return False
+    threshold = max(2, shorter // 3)
+    return _levenshtein(before.lower(), after.lower()) <= threshold
+
+
+def _filter_ocr_artifacts(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop value_mismatches / format_issues entries that look like OCR transcription noise."""
+    import re as _re
+    _pat = _re.compile(r"""[Cc]hanged from ['"](.+?)['"] to ['"](.+?)['"]""", _re.DOTALL)
+    for bucket in ("value_mismatches", "format_issues"):
+        items = result_json.get(bucket) or []
+        if not items:
+            continue
+        filtered = []
+        for item in items:
+            if not isinstance(item, dict):
+                filtered.append(item)
+                continue
+            before = str(item.get("expected_value") or item.get("baseline_value") or "").strip()
+            after  = str(item.get("actual_value")   or item.get("current_value")  or "").strip()
+            if not before and not after:
+                m = _pat.search(item.get("description") or "")
+                if m:
+                    before, after = m.group(1).strip(), m.group(2).strip()
+            if _is_ocr_artifact(before, after):
+                logger.debug("Suppressed OCR artifact: %r → %r", before, after)
+                continue
+            filtered.append(item)
+        result_json[bucket] = filtered
+    return result_json
+
+
 def _contains_signature_issue(page_items: list[dict]) -> bool:
     keywords = ("signature", "president", "secretary", "approval", "signed")
     blob = " ".join(
@@ -805,6 +873,7 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
 
         llm_out = run_validation(messages)
         result_json = _ensure_schema_defaults(llm_out, effective_mode)
+        result_json = _filter_ocr_artifacts(result_json)
 
         result_json["visual_validation"] = visual
         if effective_mode == "benchmark":
