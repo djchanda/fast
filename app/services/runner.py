@@ -731,17 +731,64 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         # Render page images for multimodal LLM analysis in benchmark mode.
         # Vision lets the LLM detect watermarks, table structure, section placement,
         # and other layout details that text extraction alone misses.
+        # Only render pages that have actual diffs — sending all pages causes
+        # Gemini prefill timeouts for multi-page documents.
         baseline_images = []
         current_images_llm = []
-        if effective_mode == "benchmark" and bench_form:
+        if effective_mode == "benchmark" and bench_form and visual:
             try:
                 from engine.visual_diff import VisualDiff as _VD2
+
+                # Determine which pages are worth sending to the LLM:
+                # - Pages aligned with alignment_op != "matched" (deleted/inserted)
+                # - Pages with major pixel diff (>=2% change)
+                # - Pages with similarity below 0.97 (meaningful visual change)
+                baseline_pages_needed: set = set()
+                current_pages_needed: set = set()
+                for _v in visual:
+                    if not isinstance(_v, dict):
+                        continue
+                    _op  = str(_v.get("alignment_op") or "matched").lower()
+                    _sim = float(_v.get("similarity") or 1.0)
+                    _maj = bool(_v.get("major"))
+                    _exp = _v.get("expected_page_num") or _v.get("page")
+                    _act = _v.get("actual_page_num") or _v.get("page")
+
+                    if _op == "deleted" and _exp:
+                        baseline_pages_needed.add(int(_exp))
+                    elif _op == "inserted" and _act:
+                        current_pages_needed.add(int(_act))
+                    elif _maj or _sim < 0.97:
+                        if _exp:
+                            baseline_pages_needed.add(int(_exp))
+                        if _act:
+                            current_pages_needed.add(int(_act))
+
+                # Hard cap: never send more than 6 images total to avoid timeouts
+                _MAX_IMGS = 6
+                _b_pages = sorted(baseline_pages_needed)[:_MAX_IMGS // 2 + 1]
+                _c_pages = sorted(current_pages_needed)[:_MAX_IMGS // 2 + 1]
+                while len(_b_pages) + len(_c_pages) > _MAX_IMGS:
+                    if len(_b_pages) >= len(_c_pages):
+                        _b_pages = _b_pages[:-1]
+                    else:
+                        _c_pages = _c_pages[:-1]
+
                 _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-                baseline_images = _vd_img.render_pages_for_llm(
-                    _pdf_abs_path(project_id, bench_form.stored_filename)
-                )
-                current_images_llm = _vd_img.render_pages_for_llm(
-                    _pdf_abs_path(project_id, main_form.stored_filename)
+                if _b_pages:
+                    baseline_images = _vd_img.render_pages_for_llm(
+                        _pdf_abs_path(project_id, bench_form.stored_filename),
+                        page_numbers=_b_pages,
+                    )
+                if _c_pages:
+                    current_images_llm = _vd_img.render_pages_for_llm(
+                        _pdf_abs_path(project_id, main_form.stored_filename),
+                        page_numbers=_c_pages,
+                    )
+                logger.debug(
+                    "LLM images: %d baseline pages %s, %d current pages %s",
+                    len(baseline_images), _b_pages,
+                    len(current_images_llm), _c_pages,
                 )
             except Exception as _img_err:
                 logger.warning("Page image render for LLM failed: %s", _img_err)

@@ -54,14 +54,19 @@ def _safe_json_loads(raw: str) -> Dict[str, Any]:
 def _is_retryable(exc: Exception) -> bool:
     """Return True for transient errors worth retrying."""
     msg = str(exc).lower()
-    retryable_signals = ("timeout", "timed out", "rate limit", "429", "503", "504",
-                         "deadline", "connection", "network", "overloaded", "unavailable")
+    retryable_signals = (
+        "timeout", "timed out", "rate limit", "429", "503", "504",
+        "deadline", "connection", "network", "overloaded", "unavailable",
+        # Gemini streaming infrastructure errors
+        "stream cancelled", "stream canceled", "rpc", "cancelled",
+        "prefill", "decode servable", "failed to close",
+    )
     return any(s in msg for s in retryable_signals)
 
 
-def _call_with_retry(fn, messages: List[Dict], max_retries: int = 2) -> Dict[str, Any]:
+def _call_with_retry(fn, messages: List[Dict], max_retries: int = 3) -> Dict[str, Any]:
     """Call fn(messages) with exponential-backoff retry for transient failures."""
-    delay = 4.0
+    delay = 5.0
     last_exc = None
     for attempt in range(max_retries + 1):
         try:
@@ -135,7 +140,7 @@ def _run_gemini(messages: List[Dict]) -> Dict[str, Any]:
             "temperature": 0.0,
             "response_mime_type": "application/json",
         },
-        request_options={"timeout": 240},
+        request_options={"timeout": 300},
     )
     raw = getattr(response, "text", "") or ""
     return _safe_json_loads(raw)

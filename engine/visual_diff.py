@@ -1625,14 +1625,19 @@ class VisualDiff:
     def render_pages_for_llm(
         self,
         pdf_path: str,
-        dpi: int = 72,
+        dpi: int = 60,
         max_pages: int = 8,
-        jpeg_quality: int = 70,
+        jpeg_quality: int = 65,
+        page_numbers: Optional[List[int]] = None,
     ) -> List[Dict[str, Any]]:
         """Render PDF pages as base64 JPEG for multimodal LLM consumption.
 
-        Keeps resolution low (72 DPI by default) to stay within token budgets:
-        at 72 DPI a letter page is ~612×792 px ≈ 50 KB JPEG ≈ 70 KB base64.
+        Args:
+            page_numbers: 1-indexed list of page numbers to render. When given,
+                          only those pages are rendered and returned, which keeps
+                          prompt size small. None = render all pages up to max_pages.
+
+        At 60 DPI a letter page is ~510×660 px ≈ 30 KB JPEG ≈ 42 KB base64.
 
         Returns:
             [{"page": 1, "b64": "<base64 string>", "mime": "image/jpeg"}, ...]
@@ -1643,14 +1648,34 @@ class VisualDiff:
         results: List[Dict[str, Any]] = []
         try:
             poppler = _poppler_path()
-            pages = convert_from_path(pdf_path, dpi=dpi, fmt="jpeg",
-                                      poppler_path=poppler, last_page=max_pages)
-            for idx, page_img in enumerate(pages, start=1):
-                img = page_img.convert("RGB")
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=jpeg_quality, optimize=True)
-                b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
-                results.append({"page": idx, "b64": b64, "mime": "image/jpeg"})
+
+            if page_numbers:
+                # Render only the requested pages (pdf2image first_page/last_page are 1-indexed)
+                wanted = sorted(set(page_numbers))
+                for pg in wanted:
+                    try:
+                        imgs = convert_from_path(
+                            pdf_path, dpi=dpi, fmt="jpeg",
+                            poppler_path=poppler,
+                            first_page=pg, last_page=pg,
+                        )
+                        if imgs:
+                            buf = io.BytesIO()
+                            imgs[0].convert("RGB").save(buf, format="JPEG",
+                                                        quality=jpeg_quality, optimize=True)
+                            b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+                            results.append({"page": pg, "b64": b64, "mime": "image/jpeg"})
+                    except Exception as _pe:
+                        logger.warning("render_pages_for_llm page %d failed: %s", pg, _pe)
+            else:
+                pages = convert_from_path(pdf_path, dpi=dpi, fmt="jpeg",
+                                          poppler_path=poppler, last_page=max_pages)
+                for idx, page_img in enumerate(pages, start=1):
+                    buf = io.BytesIO()
+                    page_img.convert("RGB").save(buf, format="JPEG",
+                                                 quality=jpeg_quality, optimize=True)
+                    b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+                    results.append({"page": idx, "b64": b64, "mime": "image/jpeg"})
         except Exception as exc:
             logger.warning("render_pages_for_llm failed for %s: %s", pdf_path, exc)
         return results
