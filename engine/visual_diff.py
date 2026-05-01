@@ -437,6 +437,115 @@ class VisualDiff:
                     "has_graphics_changes": has_graphics_changes,
                 })
 
+            # ── Supplementary positional comparisons for deleted pages ──────
+            # The DP alignment skips a baseline page when it finds a better
+            # global match elsewhere (e.g. B2 is "deleted" because B3↔C2 scores
+            # higher).  This is mathematically correct but means the baseline
+            # page is never compared to the current page at the same position.
+            # For pages with filled-in values or watermarks the thumbnail
+            # similarity is lowered enough that the DP skips them — yet the
+            # content differences are exactly what the user needs to see.
+            #
+            # Fix: after the main loop, for every deleted baseline page whose
+            # 0-based index falls within the current page range, run a direct
+            # positional comparison and append it as an extra row.
+            deleted_exp_indices = {
+                ei
+                for op, ei, _ in alignment
+                if op == "deleted" and ei is not None
+            }
+
+            for exp_idx in sorted(deleted_exp_indices):
+                act_idx = exp_idx   # same position in the current document
+                if act_idx >= len(actual_pages):
+                    continue
+
+                output_row_num = len(rows) + 1
+                exp = expected_pages[exp_idx].convert("RGB")
+                act = actual_pages[act_idx].convert("RGB")
+                exp_n, act_n = self._normalize_sizes(exp, act)
+
+                similarity, diff_pct, mask = self._compute_similarity_and_mask(act_n, exp_n)
+                diff_bbox     = self._get_diff_bbox(mask)
+                diff_area_pct = self._bbox_area_pct(diff_bbox, exp_n.size) if diff_bbox else 0.0
+                major = diff_pct >= 2.0
+                warn  = (diff_pct >= 0.10) and not major
+                zone_analysis = self._analyze_diff_zones(mask, exp_n.size)
+                diff_regions  = self._extract_top_diff_regions(mask) if (major or warn) else []
+
+                # Text diff using the PDF paths available in this scope
+                try:
+                    text_diff = self._build_text_diff_annotations(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                        exp_n.size,
+                    )
+                except Exception as _te:
+                    logger.warning("Text diff (direct) failed p%d: %s", exp_idx + 1, _te)
+                    text_diff = {
+                        "added_regions": [], "removed_regions": [],
+                        "added_texts": [], "removed_texts": [],
+                        "summary": "", "has_text_changes": False,
+                        "has_formatting_changes": False, "formatting_summary": "",
+                    }
+
+                # Annotate panels (simpler than main loop — no bold/size/align boxes)
+                exp_ann = exp_n.copy()
+                act_ann = act_n.copy()
+                draw_e = ImageDraw.Draw(exp_ann)
+                draw_a = ImageDraw.Draw(act_ann)
+                for region in text_diff.get("removed_regions", [])[:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    draw_e.rectangle([x0 - 1, y0 - 1, x1 + 1, y1 + 1],
+                                     outline=(220, 40, 40), width=2)
+                for region in text_diff.get("added_regions", [])[:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    draw_a.rectangle([x0 - 1, y0 - 1, x1 + 1, y1 + 1],
+                                     outline=(40, 200, 70), width=2)
+
+                panel = self._build_three_panel(exp_ann, act_ann, mask,
+                                                diff_regions, zone_analysis, False)
+                out_path = self.output_dir / f"{base_name}_page{output_row_num}_direct.png"
+                panel.save(out_path, "PNG")
+
+                rows.append({
+                    "page":              output_row_num,
+                    "expected_page_num": exp_idx + 1,
+                    "actual_page_num":   act_idx + 1,
+                    "alignment_op":      "direct_comparison",
+                    "similarity":        round(similarity, 3),
+                    "major":             bool(major),
+                    "warn":              bool(warn),
+                    "note": (
+                        f"Direct positional comparison: baseline page {exp_idx + 1} "
+                        f"vs current page {act_idx + 1}. The sequence alignment matched "
+                        f"these pages to different counterparts, but they occupy the same "
+                        f"position — comparing them directly surfaces filled-in values, "
+                        f"watermarks, and layout changes that the alignment would otherwise skip."
+                    ),
+                    "snapshot_path":     f"visual_diffs/{out_path.name}",
+                    "diff_bbox":         list(diff_bbox) if diff_bbox else None,
+                    "diff_pixels_pct":   round(diff_pct, 4),
+                    "diff_area_pct":     round(diff_area_pct, 4),
+                    "signature_candidate":    False,
+                    "signature_label":        None,
+                    "signature_reason":       "",
+                    "signature_confidence":   "none",
+                    "zone_analysis":          zone_analysis,
+                    "diff_regions":           diff_regions,
+                    "text_diff_summary":      text_diff.get("summary", ""),
+                    "added_texts":            text_diff.get("added_texts", []),
+                    "removed_texts":          text_diff.get("removed_texts", []),
+                    "has_text_changes":       text_diff.get("has_text_changes", False),
+                    "has_formatting_changes": text_diff.get("has_formatting_changes", False),
+                    "formatting_summary":     text_diff.get("formatting_summary", ""),
+                    "bold_changed":           [],
+                    "size_changed":           [],
+                    "list_alignment_shifted": [],
+                    "graphics_diff":          "",
+                    "has_graphics_changes":   False,
+                })
+
             return rows
 
         except Exception as e:
