@@ -233,35 +233,59 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             "evidence": "Detected by AcroForm field structure comparison.",
         })
 
+    # ── Collect page-count changes before the main loop ─────────────────────
+    # The sequence-alignment algorithm marks some baseline pages as "deleted"
+    # whenever the current PDF has fewer pages. This does NOT mean content was
+    # removed — the same content may simply have been consolidated onto fewer
+    # pages. We therefore emit ONE structural note about the page count change
+    # rather than a per-page CRITICAL "page removed" finding which is almost
+    # always misleading and causes false positives.
+    deleted_pages = []
+    inserted_pages = []
+    all_exp_pages = [v.get("expected_page_num") or v.get("page") for v in visual
+                     if isinstance(v, dict) and v.get("alignment_op", "matched") != "inserted"]
+    all_act_pages = [v.get("actual_page_num") or v.get("page") for v in visual
+                     if isinstance(v, dict) and v.get("alignment_op", "matched") != "deleted"]
+    baseline_total = max((p for p in all_exp_pages if p), default=0)
+    current_total  = max((p for p in all_act_pages if p), default=0)
+
     for v in visual:
         if not isinstance(v, dict):
             continue
+        op = str(v.get("alignment_op") or "matched").lower()
+        if op == "deleted":
+            pg = v.get("expected_page_num") or v.get("page")
+            if pg:
+                deleted_pages.append(pg)
+        elif op == "inserted":
+            pg = v.get("actual_page_num") or v.get("page")
+            if pg:
+                inserted_pages.append(pg)
 
-        # ── Handle structural page changes (removed / inserted pages) ──────
-        alignment_op = str(v.get("alignment_op") or "matched").lower()
+    if deleted_pages:
+        pg_list = ", ".join(str(p) for p in sorted(deleted_pages))
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "high",
+            "element_type": "page_count",
+            "change_type": "reduced",
+            "element_name": "page_count",
+            "description": (
+                f"Page count changed: baseline has {baseline_total} page(s), "
+                f"current has {current_total} page(s). "
+                f"Baseline page(s) {pg_list} have no direct counterpart in the current PDF — "
+                f"content may have been consolidated, reformatted, or genuinely removed. "
+                f"Review the matched pages for content differences."
+            ),
+        })
 
-        if alignment_op == "deleted":
-            exp_pg = v.get("expected_page_num")
-            out_pg = v.get("page")
-            label_pg = exp_pg if exp_pg is not None else out_pg
-            result_json["missing_content"].append({
-                "page": label_pg,
-                "severity": "critical",
-                "field_name": f"page_{label_pg}",
-                "category": "Removed page",
-                "description": (
-                    f"Page {label_pg} of the expected PDF is absent in the actual PDF "
-                    f"— this page was removed."
-                ),
-                "evidence": v.get("note") or "Page missing from actual PDF.",
-            })
-            continue
-
-        if alignment_op == "inserted":
-            act_pg = v.get("actual_page_num")
-            out_pg = v.get("page")
-            label_pg = act_pg if act_pg is not None else out_pg
-            is_blank = v.get("is_blank_page") is True
+    if inserted_pages:
+        for label_pg in inserted_pages:
+            # Look up the original visual entry to get is_blank_page
+            entry = next((v for v in visual if isinstance(v, dict)
+                          and str(v.get("alignment_op") or "").lower() == "inserted"
+                          and (v.get("actual_page_num") or v.get("page")) == label_pg), {})
+            is_blank = entry.get("is_blank_page") is True
             if is_blank:
                 result_json["extra_content"].append({
                     "page": label_pg,
@@ -269,11 +293,10 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
                     "field_name": f"page_{label_pg}_blank",
                     "category": "Blank page inserted",
                     "description": (
-                        f"Page {label_pg} of the actual PDF is a blank page with no counterpart "
-                        f"in the expected PDF — likely an intentional separator or placeholder. "
-                        f"Validation continues from the next page."
+                        f"Page {label_pg} of the current PDF is a blank page with no counterpart "
+                        f"in the baseline — likely an intentional separator or placeholder."
                     ),
-                    "evidence": v.get("note") or "Blank page found in actual PDF.",
+                    "evidence": entry.get("note") or "Blank page found in current PDF.",
                 })
             else:
                 result_json["extra_content"].append({
@@ -282,12 +305,21 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
                     "field_name": f"page_{label_pg}",
                     "category": "Inserted page",
                     "description": (
-                        f"Page {label_pg} of the actual PDF has no counterpart in the expected PDF "
+                        f"Page {label_pg} of the current PDF has no counterpart in the baseline "
                         f"— this is an extra / inserted page with content."
                     ),
-                    "evidence": v.get("note") or "Extra page found in actual PDF.",
+                    "evidence": entry.get("note") or "Extra page found in current PDF.",
                 })
+
+    for v in visual:
+        if not isinstance(v, dict):
             continue
+
+        # ── Skip deleted / inserted — handled above ──────────────────────────
+        alignment_op = str(v.get("alignment_op") or "matched").lower()
+        if alignment_op in ("deleted", "inserted"):
+            continue
+
         # ── Standard per-page comparison ────────────────────────────────────
 
         p = v.get("page")
