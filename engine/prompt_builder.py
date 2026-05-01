@@ -130,6 +130,8 @@ def build_prompt(
     benchmark_doc: Optional[Dict[str, Any]],
     base_prompt: str,
     extra_context: Optional[Dict[str, Any]] = None,
+    baseline_images: Optional[List[Dict[str, Any]]] = None,
+    current_images: Optional[List[Dict[str, Any]]] = None,
 ) -> List[dict]:
     """
     Returns messages list suitable for OpenAI-style chat format.
@@ -703,7 +705,58 @@ Form fields: {current_fields}
 {base_schema}
 """
 
+    # For benchmark mode, attach rendered page images so the LLM can use vision
+    # to catch watermarks, table structure, section ordering, and other layout
+    # details that text extraction alone misses.
+    user_content_block = _build_user_content_with_images(
+        user_content, mode, baseline_images, current_images
+    )
     return [
         system_msg,
-        {"role": "user", "content": user_content},
+        {"role": "user", "content": user_content_block},
     ]
+
+
+def _build_user_content_with_images(
+    text_content: str,
+    mode: str,
+    baseline_images: Optional[List[Dict[str, Any]]],
+    current_images: Optional[List[Dict[str, Any]]],
+) -> Any:
+    """
+    Return a list of content blocks (text + images) when images are provided for
+    benchmark mode, or the plain text string otherwise.
+
+    Content block format (OpenAI / Anthropic compatible):
+      {"type": "text", "text": "..."}
+      {"type": "image", "mime": "image/jpeg", "b64": "...", "label": "..."}
+
+    The LLM client translates these provider-specific payloads.
+    """
+    if mode != "benchmark" or not (baseline_images or current_images):
+        return text_content
+
+    blocks: list = [{"type": "text", "text": text_content}]
+
+    # Interleave baseline and current page images so the LLM sees them paired.
+    baseline_map = {img["page"]: img for img in (baseline_images or [])}
+    current_map  = {img["page"]: img for img in (current_images or [])}
+    all_pages = sorted(set(baseline_map) | set(current_map))
+
+    for pg in all_pages:
+        if pg in baseline_map:
+            blocks.append({
+                "type": "image",
+                "mime": baseline_map[pg]["mime"],
+                "b64":  baseline_map[pg]["b64"],
+                "label": f"BASELINE page {pg}",
+            })
+        if pg in current_map:
+            blocks.append({
+                "type": "image",
+                "mime": current_map[pg]["mime"],
+                "b64":  current_map[pg]["b64"],
+                "label": f"CURRENT page {pg}",
+            })
+
+    return blocks

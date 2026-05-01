@@ -84,8 +84,20 @@ def _call_with_retry(fn, messages: List[Dict], max_retries: int = 2) -> Dict[str
 # Provider implementations
 # ---------------------------------------------------------------------------
 
+def _content_to_text(content) -> str:
+    """Flatten list-of-blocks content to plain text (text blocks only)."""
+    if isinstance(content, str):
+        return content
+    parts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            parts.append(block.get("text", ""))
+    return "\n".join(parts)
+
+
 def _run_gemini(messages: List[Dict]) -> Dict[str, Any]:
     import google.generativeai as genai
+    import base64
 
     api_key = os.getenv("GEMINI_API_KEY")
     model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -95,19 +107,35 @@ def _run_gemini(messages: List[Dict]) -> Dict[str, Any]:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(model_name)
 
-    prompt_text = ""
+    # Build multimodal parts list for Gemini
+    prompt_parts = []
     for msg in messages:
         role = msg.get("role", "user").upper()
         content = msg.get("content", "")
-        prompt_text += f"{role}:\n{content}\n\n"
+
+        if isinstance(content, list):
+            for block in content:
+                if block.get("type") == "text":
+                    prompt_parts.append(f"{role}:\n{block['text']}\n\n")
+                elif block.get("type") == "image":
+                    label = block.get("label", "")
+                    if label:
+                        prompt_parts.append(f"[Image: {label}]\n")
+                    img_bytes = base64.standard_b64decode(block["b64"])
+                    prompt_parts.append({
+                        "mime_type": block.get("mime", "image/jpeg"),
+                        "data": img_bytes,
+                    })
+        else:
+            prompt_parts.append(f"{role}:\n{content}\n\n")
 
     response = model.generate_content(
-        prompt_text,
+        prompt_parts,
         generation_config={
             "temperature": 0.0,
             "response_mime_type": "application/json",
         },
-        request_options={"timeout": 180},
+        request_options={"timeout": 240},
     )
     raw = getattr(response, "text", "") or ""
     return _safe_json_loads(raw)
@@ -121,10 +149,36 @@ def _run_openai(messages: List[Dict]) -> Dict[str, Any]:
     if not api_key:
         raise ValueError("Missing OPENAI_API_KEY in environment")
 
-    client = OpenAI(api_key=api_key, timeout=180.0)
+    client = OpenAI(api_key=api_key, timeout=240.0)
+
+    # Translate our generic image blocks to OpenAI vision format
+    openai_messages = []
+    for msg in messages:
+        content = msg.get("content", "")
+        role = msg.get("role", "user")
+        if isinstance(content, list):
+            oai_content = []
+            for block in content:
+                if block.get("type") == "text":
+                    oai_content.append({"type": "text", "text": block["text"]})
+                elif block.get("type") == "image":
+                    label = block.get("label", "")
+                    if label:
+                        oai_content.append({"type": "text", "text": f"[{label}]"})
+                    oai_content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{block.get('mime', 'image/jpeg')};base64,{block['b64']}",
+                            "detail": "low",
+                        },
+                    })
+            openai_messages.append({"role": role, "content": oai_content})
+        else:
+            openai_messages.append({"role": role, "content": content})
+
     response = client.chat.completions.create(
         model=model_name,
-        messages=messages,
+        messages=openai_messages,
         temperature=0.0,
         response_format={"type": "json_object"},
     )
@@ -143,17 +197,41 @@ def _run_claude(messages: List[Dict]) -> Dict[str, Any]:
 
     client = anthropic.Anthropic(
         api_key=api_key,
-        timeout=httpx.Timeout(180.0, connect=15.0),
+        timeout=httpx.Timeout(240.0, connect=15.0),
     )
 
     # Split system message from user messages
     system_msg = ""
     user_messages = []
     for msg in messages:
-        if msg.get("role") == "system":
-            system_msg += msg.get("content", "") + "\n"
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+
+        if role == "system":
+            system_msg += (_content_to_text(content) if isinstance(content, list) else content) + "\n"
+            continue
+
+        if isinstance(content, list):
+            # Translate generic blocks → Anthropic content blocks
+            anthropic_content = []
+            for block in content:
+                if block.get("type") == "text":
+                    anthropic_content.append({"type": "text", "text": block["text"]})
+                elif block.get("type") == "image":
+                    label = block.get("label", "")
+                    if label:
+                        anthropic_content.append({"type": "text", "text": f"[{label}]"})
+                    anthropic_content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": block.get("mime", "image/jpeg"),
+                            "data": block["b64"],
+                        },
+                    })
+            user_messages.append({"role": role, "content": anthropic_content})
         else:
-            user_messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+            user_messages.append({"role": role, "content": content})
 
     if not user_messages:
         user_messages = [{"role": "user", "content": system_msg}]
@@ -206,7 +284,10 @@ def run_validation(messages: List[Dict], provider: str = None) -> Dict[str, Any]
             "details": f"Supported providers: {', '.join(PROVIDERS.keys())}",
         }
 
-    prompt_text = " ".join(m.get("content", "") for m in messages)
+    prompt_text = " ".join(
+        _content_to_text(m.get("content", "")) if isinstance(m.get("content"), list) else (m.get("content") or "")
+        for m in messages
+    )
     if not prompt_text.strip():
         return {"error": "Validation aborted", "details": "Prompt was empty."}
 

@@ -683,12 +683,32 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
             else {}
         )
 
+        # Render page images for multimodal LLM analysis in benchmark mode.
+        # Vision lets the LLM detect watermarks, table structure, section placement,
+        # and other layout details that text extraction alone misses.
+        baseline_images = []
+        current_images_llm = []
+        if effective_mode == "benchmark" and bench_form:
+            try:
+                from engine.visual_diff import VisualDiff as _VD2
+                _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                baseline_images = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, bench_form.stored_filename)
+                )
+                current_images_llm = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, main_form.stored_filename)
+                )
+            except Exception as _img_err:
+                logger.warning("Page image render for LLM failed: %s", _img_err)
+
         messages = build_prompt(
             mode=effective_mode,
             current_doc=current_doc,
             benchmark_doc=benchmark_doc,
             base_prompt=rules_text,
             extra_context=extra_context,
+            baseline_images=baseline_images or None,
+            current_images=current_images_llm or None,
         )
 
         llm_out = run_validation(messages)

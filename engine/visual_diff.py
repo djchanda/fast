@@ -1622,6 +1622,39 @@ class VisualDiff:
             logger.warning("render_pages failed for %s: %s", pdf_path, e)
         return rows
 
+    def render_pages_for_llm(
+        self,
+        pdf_path: str,
+        dpi: int = 72,
+        max_pages: int = 8,
+        jpeg_quality: int = 70,
+    ) -> List[Dict[str, Any]]:
+        """Render PDF pages as base64 JPEG for multimodal LLM consumption.
+
+        Keeps resolution low (72 DPI by default) to stay within token budgets:
+        at 72 DPI a letter page is ~612×792 px ≈ 50 KB JPEG ≈ 70 KB base64.
+
+        Returns:
+            [{"page": 1, "b64": "<base64 string>", "mime": "image/jpeg"}, ...]
+        """
+        import base64
+        import io
+
+        results: List[Dict[str, Any]] = []
+        try:
+            poppler = _poppler_path()
+            pages = convert_from_path(pdf_path, dpi=dpi, fmt="jpeg",
+                                      poppler_path=poppler, last_page=max_pages)
+            for idx, page_img in enumerate(pages, start=1):
+                img = page_img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=jpeg_quality, optimize=True)
+                b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+                results.append({"page": idx, "b64": b64, "mime": "image/jpeg"})
+        except Exception as exc:
+            logger.warning("render_pages_for_llm failed for %s: %s", pdf_path, exc)
+        return results
+
     def annotate_snapshots_with_findings(
         self,
         pdf_path: str,
