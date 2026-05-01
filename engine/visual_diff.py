@@ -159,8 +159,9 @@ class VisualDiff:
                         "major": True,
                         "warn": False,
                         "note": (
-                            f"Page {exp_idx + 1} of the expected PDF is absent in "
-                            f"the actual PDF — this page was removed."
+                            f"Baseline page {exp_idx + 1} has no direct visual counterpart "
+                            f"in the current PDF — content may have been consolidated onto "
+                            f"adjacent pages or reformatted."
                         ),
                         "snapshot_path": f"visual_diffs/{out_path.name}",
                         "diff_bbox": None,
