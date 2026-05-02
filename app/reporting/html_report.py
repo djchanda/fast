@@ -193,9 +193,7 @@ def _page_decisions(result_json: Dict[str, Any]) -> List[dict]:
 
         status = "match"
         severity = "low"
-        decision = "All matching."
         evidence = []
-        similarity = "—"
         snapshot = ""
 
         if page_issues:
@@ -205,8 +203,8 @@ def _page_decisions(result_json: Dict[str, Any]) -> List[dict]:
             )[0]
 
             severity = strongest["severity"]
-            decision = strongest["description"]
-            evidence.extend([r["description"] for r in page_issues[:4]])
+            # Collect ALL findings for this page — no cap
+            evidence.extend([r["description"] for r in page_issues])
 
             if strongest["bucket"] in ("value_mismatches", "missing_content", "extra_content", "compliance_issues", "visual_mismatches"):
                 status = "mismatch"
@@ -219,43 +217,37 @@ def _page_decisions(result_json: Dict[str, Any]) -> List[dict]:
                 key=lambda x: (0 if x.get("signature_candidate") else 1 if x.get("major") else 2 if x.get("warn") else 3),
             )[0]
 
-            sim = pv.get("similarity")
-            if isinstance(sim, (int, float)):
-                similarity = f"{float(sim) * 100:.3f}%"
-
             snapshot = str(pv.get("snapshot_path") or "")
 
             if pv.get("signature_candidate") and status != "mismatch":
                 status = "review"
                 severity = "medium"
-                decision = pv.get("signature_reason") or "Signature-region change detected."
-                evidence.append(decision)
+                note = pv.get("signature_reason") or "Signature-region change detected."
+                evidence.append(note)
 
             elif pv.get("major") and status == "match":
                 status = "review"
                 severity = "medium"
-                decision = str(pv.get("note") or "Significant visual difference detected.")
-                evidence.append(decision)
+                evidence.append(str(pv.get("note") or "Significant visual difference detected."))
 
             elif pv.get("warn") and status == "match":
                 status = "review"
                 severity = "low"
-                decision = str(pv.get("note") or "Visual difference detected.")
-                evidence.append(decision)
+                evidence.append(str(pv.get("note") or "Visual difference detected."))
 
         if status == "match":
             severity = "low"
-            decision = "All matching."
             evidence = []
+
+        # Deduplicate while preserving insertion order
+        all_diffs = list(dict.fromkeys(e for e in evidence if e))
 
         decisions.append(
             {
                 "page": page,
                 "status": status,
                 "severity": severity,
-                "decision": decision,
-                "evidence": " | ".join(dict.fromkeys([e for e in evidence if e]))[:900],
-                "similarity": similarity,
+                "all_diffs": all_diffs,
                 "snapshot": snapshot,
             }
         )
@@ -390,22 +382,32 @@ def write_cli_style_report(
         decision_rows_html = []
         for d in [*mismatches, *reviews]:
             row_status = (d["status"] or "").lower()
+            diffs = d.get("all_diffs") or []
+            if diffs:
+                diffs_html = (
+                    "<ul style='margin:0;padding:0 0 0 15px;list-style:disc;'>"
+                    + "".join(
+                        f"<li style='margin:3px 0;'>{_esc(_shorten(item, 300))}</li>"
+                        for item in diffs
+                    )
+                    + "</ul>"
+                )
+            else:
+                diffs_html = "<span class='muted'>—</span>"
             decision_rows_html.append(
                 f"""
                 <tr data-status="{_esc(row_status)}">
                     <td>{_esc(str(d["page"]))}</td>
                     <td>{_status_chip(d["status"])}</td>
                     <td>{_severity_chip(d["severity"])}</td>
-                    <td>{_esc(_shorten(d["decision"], 240))}</td>
-                    <td>{_esc(_shorten(d["evidence"], 460))}</td>
-                    <td>{_esc(d["similarity"])}</td>
+                    <td>{diffs_html}</td>
                     <td>{_snapshot_link(project_id, d["snapshot"]) if d["snapshot"] else "—"}</td>
                 </tr>
                 """
             )
         decision_rows_html = "".join(decision_rows_html)
     else:
-        decision_rows_html = "<tr><td colspan='7' class='muted'>None</td></tr>"
+        decision_rows_html = "<tr><td colspan='5' class='muted'>None</td></tr>"
 
     page_decision_table = f"""
     <div class="card">
@@ -423,7 +425,7 @@ def write_cli_style_report(
       </div>
 
       {_render_table(
-          ["Page", "Status", "Severity", "Decision", "Evidence", "Similarity", "Snapshot"],
+          ["Page", "Status", "Severity", "Differences", "Snapshot"],
           decision_rows_html
       )}
 
@@ -574,7 +576,7 @@ def write_cli_style_report(
 
     .fast-table {{
       width: 100%;
-      min-width: 1450px;
+      min-width: 860px;
       border-collapse: separate;
       border-spacing: 0;
       table-layout: fixed;
@@ -605,10 +607,8 @@ def write_cli_style_report(
     .fast-table th:nth-child(1), .fast-table td:nth-child(1) {{ width: 70px; }}
     .fast-table th:nth-child(2), .fast-table td:nth-child(2) {{ width: 110px; }}
     .fast-table th:nth-child(3), .fast-table td:nth-child(3) {{ width: 110px; }}
-    .fast-table th:nth-child(4), .fast-table td:nth-child(4) {{ width: 360px; }}
-    .fast-table th:nth-child(5), .fast-table td:nth-child(5) {{ width: 470px; }}
-    .fast-table th:nth-child(6), .fast-table td:nth-child(6) {{ width: 110px; }}
-    .fast-table th:nth-child(7), .fast-table td:nth-child(7) {{ width: 100px; }}
+    .fast-table th:nth-child(4), .fast-table td:nth-child(4) {{ width: auto; }}
+    .fast-table th:nth-child(5), .fast-table td:nth-child(5) {{ width: 100px; }}
 
     .banner {{
       margin-top:12px;
@@ -660,7 +660,7 @@ def write_cli_style_report(
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }}
 
-    @media (max-width: 1100px) {{
+    @media (max-width: 900px) {{
       .grid {{
         grid-template-columns: 1fr;
       }}
@@ -669,7 +669,7 @@ def write_cli_style_report(
         flex-basis: 135px;
       }}
       .fast-table {{
-        min-width: 1150px;
+        min-width: 700px;
       }}
     }}
   </style>
