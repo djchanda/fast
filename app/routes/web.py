@@ -1349,6 +1349,34 @@ def result_reviews(project_id: int, result_id: int):
             })
             idx += 1
 
+    # Vision-mode benchmark: observations are the primary findings
+    _conf_sev = {"certain": "high", "likely": "medium", "possible": "low"}
+    for obs in result_obj.get("observations", []):
+        if not isinstance(obs, dict):
+            idx += 1
+            continue
+        conf = str(obs.get("confidence") or "possible").lower()
+        pages_ref = str(obs.get("pages") or "")
+        # Try to extract current page number for the snapshot link
+        import re as _re2
+        _pm = _re2.search(r'[Cc]urrent\s+p(\d+)', pages_ref) or _re2.search(r'p(\d+)', pages_ref)
+        page_num = int(_pm.group(1)) if _pm else None
+        review = FindingReview.query.filter_by(
+            run_result_id=result_id, finding_index=idx
+        ).first()
+        findings.append({
+            "index": idx,
+            "category": "observations",
+            "item": {
+                "description": obs.get("observation") or "",
+                "severity": _conf_sev.get(conf, "medium"),
+                "page": page_num,
+                "field_name": pages_ref or None,
+            },
+            "review": review,
+        })
+        idx += 1
+
     # Available reviewers
     reviewers = User.query.filter(User.role.in_(["admin", "reviewer"]), User.is_active == True).all()
     compliance_standards = ComplianceStandard.query.all()

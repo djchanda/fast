@@ -264,10 +264,33 @@ def _confidence_chip(conf: str) -> str:
     return _chip("POSSIBLE", "info")
 
 
-def _render_observations_section(observations: List[dict], count: int) -> str:
+def _obs_page_num(pages_ref: str) -> Optional[int]:
+    """Extract the first current page number from an observation pages reference."""
+    import re as _re
+    m = _re.search(r'[Cc]urrent\s+p(\d+)', pages_ref)
+    if not m:
+        m = _re.search(r'p(\d+)', pages_ref)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            pass
+    return None
+
+
+def _render_observations_section(
+    observations: List[dict],
+    count: int,
+    project_id: int,
+    snap_by_page: Dict[int, str],
+) -> str:
     """Render the vision-mode observations table."""
     if not observations:
-        rows_html = "<tr><td colspan='3' class='muted' style='padding:14px;'>No differences observed between the two documents.</td></tr>"
+        rows_html = (
+            "<tr><td colspan='4' class='muted' style='padding:14px;'>"
+            "No differences observed between the two documents."
+            "</td></tr>"
+        )
     else:
         rows = []
         for i, obs in enumerate(observations, 1):
@@ -276,12 +299,18 @@ def _render_observations_section(observations: List[dict], count: int) -> str:
             pages_ref = _esc(str(obs.get("pages") or "—"))
             text = _esc(_shorten(str(obs.get("observation") or ""), 400))
             conf = str(obs.get("confidence") or "possible").lower()
+
+            pg = _obs_page_num(str(obs.get("pages") or ""))
+            snap_path = snap_by_page.get(pg) if pg else None
+            view_cell = _snapshot_link(project_id, snap_path) if snap_path else "—"
+
             rows.append(
                 f"<tr>"
                 f"<td style='width:40px;color:var(--muted);font-size:12px;'>{i}</td>"
                 f"<td style='width:180px;white-space:nowrap;'>{pages_ref}</td>"
                 f"<td>{text}</td>"
                 f"<td style='width:110px;'>{_confidence_chip(conf)}</td>"
+                f"<td style='width:80px;'>{view_cell}</td>"
                 f"</tr>"
             )
         rows_html = "".join(rows)
@@ -292,7 +321,7 @@ def _render_observations_section(observations: List[dict], count: int) -> str:
         <div>Observations</div>
         <div class="muted">{count} difference(s) identified by direct visual comparison.</div>
       </div>
-      {_render_table(["#", "Pages", "Observation", "Confidence"], rows_html)}
+      {_render_table(["#", "Pages", "Observation", "Confidence", "View"], rows_html)}
     </div>
     """
 
@@ -369,7 +398,16 @@ def write_cli_style_report(
             href = url_for("web.view_form_file", project_id=project_id, form_id=bench_form.id, _external=True)
             bench_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
 
-        main_table_html = _render_observations_section(observations, obs_count)
+        # Build page→snapshot map from visual entries (single-panel snapshots)
+        _snap_by_page: Dict[int, str] = {}
+        for _v in _as_list(result_json.get("visual_validation")):
+            if isinstance(_v, dict):
+                _pg = _extract_page(_v)
+                _sp = _v.get("snapshot_path")
+                if _pg and _sp:
+                    _snap_by_page[_pg] = str(_sp)
+
+        main_table_html = _render_observations_section(observations, obs_count, project_id, _snap_by_page)
         summary_chips = (
             f"{_chip(f'Observations: {obs_count}', 'bad' if obs_count else 'ok')}"
             f"&nbsp;{_chip('Certain: ' + str(sum(1 for o in observations if str(o.get('confidence','')).lower()=='certain')), 'bad')}"

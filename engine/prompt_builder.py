@@ -858,18 +858,24 @@ def build_vision_prompt(
         "type": "text",
         "text": (
             "\nCompare the two document versions and list EVERY difference you observe.\n\n"
-            "Rules:\n"
-            "- Be precise: name the exact field, line, or section that changed.\n"
-            "- Do NOT judge whether a change is good or bad — just describe it.\n"
-            "- Do NOT skip changes because they seem minor.\n"
-            "- If the page counts differ, note which pages are absent.\n"
-            "- Include visual changes: logos, watermarks, colours, signatures.\n\n"
+            "OBSERVATION RULES:\n"
+            "- State what changed in plain English. One clear sentence per observation.\n"
+            "- Group related field changes on the same page into a single observation "
+            "(e.g. 'Page 1 fields filled in: Named Insured = X, Date = Y, Amount = Z').\n"
+            "- For watermarks: read the watermark text character-by-character and quote it "
+            "exactly as it appears — do not paraphrase or guess the word.\n"
+            "- For page-count changes: note the old and new counts but do NOT create a "
+            "separate observation for every re-paginated line of text.\n"
+            "- Skip observations about content that shifted purely due to page consolidation "
+            "if no text actually changed.\n"
+            "- Include: logos, colours, watermarks, signatures, structural layout changes.\n"
+            "- Do NOT judge whether a change is good or bad.\n\n"
             "Respond ONLY with valid JSON — no text outside the JSON block:\n"
             "{\n"
             '  "observations": [\n'
             '    {\n'
             '      "pages": "Baseline p1 / Current p1",\n'
-            '      "observation": "Exact description of what changed",\n'
+            '      "observation": "Brief plain-English description of what changed.",\n'
             '      "confidence": "certain | likely | possible"\n'
             '    }\n'
             '  ],\n'

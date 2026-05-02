@@ -624,6 +624,12 @@ def _reconcile_benchmark_visual(result_json: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
+    # Vision-mode benchmark: each observation counts as an error so the run
+    # is placed in_review rather than auto-passing.
+    observations = result_json.get("observations") or []
+    if observations and isinstance(observations, list):
+        return len(observations), 0, 0
+
     errors = (
         _count_list(result_json.get("spelling_errors"))
         + _count_list(result_json.get("format_issues"))
