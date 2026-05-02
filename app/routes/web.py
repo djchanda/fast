@@ -193,6 +193,53 @@ def serve_visual_diff_file(project_id: int, filename: str):
     return send_from_directory(vdir, safe_name)
 
 
+@web_bp.route("/projects/<int:project_id>/visual_diffs_focused/<path:filename>", methods=["GET"])
+def serve_visual_diff_focused(project_id: int, filename: str):
+    """Serve a vertically-cropped 3-panel diff snapshot focused on the changed region.
+
+    Query params: y0, y1 — pixel row bounds in single-panel coordinates.
+    A 60-pixel padding is added above and below; falls back to the full image if
+    bbox params are missing or the crop would cover >80% of the image height.
+    """
+    gate = require_login()
+    if gate:
+        return gate
+
+    safe_name = os.path.basename(filename)
+    vdir = visual_diffs_dir()
+    p = vdir / safe_name
+    if not p.exists():
+        abort(404)
+
+    try:
+        y0 = int(request.args.get("y0", 0))
+        y1 = int(request.args.get("y1", 0))
+    except (ValueError, TypeError):
+        y0 = y1 = 0
+
+    if y0 == 0 and y1 == 0:
+        return send_from_directory(vdir, safe_name)
+
+    try:
+        from PIL import Image as _PImage
+        img = _PImage.open(p).convert("RGB")
+        iw, ih = img.size
+        pad = 60
+        cy0 = max(0, y0 - pad)
+        cy1 = min(ih, y1 + pad)
+        # If the crop covers most of the image, just serve the full version
+        if (cy1 - cy0) >= ih * 0.80:
+            return send_from_directory(vdir, safe_name)
+        cropped = img.crop((0, cy0, iw, cy1))
+        buf = io.BytesIO()
+        cropped.save(buf, "PNG", optimize=True)
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
+    except Exception as _ce:
+        logger.warning("Diff crop failed (%s): %s", safe_name, _ce)
+        return send_from_directory(vdir, safe_name)
+
+
 @web_bp.route("/projects/<int:project_id>/reports/<path:filename>", methods=["GET"])
 def serve_report(project_id: int, filename: str):
     """

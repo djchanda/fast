@@ -126,6 +126,32 @@ def _snapshot_link(project_id: int, snapshot_path: str) -> str:
     return f"<a href='{_esc(href)}' target='_blank' rel='noopener'>View</a>"
 
 
+def _focused_snapshot_link(project_id: int, snap_info: Optional[dict]) -> str:
+    """View link that opens a vertically-cropped diff image focused on the changed region."""
+    if not snap_info or not snap_info.get("path"):
+        return "—"
+    img_name = str(snap_info["path"]).split("/")[-1]
+    bbox = snap_info.get("bbox")
+    if bbox and len(bbox) == 4:
+        _x0, y0, _x1, y1 = bbox
+        href = url_for(
+            "web.serve_visual_diff_focused",
+            project_id=project_id,
+            filename=img_name,
+            y0=int(y0),
+            y1=int(y1),
+            _external=True,
+        )
+    else:
+        href = url_for(
+            "web.serve_visual_diff_file",
+            project_id=project_id,
+            filename=img_name,
+            _external=True,
+        )
+    return f"<a href='{_esc(href)}' target='_blank' rel='noopener'>View</a>"
+
+
 def _llm_failed(result_json: Dict[str, Any]) -> bool:
     err = str(result_json.get("error") or "").lower()
     return bool(err and ("gemini" in err or "llm" in err or "failed" in err))
@@ -280,7 +306,7 @@ def _render_observations_section(
     observations: List[dict],
     count: int,
     project_id: int,
-    snap_by_page: Dict[int, str],
+    snap_by_page: Dict[int, dict],
 ) -> str:
     """Render the vision-mode observations table."""
     if not observations:
@@ -303,8 +329,8 @@ def _render_observations_section(
                 pg = int(str(obs.get("current_page") or "").strip())
             except (ValueError, TypeError):
                 pass
-            snap_path = snap_by_page.get(pg) if pg else None
-            view_cell = _snapshot_link(project_id, snap_path) if snap_path else "—"
+            snap_info = snap_by_page.get(pg) if pg else None
+            view_cell = _focused_snapshot_link(project_id, snap_info)
 
             rows.append(
                 f"<tr>"
@@ -403,7 +429,8 @@ def write_cli_style_report(
         # Build page→snapshot map from visual entries.
         # Prefer actual_page_num (from compare_pdfs_detailed) which is the
         # page number in the current document — matches current_page in observations.
-        _snap_by_page: Dict[int, str] = {}
+        # Store {path, bbox} so the focused crop link can use the diff bounding box.
+        _snap_by_page: Dict[int, dict] = {}
         for _v in _as_list(result_json.get("visual_validation")):
             if isinstance(_v, dict):
                 _sp = _v.get("snapshot_path")
@@ -412,7 +439,10 @@ def write_cli_style_report(
                 _pg = _v.get("actual_page_num") or _extract_page(_v)
                 if _pg:
                     try:
-                        _snap_by_page[int(_pg)] = str(_sp)
+                        _snap_by_page[int(_pg)] = {
+                            "path": str(_sp),
+                            "bbox": _v.get("diff_bbox"),
+                        }
                     except (ValueError, TypeError):
                         pass
 
