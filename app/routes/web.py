@@ -1093,6 +1093,21 @@ def _compute_run_review_stats(results):
                 else:
                     rs["pending"] += 1
                 idx += 1
+        # Vision-mode benchmark: observations follow classic categories in index order
+        for obs in robj.get("observations", []) or []:
+            if not isinstance(obs, dict):
+                idx += 1
+                continue
+            rs["total"] += 1
+            rv = rv_map.get((rr.id, idx))
+            st = rv.status if rv else "open"
+            if st == "resolved":
+                rs["defects"] += 1
+            elif st == "false_positive":
+                rs["no_issue"] += 1
+            else:
+                rs["pending"] += 1
+            idx += 1
     return rs
 
 
@@ -1547,8 +1562,20 @@ def _recompute_result_metrics(result_id: int) -> None:
                     new_errors += 1
                 elif st != "false_positive":  # open / in_review = still pending
                     new_warnings += 1
-                # false_positive: cleared — not counted as error or warning
                 global_idx += 1
+
+        # Vision-mode benchmark: observations follow classic categories in index order
+        for obs in result_obj.get("observations", []) or []:
+            if not isinstance(obs, dict):
+                global_idx += 1
+                continue
+            rv = rv_map.get(global_idx)
+            st = rv.status if rv else "open"
+            if st == "resolved":
+                new_errors += 1
+            elif st != "false_positive":
+                new_warnings += 1
+            global_idx += 1
 
         rr.errors = new_errors      # confirmed defects
         rr.warnings = new_warnings  # pending / unreviewed
