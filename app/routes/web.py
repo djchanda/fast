@@ -1356,11 +1356,12 @@ def result_reviews(project_id: int, result_id: int):
             idx += 1
             continue
         conf = str(obs.get("confidence") or "possible").lower()
-        pages_ref = str(obs.get("pages") or "")
-        # Try to extract current page number for the snapshot link
-        import re as _re2
-        _pm = _re2.search(r'[Cc]urrent\s+p(\d+)', pages_ref) or _re2.search(r'p(\d+)', pages_ref)
-        page_num = int(_pm.group(1)) if _pm else None
+        current_page_val = str(obs.get("current_page") or "")
+        page_num = None
+        try:
+            page_num = int(current_page_val.strip()) if current_page_val.strip() else None
+        except (ValueError, TypeError):
+            pass
         review = FindingReview.query.filter_by(
             run_result_id=result_id, finding_index=idx
         ).first()
@@ -1371,7 +1372,7 @@ def result_reviews(project_id: int, result_id: int):
                 "description": obs.get("observation") or "",
                 "severity": _conf_sev.get(conf, "medium"),
                 "page": page_num,
-                "field_name": pages_ref or None,
+                "field_name": current_page_val or None,
             },
             "review": review,
         })

@@ -726,17 +726,18 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         current_doc = extract_all(current_bytes)
 
         visual = []
-        # Render single-panel page snapshots for the View button in reports.
-        # This applies to all modes — for basic/specific it's the only render step.
-        try:
-            from engine.visual_diff import VisualDiff
-            vd_snap = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-            visual = vd_snap.render_pages(
-                pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                result_id=f"run{run_id}_rr{rr_id}",
-            ) or []
-        except Exception as _re:
-            logger.warning("Page snapshot render failed: %s", _re)
+        # Render single-panel page snapshots for the View button in basic/specific reports.
+        # For benchmark mode, compare_pdfs_detailed generates 3-panel diff snapshots instead.
+        if effective_mode in ("basic", "specific"):
+            try:
+                from engine.visual_diff import VisualDiff
+                vd_snap = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = vd_snap.render_pages(
+                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    result_id=f"run{run_id}_rr{rr_id}",
+                ) or []
+            except Exception as _re:
+                logger.warning("Page snapshot render failed: %s", _re)
 
         # ── Benchmark mode: vision-first LLM comparison ─────────────────────
         # Render both documents as page images and send them directly to the LLM.
@@ -762,6 +763,22 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                 )
             except Exception as _img_err:
                 logger.warning("Vision page render failed: %s", _img_err)
+
+            # Generate 3-panel side-by-side diff snapshots for the "View" link.
+            # These are stored in visual_validation so the report can offer a
+            # colour-coded baseline | diff | current view per page.
+            try:
+                from engine.visual_diff import VisualDiff as _VD3
+                _vd_diff = _VD3(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = _vd_diff.compare_pdfs_detailed(
+                    original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                    result_id=f"run{run_id}_rr{rr_id}_diff",
+                    dpi=120,
+                ) or []
+                logger.debug("Benchmark diff snapshots: %d pages", len(visual))
+            except Exception as _diff_err:
+                logger.warning("Benchmark diff snapshot generation failed: %s", _diff_err)
 
         # ── Build LLM messages ───────────────────────────────────────────────
         if effective_mode == "benchmark" and (baseline_images or current_images_llm):

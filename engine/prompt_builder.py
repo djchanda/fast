@@ -870,11 +870,13 @@ def build_vision_prompt(
             "if no text actually changed.\n"
             "- Include: logos, colours, watermarks, signatures, structural layout changes.\n"
             "- Do NOT judge whether a change is good or bad.\n\n"
+            'current_page must be the page number in the CURRENT document only (e.g. "1", "2", '
+            '"1-3", or "all"). Use "all" when the change appears on every page.\n\n'
             "Respond ONLY with valid JSON — no text outside the JSON block:\n"
             "{\n"
             '  "observations": [\n'
             '    {\n'
-            '      "pages": "Baseline p1 / Current p1",\n'
+            '      "current_page": "1",\n'
             '      "observation": "Brief plain-English description of what changed.",\n'
             '      "confidence": "certain | likely | possible"\n'
             '    }\n'

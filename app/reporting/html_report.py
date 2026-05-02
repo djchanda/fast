@@ -264,18 +264,16 @@ def _confidence_chip(conf: str) -> str:
     return _chip("POSSIBLE", "info")
 
 
-def _obs_page_num(pages_ref: str) -> Optional[int]:
-    """Extract the first current page number from an observation pages reference."""
-    import re as _re
-    m = _re.search(r'[Cc]urrent\s+p(\d+)', pages_ref)
-    if not m:
-        m = _re.search(r'p(\d+)', pages_ref)
-    if m:
-        try:
-            return int(m.group(1))
-        except Exception:
-            pass
-    return None
+def _render_obs_table(headers: List[str], body_html: str) -> str:
+    thead = "".join(f"<th>{_esc(h)}</th>" for h in headers)
+    return f"""
+      <div class="table-wrap">
+        <table class="fast-table obs-table">
+          <thead><tr>{thead}</tr></thead>
+          <tbody>{body_html}</tbody>
+        </table>
+      </div>
+    """
 
 
 def _render_observations_section(
@@ -287,7 +285,7 @@ def _render_observations_section(
     """Render the vision-mode observations table."""
     if not observations:
         rows_html = (
-            "<tr><td colspan='4' class='muted' style='padding:14px;'>"
+            "<tr><td colspan='5' class='muted' style='padding:14px;'>"
             "No differences observed between the two documents."
             "</td></tr>"
         )
@@ -296,21 +294,25 @@ def _render_observations_section(
         for i, obs in enumerate(observations, 1):
             if not isinstance(obs, dict):
                 continue
-            pages_ref = _esc(str(obs.get("pages") or "—"))
-            text = _esc(_shorten(str(obs.get("observation") or ""), 400))
+            current_page = _esc(str(obs.get("current_page") or "—"))
+            text = _esc(_shorten(str(obs.get("observation") or ""), 600))
             conf = str(obs.get("confidence") or "possible").lower()
 
-            pg = _obs_page_num(str(obs.get("pages") or ""))
+            pg = None
+            try:
+                pg = int(str(obs.get("current_page") or "").strip())
+            except (ValueError, TypeError):
+                pass
             snap_path = snap_by_page.get(pg) if pg else None
             view_cell = _snapshot_link(project_id, snap_path) if snap_path else "—"
 
             rows.append(
                 f"<tr>"
-                f"<td style='width:40px;color:var(--muted);font-size:12px;'>{i}</td>"
-                f"<td style='width:180px;white-space:nowrap;'>{pages_ref}</td>"
+                f"<td style='color:var(--muted);font-size:12px;'>{i}</td>"
+                f"<td>{current_page}</td>"
                 f"<td>{text}</td>"
-                f"<td style='width:110px;'>{_confidence_chip(conf)}</td>"
-                f"<td style='width:80px;'>{view_cell}</td>"
+                f"<td>{_confidence_chip(conf)}</td>"
+                f"<td>{view_cell}</td>"
                 f"</tr>"
             )
         rows_html = "".join(rows)
@@ -321,7 +323,7 @@ def _render_observations_section(
         <div>Observations</div>
         <div class="muted">{count} difference(s) identified by direct visual comparison.</div>
       </div>
-      {_render_table(["#", "Pages", "Observation", "Confidence", "View"], rows_html)}
+      {_render_obs_table(["#", "Page", "Observation", "Confidence", "View"], rows_html)}
     </div>
     """
 
@@ -398,14 +400,21 @@ def write_cli_style_report(
             href = url_for("web.view_form_file", project_id=project_id, form_id=bench_form.id, _external=True)
             bench_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
 
-        # Build page→snapshot map from visual entries (single-panel snapshots)
+        # Build page→snapshot map from visual entries.
+        # Prefer actual_page_num (from compare_pdfs_detailed) which is the
+        # page number in the current document — matches current_page in observations.
         _snap_by_page: Dict[int, str] = {}
         for _v in _as_list(result_json.get("visual_validation")):
             if isinstance(_v, dict):
-                _pg = _extract_page(_v)
                 _sp = _v.get("snapshot_path")
-                if _pg and _sp:
-                    _snap_by_page[_pg] = str(_sp)
+                if not _sp:
+                    continue
+                _pg = _v.get("actual_page_num") or _extract_page(_v)
+                if _pg:
+                    try:
+                        _snap_by_page[int(_pg)] = str(_sp)
+                    except (ValueError, TypeError):
+                        pass
 
         main_table_html = _render_observations_section(observations, obs_count, project_id, _snap_by_page)
         summary_chips = (
@@ -670,6 +679,13 @@ def write_cli_style_report(
     .fast-table th:nth-child(3), .fast-table td:nth-child(3) {{ width: 110px; }}
     .fast-table th:nth-child(4), .fast-table td:nth-child(4) {{ width: auto; }}
     .fast-table th:nth-child(5), .fast-table td:nth-child(5) {{ width: 100px; }}
+
+    .obs-table {{ table-layout: auto; }}
+    .obs-table th:nth-child(1), .obs-table td:nth-child(1) {{ width: 36px; }}
+    .obs-table th:nth-child(2), .obs-table td:nth-child(2) {{ width: 56px; white-space: nowrap; }}
+    .obs-table th:nth-child(3), .obs-table td:nth-child(3) {{ width: auto; min-width: 260px; white-space: normal; }}
+    .obs-table th:nth-child(4), .obs-table td:nth-child(4) {{ width: 110px; }}
+    .obs-table th:nth-child(5), .obs-table td:nth-child(5) {{ width: 66px; }}
 
     .banner {{
       margin-top:12px;
