@@ -803,3 +803,88 @@ def _build_user_content_with_images(
             })
 
     return blocks
+
+
+# ---------------------------------------------------------------------------
+# Vision-first comparison prompt
+# ---------------------------------------------------------------------------
+
+def build_vision_prompt(
+    baseline_images: List[Dict[str, Any]],
+    current_images: List[Dict[str, Any]],
+) -> List[dict]:
+    """
+    Build a minimal multimodal prompt that sends PDF pages directly to the LLM
+    and asks for plain factual observations — no classification, no severity.
+
+    The LLM receives interleaved BASELINE / CURRENT page pairs so it can
+    compare corresponding pages side-by-side.
+
+    Returns an OpenAI-style messages list.
+    """
+    b_map = {img["page"]: img for img in (baseline_images or [])}
+    c_map = {img["page"]: img for img in (current_images or [])}
+
+    all_pages = sorted(set(b_map) | set(c_map))
+
+    blocks: List[Dict[str, Any]] = []
+    blocks.append({
+        "type": "text",
+        "text": (
+            "You are reviewing two versions of an insurance or financial PDF form.\n"
+            "BASELINE = the original / golden-copy version.\n"
+            "CURRENT  = the version under review.\n\n"
+            "The pages below are interleaved: BASELINE page N is followed by CURRENT page N.\n"
+        ),
+    })
+
+    for pg in all_pages:
+        if pg in b_map:
+            blocks.append({
+                "type": "image",
+                "mime": b_map[pg]["mime"],
+                "b64":  b_map[pg]["b64"],
+                "label": f"BASELINE page {pg}",
+            })
+        if pg in c_map:
+            blocks.append({
+                "type": "image",
+                "mime": c_map[pg]["mime"],
+                "b64":  c_map[pg]["b64"],
+                "label": f"CURRENT page {pg}",
+            })
+
+    blocks.append({
+        "type": "text",
+        "text": (
+            "\nCompare the two document versions and list EVERY difference you observe.\n\n"
+            "Rules:\n"
+            "- Be precise: name the exact field, line, or section that changed.\n"
+            "- Do NOT judge whether a change is good or bad — just describe it.\n"
+            "- Do NOT skip changes because they seem minor.\n"
+            "- If the page counts differ, note which pages are absent.\n"
+            "- Include visual changes: logos, watermarks, colours, signatures.\n\n"
+            "Respond ONLY with valid JSON — no text outside the JSON block:\n"
+            "{\n"
+            '  "observations": [\n'
+            '    {\n'
+            '      "pages": "Baseline p1 / Current p1",\n'
+            '      "observation": "Exact description of what changed",\n'
+            '      "confidence": "certain | likely | possible"\n'
+            '    }\n'
+            '  ],\n'
+            '  "summary": "One-sentence overall summary of the differences found."\n'
+            "}"
+        ),
+    })
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert document analyst comparing insurance PDF forms. "
+                "You return ONLY strict JSON with no commentary outside the JSON block."
+            ),
+        },
+        {"role": "user", "content": blocks},
+    ]

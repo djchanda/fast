@@ -49,6 +49,7 @@ def _count_list(v: Any) -> int:
 def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
     base: Dict[str, Any] = {
         "mode": mode,
+        "observations": [],
         "spelling_errors": [],
         "format_issues": [],
         "value_mismatches": [],
@@ -719,207 +720,112 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         current_doc = extract_all(current_bytes)
 
         visual = []
-        # Basic/specific mode: render pages as single-panel snapshots so the
-        # HTML report can show the form in the Snapshot column without a diff.
-        if effective_mode in ("basic", "specific"):
-            try:
-                from engine.visual_diff import VisualDiff
-                vd_basic = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-                visual = vd_basic.render_pages(
-                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                    result_id=f"run{run_id}_rr{rr_id}",
-                ) or []
-            except Exception as _re:
-                logger.warning("Basic mode page render failed: %s", _re)
+        # Render single-panel page snapshots for the View button in reports.
+        # This applies to all modes — for basic/specific it's the only render step.
+        try:
+            from engine.visual_diff import VisualDiff
+            vd_snap = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+            visual = vd_snap.render_pages(
+                pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                result_id=f"run{run_id}_rr{rr_id}",
+            ) or []
+        except Exception as _re:
+            logger.warning("Page snapshot render failed: %s", _re)
 
+        # ── Benchmark mode: vision-first LLM comparison ─────────────────────
+        # Render both documents as page images and send them directly to the LLM.
+        # The LLM reads the actual form pages visually — no pixel diff, no OCR
+        # extraction, no sequence-alignment algorithm needed.
+        baseline_images: list = []
+        current_images_llm: list = []
         if effective_mode == "benchmark" and bench_form:
-            bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
-            benchmark_doc = extract_all(bench_bytes)
-
-            try:
-                from engine.visual_diff import VisualDiff
-                vd = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-                visual = vd.compare_pdfs_detailed(
-                    original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                    expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
-                    result_id=f"run{run_id}_rr{rr_id}",
-                    dpi=150,
-                ) or []
-
-                # Fallback: if detailed comparison produced nothing (e.g. large PDFs
-                # caused a timeout), render the main form's pages individually so the
-                # decision table at least has snapshot links for mismatch rows.
-                if not visual:
-                    logger.warning(
-                        "compare_pdfs_detailed returned no rows for run %d — "
-                        "falling back to single-panel snapshots.",
-                        run_id,
-                    )
-                    try:
-                        visual = vd.render_pages(
-                            pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                            result_id=f"run{run_id}_rr{rr_id}_fb",
-                        ) or []
-                    except Exception as _fbe:
-                        logger.warning("Fallback render_pages failed: %s", _fbe)
-
-                # Document-level comparison: metadata and form field structure
-                metadata_diff = {}
-                field_diff = {}
-                try:
-                    metadata_diff = vd.compare_documents_metadata(
-                        expected_path=_pdf_abs_path(project_id, bench_form.stored_filename),
-                        actual_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                    )
-                    field_diff = vd.compare_form_field_structure(
-                        expected_path=_pdf_abs_path(project_id, bench_form.stored_filename),
-                        actual_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                    )
-                except Exception as _de:
-                    logger.warning("Document-level comparison failed: %s", _de)
-
-            except Exception as e:
-                visual = []
-                metadata_diff = {}
-                field_diff = {}
-                current_doc.setdefault("meta", {})
-                current_doc["meta"]["visual_diff_error"] = str(e)
-                logger.error("Benchmark visual diff failed: %s", e, exc_info=True)
-
-            current_doc["visual_diffs"] = visual
-            if benchmark_doc is not None:
-                benchmark_doc["visual_diffs"] = visual
-
-        extra_context = (
-            {"metadata_diff": metadata_diff, "field_diff": field_diff}
-            if effective_mode == "benchmark"
-            else {}
-        )
-
-        # Render page images for multimodal LLM analysis in benchmark mode.
-        # Vision lets the LLM detect watermarks, table structure, section placement,
-        # and other layout details that text extraction alone misses.
-        # Only render pages that have actual diffs — sending all pages causes
-        # Gemini prefill timeouts for multi-page documents.
-        baseline_images = []
-        current_images_llm = []
-        if effective_mode == "benchmark" and bench_form and visual:
             try:
                 from engine.visual_diff import VisualDiff as _VD2
-
-                # Determine which pages are worth sending to the LLM:
-                # - Pages aligned with alignment_op != "matched" (deleted/inserted)
-                # - Pages with major pixel diff (>=2% change)
-                # - Pages with similarity below 0.97 (meaningful visual change)
-                baseline_pages_needed: set = set()
-                current_pages_needed: set = set()
-                for _v in visual:
-                    if not isinstance(_v, dict):
-                        continue
-                    _op  = str(_v.get("alignment_op") or "matched").lower()
-                    _sim = float(_v.get("similarity") or 1.0)
-                    _maj = bool(_v.get("major"))
-                    _exp = _v.get("expected_page_num") or _v.get("page")
-                    _act = _v.get("actual_page_num") or _v.get("page")
-
-                    if _op == "deleted" and _exp:
-                        baseline_pages_needed.add(int(_exp))
-                    elif _op == "inserted" and _act:
-                        current_pages_needed.add(int(_act))
-                    elif _maj or _sim < 0.97:
-                        if _exp:
-                            baseline_pages_needed.add(int(_exp))
-                        if _act:
-                            current_pages_needed.add(int(_act))
-
-                # Hard cap: never send more than 6 images total to avoid timeouts
-                _MAX_IMGS = 6
-                _b_pages = sorted(baseline_pages_needed)[:_MAX_IMGS // 2 + 1]
-                _c_pages = sorted(current_pages_needed)[:_MAX_IMGS // 2 + 1]
-                while len(_b_pages) + len(_c_pages) > _MAX_IMGS:
-                    if len(_b_pages) >= len(_c_pages):
-                        _b_pages = _b_pages[:-1]
-                    else:
-                        _c_pages = _c_pages[:-1]
-
                 _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-                if _b_pages:
-                    baseline_images = _vd_img.render_pages_for_llm(
-                        _pdf_abs_path(project_id, bench_form.stored_filename),
-                        page_numbers=_b_pages,
-                    )
-                if _c_pages:
-                    current_images_llm = _vd_img.render_pages_for_llm(
-                        _pdf_abs_path(project_id, main_form.stored_filename),
-                        page_numbers=_c_pages,
-                    )
+                baseline_images = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, bench_form.stored_filename),
+                    dpi=100, max_pages=8, jpeg_quality=72,
+                )
+                current_images_llm = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, main_form.stored_filename),
+                    dpi=100, max_pages=8, jpeg_quality=72,
+                )
                 logger.debug(
-                    "LLM images: %d baseline pages %s, %d current pages %s",
-                    len(baseline_images), _b_pages,
-                    len(current_images_llm), _c_pages,
+                    "Vision benchmark: %d baseline pages, %d current pages rendered",
+                    len(baseline_images), len(current_images_llm),
                 )
             except Exception as _img_err:
-                logger.warning("Page image render for LLM failed: %s", _img_err)
+                logger.warning("Vision page render failed: %s", _img_err)
 
-        messages = build_prompt(
-            mode=effective_mode,
-            current_doc=current_doc,
-            benchmark_doc=benchmark_doc,
-            base_prompt=rules_text,
-            extra_context=extra_context,
-            baseline_images=baseline_images or None,
-            current_images=current_images_llm or None,
-        )
+        # ── Build LLM messages ───────────────────────────────────────────────
+        if effective_mode == "benchmark" and (baseline_images or current_images_llm):
+            from engine.prompt_builder import build_vision_prompt
+            messages = build_vision_prompt(baseline_images, current_images_llm)
+        else:
+            # basic / specific modes, or fallback when image rendering failed
+            benchmark_doc = None
+            if effective_mode == "benchmark" and bench_form:
+                try:
+                    bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
+                    benchmark_doc = extract_all(bench_bytes)
+                except Exception as _be:
+                    logger.warning("Benchmark text extraction fallback failed: %s", _be)
+            messages = build_prompt(
+                mode=effective_mode,
+                current_doc=current_doc,
+                benchmark_doc=benchmark_doc,
+                base_prompt=rules_text,
+                extra_context={},
+            )
 
         llm_out = run_validation(messages)
-        result_json = _ensure_schema_defaults(llm_out, effective_mode)
-        result_json = _filter_ocr_artifacts(result_json)
 
-        result_json["visual_validation"] = visual
-        if effective_mode == "benchmark":
-            result_json["_field_diff"] = field_diff
-            vde = (current_doc.get("meta") or {}).get("visual_diff_error")
-            if vde:
-                result_json["visual_diff_error"] = vde
+        if effective_mode == "benchmark" and (baseline_images or current_images_llm):
+            # Vision path: LLM returns observations, not bucket-classified findings.
+            observations = []
+            if isinstance(llm_out, dict):
+                raw_obs = llm_out.get("observations") or []
+                if isinstance(raw_obs, list):
+                    observations = [o for o in raw_obs if isinstance(o, dict)]
+            llm_summary = (
+                (llm_out.get("summary") if isinstance(llm_out, dict) else "") or ""
+            ).strip()
 
-        result_json = _reconcile_visual_findings(result_json)
-
-        # Mode-specific bucket enforcement: strip findings the LLM adds outside
-        # the intended scope regardless of prompt instructions.
-        if effective_mode == "specific":
-            # Specific mode: only assertion-driven buckets are valid.
-            # Keep: value_mismatches, missing_content, compliance_issues.
-            # Clear everything else — LLM routinely adds unsolicited findings
-            # to format_issues / extra_content / etc. even when assertions pass,
-            # causing false REVIEW/FAIL verdicts.
-            for _oos in (
-                "spelling_errors", "format_issues", "extra_content",
-                "layout_anomalies", "typography_issues",
-                "accessibility_issues", "visual_mismatches", "structural_changes",
-            ):
-                result_json[_oos] = []
-
-        if effective_mode == "basic":
-            # Basic mode: spelling errors on insurance/legal forms are always
-            # OCR or rendering noise — never genuine defects. Strip them so they
-            # don't inflate the error count or mislead the tester.
-            result_json["spelling_errors"] = []
-
-        result_json = _refresh_summary_fields(result_json)
-
-        # Suppress findings that match known false-positive patterns learned from
-        # previous reviewer decisions, so the same observation doesn't recur.
-        try:
-            from app.services.auto_learning import suppress_false_positives
-            form_id = main_form.id if main_form else None
-            result_json = suppress_false_positives(result_json, project_id=project_id, form_id=form_id)
-            # Benchmark reconciler: re-add visual_mismatches for pages with significant
-            # pixel diff that the LLM missed entirely (as opposed to FP-suppressed).
-            if effective_mode == "benchmark":
-                result_json = _reconcile_benchmark_visual(result_json)
+            result_json = _ensure_schema_defaults({"mode": "benchmark"}, effective_mode)
+            result_json["observations"] = observations
+            result_json["overall_summary"] = (
+                llm_summary or f"{len(observations)} observation(s) found."
+            )
+            result_json["visual_validation"] = visual
             result_json = _refresh_summary_fields(result_json)
-        except Exception as _sfe:
-            logger.warning("False-positive suppression failed: %s", _sfe)
+
+        else:
+            # Text / fallback path for basic, specific, or when image render failed.
+            result_json = _ensure_schema_defaults(llm_out, effective_mode)
+            result_json = _filter_ocr_artifacts(result_json)
+            result_json["visual_validation"] = visual
+            result_json = _reconcile_visual_findings(result_json)
+
+            if effective_mode == "specific":
+                for _oos in (
+                    "spelling_errors", "format_issues", "extra_content",
+                    "layout_anomalies", "typography_issues",
+                    "accessibility_issues", "visual_mismatches", "structural_changes",
+                ):
+                    result_json[_oos] = []
+
+            if effective_mode == "basic":
+                result_json["spelling_errors"] = []
+
+            result_json = _refresh_summary_fields(result_json)
+
+            try:
+                from app.services.auto_learning import suppress_false_positives
+                form_id = main_form.id if main_form else None
+                result_json = suppress_false_positives(result_json, project_id=project_id, form_id=form_id)
+                result_json = _refresh_summary_fields(result_json)
+            except Exception as _sfe:
+                logger.warning("False-positive suppression failed: %s", _sfe)
 
         # Annotate snapshots with problem-area boxes for basic/specific modes.
         # Done after reconcile so all findings (including LLM + reconciler) are present.

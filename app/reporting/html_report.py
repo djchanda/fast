@@ -255,6 +255,48 @@ def _page_decisions(result_json: Dict[str, Any]) -> List[dict]:
     return decisions
 
 
+def _confidence_chip(conf: str) -> str:
+    c = (conf or "").lower()
+    if c == "certain":
+        return _chip("CERTAIN", "ok")
+    if c == "likely":
+        return _chip("LIKELY", "warn")
+    return _chip("POSSIBLE", "info")
+
+
+def _render_observations_section(observations: List[dict], count: int) -> str:
+    """Render the vision-mode observations table."""
+    if not observations:
+        rows_html = "<tr><td colspan='3' class='muted' style='padding:14px;'>No differences observed between the two documents.</td></tr>"
+    else:
+        rows = []
+        for i, obs in enumerate(observations, 1):
+            if not isinstance(obs, dict):
+                continue
+            pages_ref = _esc(str(obs.get("pages") or "—"))
+            text = _esc(_shorten(str(obs.get("observation") or ""), 400))
+            conf = str(obs.get("confidence") or "possible").lower()
+            rows.append(
+                f"<tr>"
+                f"<td style='width:40px;color:var(--muted);font-size:12px;'>{i}</td>"
+                f"<td style='width:180px;white-space:nowrap;'>{pages_ref}</td>"
+                f"<td>{text}</td>"
+                f"<td style='width:110px;'>{_confidence_chip(conf)}</td>"
+                f"</tr>"
+            )
+        rows_html = "".join(rows)
+
+    return f"""
+    <div class="card">
+      <div class="section-title">
+        <div>Observations</div>
+        <div class="muted">{count} difference(s) identified by direct visual comparison.</div>
+      </div>
+      {_render_table(["#", "Pages", "Observation", "Confidence"], rows_html)}
+    </div>
+    """
+
+
 def _compress_pages(pages: List[int]) -> str:
     if not pages:
         return "None"
@@ -305,135 +347,116 @@ def write_cli_style_report(
     mode = (result_json.get("mode") or getattr(tc, "mode", "") or "").strip().lower()
     llm_failed = _llm_failed(result_json)
 
-    decisions = _page_decisions(result_json)
-    mismatches = [d for d in decisions if d["status"] == "mismatch"]
-    reviews = [d for d in decisions if d["status"] == "review"]
-    matches = [d for d in decisions if d["status"] == "match"]
+    # ── Vision-mode (benchmark): show observations list ──────────────────────
+    observations = _as_list(result_json.get("observations"))
+    is_vision_mode = mode == "benchmark" and bool(observations or result_json.get("overall_summary"))
 
-    matched_ranges = _compress_pages([d["page"] for d in matches])
-
-    # ── Page-structure change summary (deleted / inserted pages) ────────────
-    visual_rows = _as_list(result_json.get("visual_validation"))
-    deleted_pages = [
-        v for v in visual_rows
-        if isinstance(v, dict) and str(v.get("alignment_op") or "") == "deleted"
-    ]
-    inserted_pages = [
-        v for v in visual_rows
-        if isinstance(v, dict) and str(v.get("alignment_op") or "") == "inserted"
-    ]
-    page_structure_banner = ""
-    if deleted_pages or inserted_pages:
-        parts = []
-        if deleted_pages:
-            pg_nums = ", ".join(
-                str(v.get("expected_page_num") or v.get("page", "?"))
-                for v in deleted_pages
-            )
-            parts.append(
-                f"<strong>{len(deleted_pages)} page(s) removed</strong> "
-                f"from expected PDF (expected page(s): {_esc(pg_nums)})"
-            )
-        if inserted_pages:
-            pg_nums = ", ".join(
-                str(v.get("actual_page_num") or v.get("page", "?"))
-                for v in inserted_pages
-            )
-            parts.append(
-                f"<strong>{len(inserted_pages)} page(s) inserted</strong> "
-                f"in actual PDF (actual page(s): {_esc(pg_nums)})"
-            )
-        page_structure_banner = (
-            "<div style='background:rgba(217,119,6,0.12);border-left:4px solid #d97706;"
-            "padding:12px 16px;border-radius:4px;margin-bottom:16px;font-size:13px;'>"
-            "<strong style='color:#fbbf24;'>&#9888; Page-Structure Change Detected</strong><br/>"
-            + " &mdash; ".join(parts)
-            + "<br/><span style='color:#fbbf24;font-size:12px;'>The sequence-alignment engine "
-            "re-aligned remaining pages so only true content differences are reported below.</span>"
-            "</div>"
-        )
-
-    if llm_failed:
-        summary_text = (
-            "LLM classification failed. The page-by-page decision below is based on deterministic visual and structured evidence."
-        )
-    else:
+    if is_vision_mode:
+        obs_count = len(observations)
         summary_text = (
             result_json.get("overall_summary")
             or llm_summary
-            or f"Found {len(mismatches)} mismatch page(s) and {len(reviews)} review page(s)."
+            or f"{obs_count} observation(s) found."
         )
+        verdict = _chip("IN REVIEW", "warn") if observations else _chip("NO DIFFERENCES", "ok")
 
-    if mismatches or reviews:
-        verdict = _chip("IN REVIEW", "warn")
+        main_pdf_link = ""
+        bench_pdf_link = ""
+        if main_form and getattr(main_form, "id", None):
+            href = url_for("web.view_form_file", project_id=project_id, form_id=main_form.id, _external=True)
+            main_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
+        if bench_form and getattr(bench_form, "id", None):
+            href = url_for("web.view_form_file", project_id=project_id, form_id=bench_form.id, _external=True)
+            bench_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
+
+        main_table_html = _render_observations_section(observations, obs_count)
+        summary_chips = (
+            f"{_chip(f'Observations: {obs_count}', 'bad' if obs_count else 'ok')}"
+            f"&nbsp;{_chip('Certain: ' + str(sum(1 for o in observations if str(o.get('confidence','')).lower()=='certain')), 'bad')}"
+            f"&nbsp;{_chip('Likely: ' + str(sum(1 for o in observations if str(o.get('confidence','')).lower()=='likely')), 'warn')}"
+            f"&nbsp;{_chip('Possible: ' + str(sum(1 for o in observations if str(o.get('confidence','')).lower()=='possible')), 'info')}"
+        )
     else:
-        verdict = _chip("PASS", "ok")
+        # ── Classic diff-mode (basic / specific / fallback benchmark) ─────────
+        decisions = _page_decisions(result_json)
+        mismatches = [d for d in decisions if d["status"] == "mismatch"]
+        reviews = [d for d in decisions if d["status"] == "review"]
+        matches = [d for d in decisions if d["status"] == "match"]
+        matched_ranges = _compress_pages([d["page"] for d in matches])
 
-    main_pdf_link = ""
-    bench_pdf_link = ""
-    if main_form and getattr(main_form, "id", None):
-        href = url_for("web.view_form_file", project_id=project_id, form_id=main_form.id, _external=True)
-        main_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
-    if bench_form and getattr(bench_form, "id", None):
-        href = url_for("web.view_form_file", project_id=project_id, form_id=bench_form.id, _external=True)
-        bench_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
-
-    if mismatches or reviews:
-        decision_rows_html = []
-        for d in [*mismatches, *reviews]:
-            row_status = (d["status"] or "").lower()
-            diffs = d.get("all_diffs") or []
-            if diffs:
-                diffs_html = (
-                    "<ul style='margin:0;padding:0 0 0 15px;list-style:disc;'>"
-                    + "".join(
-                        f"<li style='margin:3px 0;'>{_esc(_shorten(item, 300))}</li>"
-                        for item in diffs
-                    )
-                    + "</ul>"
-                )
-            else:
-                diffs_html = "<span class='muted'>—</span>"
-            decision_rows_html.append(
-                f"""
-                <tr data-status="{_esc(row_status)}">
-                    <td>{_esc(str(d["page"]))}</td>
-                    <td>{_status_chip(d["status"])}</td>
-                    <td>{_severity_chip(d["severity"])}</td>
-                    <td>{diffs_html}</td>
-                    <td>{_snapshot_link(project_id, d["snapshot"]) if d["snapshot"] else "—"}</td>
-                </tr>
-                """
+        if llm_failed:
+            summary_text = "LLM classification failed. The page-by-page decision below is based on deterministic visual evidence."
+        else:
+            summary_text = (
+                result_json.get("overall_summary")
+                or llm_summary
+                or f"Found {len(mismatches)} mismatch page(s) and {len(reviews)} review page(s)."
             )
-        decision_rows_html = "".join(decision_rows_html)
-    else:
-        decision_rows_html = "<tr><td colspan='5' class='muted'>None</td></tr>"
 
-    page_decision_table = f"""
-    <div class="card">
-      <div class="section-title">
-        <div>Page-by-Page Decision</div>
-        <div class="muted">Filter by decision type.</div>
-      </div>
+        verdict = _chip("IN REVIEW", "warn") if (mismatches or reviews) else _chip("PASS", "ok")
 
-      {page_structure_banner}
+        main_pdf_link = ""
+        bench_pdf_link = ""
+        if main_form and getattr(main_form, "id", None):
+            href = url_for("web.view_form_file", project_id=project_id, form_id=main_form.id, _external=True)
+            main_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
+        if bench_form and getattr(bench_form, "id", None):
+            href = url_for("web.view_form_file", project_id=project_id, form_id=bench_form.id, _external=True)
+            bench_pdf_link = f"<a href='{_esc(href)}' target='_blank' rel='noopener'>Open PDF</a>"
 
-      <div class="rd-filterbar">
-        <button class="rd-filter-btn active" onclick="filterDecisionRows('all', this)">All</button>
-        <button class="rd-filter-btn" onclick="filterDecisionRows('mismatch', this)">Mismatch</button>
-        <button class="rd-filter-btn" onclick="filterDecisionRows('review', this)">Review</button>
-      </div>
+        if mismatches or reviews:
+            decision_rows_html = []
+            for d in [*mismatches, *reviews]:
+                row_status = (d["status"] or "").lower()
+                diffs = d.get("all_diffs") or []
+                if diffs:
+                    diffs_html = (
+                        "<ul style='margin:0;padding:0 0 0 15px;list-style:disc;'>"
+                        + "".join(
+                            f"<li style='margin:3px 0;'>{_esc(_shorten(item, 300))}</li>"
+                            for item in diffs
+                        )
+                        + "</ul>"
+                    )
+                else:
+                    diffs_html = "<span class='muted'>—</span>"
+                decision_rows_html.append(
+                    f"<tr data-status='{_esc(row_status)}'>"
+                    f"<td>{_esc(str(d['page']))}</td>"
+                    f"<td>{_status_chip(d['status'])}</td>"
+                    f"<td>{_severity_chip(d['severity'])}</td>"
+                    f"<td>{diffs_html}</td>"
+                    f"<td>{_snapshot_link(project_id, d['snapshot']) if d['snapshot'] else '—'}</td>"
+                    f"</tr>"
+                )
+            decision_rows_html_str = "".join(decision_rows_html)
+        else:
+            decision_rows_html_str = "<tr><td colspan='5' class='muted'>None</td></tr>"
 
-      {_render_table(
-          ["Page", "Status", "Severity", "Differences", "Snapshot"],
-          decision_rows_html
-      )}
-
-      <div style="margin-top:10px;" class="muted">
-        {("All pages matched." if not mismatches and not reviews else f"All other pages matched: {matched_ranges if matched_ranges != 'None' else 'None'}")}
-      </div>
-    </div>
-    """
+        main_table_html = f"""
+        <div class="card">
+          <div class="section-title">
+            <div>Page-by-Page Decision</div>
+            <div class="muted">Filter by decision type.</div>
+          </div>
+          <div class="rd-filterbar">
+            <button class="rd-filter-btn active" onclick="filterDecisionRows('all', this)">All</button>
+            <button class="rd-filter-btn" onclick="filterDecisionRows('mismatch', this)">Mismatch</button>
+            <button class="rd-filter-btn" onclick="filterDecisionRows('review', this)">Review</button>
+          </div>
+          {_render_table(["Page", "Status", "Severity", "Differences", "Snapshot"], decision_rows_html_str)}
+          <div style="margin-top:10px;" class="muted">
+            {("All pages matched." if not mismatches and not reviews else f"All other pages matched: {matched_ranges if matched_ranges != 'None' else 'None'}")}
+          </div>
+        </div>
+        """
+        _rng_kind = "info" if matched_ranges != "None" else "neutral"
+        summary_chips = (
+            f"{_chip(f'Mismatches: {len(mismatches)}', 'bad' if mismatches else 'ok')}"
+            f"&nbsp;{_chip(f'Review pages: {len(reviews)}', 'warn' if reviews else 'ok')}"
+            f"&nbsp;{_chip(f'Matched pages: {len(matches)}', 'ok')}"
+            f"&nbsp;{_chip(f'Matched ranges: {matched_ranges}', _rng_kind)}"
+        )
 
     html = f"""<!doctype html>
 <html lang="en">
@@ -693,10 +716,7 @@ def write_cli_style_report(
       {f"<div class='banner'><b>LLM classification unavailable.</b> {_esc(result_json.get('error'))}{(': ' + _esc(result_json.get('details'))) if result_json.get('details') else ''}</div>" if llm_failed else ""}
 
       <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;">
-        {_chip(f"Mismatches: {len(mismatches)}", "bad" if mismatches else "ok")}
-        {_chip(f"Review pages: {len(reviews)}", "warn" if reviews else "ok")}
-        {_chip(f"Matched pages: {len(matches)}", "ok")}
-        {_chip(f"Matched page ranges: {matched_ranges}", "info" if matched_ranges != 'None' else "neutral")}
+        {summary_chips}
       </div>
     </div>
 
@@ -726,7 +746,7 @@ def write_cli_style_report(
       </div>
     </div>
 
-    {page_decision_table}
+    {main_table_html}
 
   <script>
     function filterDecisionRows(status, btn) {{
