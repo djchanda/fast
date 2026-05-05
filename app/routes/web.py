@@ -195,11 +195,13 @@ def serve_visual_diff_file(project_id: int, filename: str):
 
 @web_bp.route("/projects/<int:project_id>/visual_diffs_focused/<path:filename>", methods=["GET"])
 def serve_visual_diff_focused(project_id: int, filename: str):
-    """Serve a vertically-cropped 3-panel diff snapshot focused on the changed region.
+    """Serve a vertically-cropped 3-panel diff snapshot with observation caption header.
 
-    Query params: y0, y1 — pixel row bounds in single-panel coordinates.
-    A 60-pixel padding is added above and below; falls back to the full image if
-    bbox params are missing or the crop would cover >80% of the image height.
+    Query params:
+      y0, y1   — pixel row bounds in single-panel coordinates for vertical crop
+      caption  — observation text (URL-encoded) to render as caption strip
+      conf     — confidence level: certain|likely|possible
+    Falls back to full image when crop would cover >80% of page height.
     """
     gate = require_login()
     if gate:
@@ -217,26 +219,114 @@ def serve_visual_diff_focused(project_id: int, filename: str):
     except (ValueError, TypeError):
         y0 = y1 = 0
 
-    if y0 == 0 and y1 == 0:
+    caption_text = (request.args.get("caption") or "").strip()
+    conf = (request.args.get("conf") or "possible").lower()
+
+    if y0 == 0 and y1 == 0 and not caption_text:
         return send_from_directory(vdir, safe_name)
 
     try:
-        from PIL import Image as _PImage
+        from PIL import Image as _PImage, ImageDraw as _IDraw, ImageFont as _IFont
+        import textwrap as _tw
+
         img = _PImage.open(p).convert("RGB")
         iw, ih = img.size
-        pad = 60
-        cy0 = max(0, y0 - pad)
-        cy1 = min(ih, y1 + pad)
-        # If the crop covers most of the image, just serve the full version
-        if (cy1 - cy0) >= ih * 0.80:
-            return send_from_directory(vdir, safe_name)
-        cropped = img.crop((0, cy0, iw, cy1))
+
+        # Vertical crop to diff region
+        if y0 > 0 or y1 > 0:
+            pad = 60
+            cy0 = max(0, y0 - pad)
+            cy1 = min(ih, y1 + pad)
+            if (cy1 - cy0) < ih * 0.80:
+                img = img.crop((0, cy0, iw, cy1))
+
+        iw, ih = img.size
+        panel_w = iw // 3
+
+        # --- Load fonts ---
+        _FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        _FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        try:
+            font_label = _IFont.truetype(_FONT_BOLD, 13)
+            font_cap   = _IFont.truetype(_FONT_PATH, 13)
+            font_conf  = _IFont.truetype(_FONT_BOLD, 12)
+        except Exception:
+            font_label = font_cap = font_conf = _IFont.load_default()
+
+        # --- Panel label strip (30px) ---
+        LABEL_H = 30
+        LABEL_BG = (15, 23, 42)       # dark navy
+        LABEL_FG = (148, 163, 184)    # muted slate
+        panel_labels = ["BASELINE  (EXPECTED)", "CURRENT  (ACTUAL)", "DIFF  OVERLAY"]
+
+        label_strip = _PImage.new("RGB", (iw, LABEL_H), LABEL_BG)
+        ld = _IDraw.Draw(label_strip)
+        for i, lbl in enumerate(panel_labels):
+            cx = i * panel_w + panel_w // 2
+            try:
+                bbox = font_label.getbbox(lbl)
+                tw = bbox[2] - bbox[0]
+            except Exception:
+                tw = len(lbl) * 7
+            ld.text((cx - tw // 2, 8), lbl, font=font_label, fill=LABEL_FG)
+        # dividers between panels
+        for xi in (panel_w, panel_w * 2):
+            ld.line([(xi, 0), (xi, LABEL_H)], fill=(30, 41, 59), width=1)
+
+        # --- Caption strip (observation text + confidence) ---
+        CONF_COLORS = {
+            "certain": ((22, 163, 74),  (74, 222, 128),  "CERTAIN"),
+            "likely":  ((180, 83, 9),   (251, 191, 36),  "LIKELY"),
+        }
+        cap_bg_dark, cap_text_color, conf_label = CONF_COLORS.get(
+            conf, ((30, 58, 138), (147, 197, 253), "POSSIBLE")
+        )
+
+        CAP_PAD = 12
+        CAP_H_MIN = 50
+        max_chars = max(40, (iw - CAP_PAD * 4 - 90) // 8)
+        wrapped = _tw.wrap(caption_text or "Observation", width=max_chars) if caption_text else []
+        cap_h = max(CAP_H_MIN, len(wrapped) * 18 + CAP_PAD * 2)
+
+        cap_strip = _PImage.new("RGB", (iw, cap_h), cap_bg_dark)
+        cd = _IDraw.Draw(cap_strip)
+
+        # Confidence chip (right-aligned)
+        chip_text = conf_label
+        try:
+            cb = font_conf.getbbox(chip_text)
+            chip_w = cb[2] - cb[0] + 16
+        except Exception:
+            chip_w = len(chip_text) * 8 + 16
+        chip_x = iw - chip_w - CAP_PAD
+        chip_y = (cap_h - 20) // 2
+        cd.rounded_rectangle([chip_x, chip_y, chip_x + chip_w, chip_y + 20],
+                              radius=4, fill=cap_bg_dark, outline=cap_text_color, width=1)
+        cd.text((chip_x + 8, chip_y + 4), chip_text, font=font_conf, fill=cap_text_color)
+
+        # Observation text (left side)
+        text_area_w = chip_x - CAP_PAD * 2
+        y_pos = CAP_PAD
+        for line in wrapped:
+            cd.text((CAP_PAD, y_pos), line, font=font_cap, fill=(226, 232, 240))
+            y_pos += 18
+        if not wrapped:
+            cd.text((CAP_PAD, CAP_PAD), "(no observation text)", font=font_cap, fill=(100, 116, 139))
+
+        # --- Compose final image: labels + caption + cropped diff ---
+        total_h = LABEL_H + cap_h + ih
+        out = _PImage.new("RGB", (iw, total_h), LABEL_BG)
+        out.paste(label_strip, (0, 0))
+        out.paste(cap_strip,   (0, LABEL_H))
+        out.paste(img,         (0, LABEL_H + cap_h))
+
         buf = io.BytesIO()
-        cropped.save(buf, "PNG", optimize=True)
+        out.save(buf, "PNG", optimize=True)
         buf.seek(0)
         return send_file(buf, mimetype="image/png")
+
     except Exception as _ce:
-        logger.warning("Diff crop failed (%s): %s", safe_name, _ce)
+        logger.warning("Diff focused render failed (%s): %s", safe_name, _ce)
         return send_from_directory(vdir, safe_name)
 
 
@@ -1007,6 +1097,7 @@ def execute_run(project_id: int):
                     llm_summary=out.get("summary_text") or "",
                     main_form=out.get("main_form"),
                     bench_form=out.get("bench_form"),
+                    instance_path=current_app.instance_path,
                 )
                 rr.report_html_path = report_filename  # filename only
 
@@ -1623,6 +1714,7 @@ def _recompute_result_metrics(result_id: int) -> None:
                     llm_summary=rr.summary_text or "",
                     main_form=_main_form,
                     bench_form=_bench_form,
+                    instance_path=current_app.instance_path,
                 )
                 rr.report_html_path = new_filename
                 db.session.commit()
@@ -2072,6 +2164,82 @@ def download_annotated_pdf(project_id: int, result_id: int):
         )
     except Exception as e:
         flash(f"Annotated PDF generation failed: {e}", "error")
+        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/diffs/download")
+def download_result_diffs(project_id: int, result_id: int):
+    """ZIP all diff snapshot PNGs for a result and return as a download."""
+    gate = require_login()
+    if gate:
+        return gate
+
+    rr = RunResult.query.get_or_404(result_id)
+    result_obj = {}
+    if rr.result_json:
+        try:
+            result_obj = json.loads(rr.result_json)
+        except Exception:
+            pass
+
+    vdir = visual_diffs_dir()
+    snapshots = []
+    for v in result_obj.get("visual_validation", []) or []:
+        if isinstance(v, dict):
+            sp = v.get("snapshot_path", "")
+            if sp:
+                fname = os.path.basename(sp)
+                fpath = vdir / fname
+                if fpath.exists():
+                    snapshots.append((fname, fpath))
+
+    if not snapshots:
+        flash("No diff snapshots available for this result.", "warning")
+        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
+
+    import zipfile as _zf
+    buf = io.BytesIO()
+    with _zf.ZipFile(buf, "w", _zf.ZIP_DEFLATED) as zf:
+        for fname, fpath in snapshots:
+            zf.write(fpath, fname)
+    buf.seek(0)
+    log_action("result.diffs_downloaded", resource_type="run_result", resource_id=result_id,
+               project_id=project_id)
+    return send_file(buf, mimetype="application/zip", as_attachment=True,
+                     download_name=f"diffs_result_{result_id}.zip")
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/export/pdf")
+def export_result_pdf(project_id: int, result_id: int):
+    """Generate and download a structured PDF report for a result."""
+    gate = require_login()
+    if gate:
+        return gate
+
+    rr = RunResult.query.get_or_404(result_id)
+    tc = TestCase.query.filter_by(id=rr.test_case_id, project_id=project_id).first()
+    project = Project.query.get_or_404(project_id)
+    main_form = Form.query.get(rr.form_id) if rr.form_id else None
+    bench_form = Form.query.get(tc.benchmark_form_id) if tc and tc.benchmark_form_id else None
+
+    try:
+        from app.services.pdf_report import generate_pdf_report
+        pdf_bytes = generate_pdf_report(
+            rr=rr,
+            project=project,
+            tc=tc,
+            main_form=main_form,
+            bench_form=bench_form,
+            instance_path=current_app.instance_path,
+        )
+        tc_slug = re.sub(r"[^a-zA-Z0-9]+", "_", (getattr(tc, "name", "") or "result")).strip("_")[:40]
+        log_action("result.pdf_exported", resource_type="run_result", resource_id=result_id,
+                   project_id=project_id)
+        return send_file(io.BytesIO(pdf_bytes), mimetype="application/pdf",
+                         as_attachment=True, download_name=f"report_{tc_slug}_{result_id}.pdf")
+    except Exception as e:
+        logger.error("PDF export failed for result %d: %s", result_id, e, exc_info=True)
+        flash(f"PDF export failed: {e}", "error")
         return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
 
 

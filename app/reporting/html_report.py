@@ -126,30 +126,69 @@ def _snapshot_link(project_id: int, snapshot_path: str) -> str:
     return f"<a href='{_esc(href)}' target='_blank' rel='noopener'>View</a>"
 
 
-def _focused_snapshot_link(project_id: int, snap_info: Optional[dict]) -> str:
-    """View link that opens a vertically-cropped diff image focused on the changed region."""
+def _focused_snapshot_link(
+    project_id: int,
+    snap_info: Optional[dict],
+    obs_text: str = "",
+    conf: str = "possible",
+) -> str:
+    """View link that opens a vertically-cropped diff image with observation caption."""
     if not snap_info or not snap_info.get("path"):
         return "—"
     img_name = str(snap_info["path"]).split("/")[-1]
     bbox = snap_info.get("bbox")
+    params: dict = {"caption": (obs_text or "")[:300], "conf": conf}
     if bbox and len(bbox) == 4:
         _x0, y0, _x1, y1 = bbox
+        params["y0"] = int(y0)
+        params["y1"] = int(y1)
         href = url_for(
             "web.serve_visual_diff_focused",
             project_id=project_id,
             filename=img_name,
-            y0=int(y0),
-            y1=int(y1),
             _external=True,
+            **params,
         )
     else:
         href = url_for(
-            "web.serve_visual_diff_file",
+            "web.serve_visual_diff_focused",
             project_id=project_id,
             filename=img_name,
             _external=True,
+            **params,
         )
     return f"<a href='{_esc(href)}' target='_blank' rel='noopener'>View</a>"
+
+
+def _fmt_size(size_bytes: Optional[int]) -> str:
+    if not size_bytes:
+        return "—"
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.0f} KB"
+    return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+def _fmt_date(dt: Any) -> str:
+    if dt is None:
+        return "—"
+    try:
+        return dt.strftime("%b %d, %Y %I:%M %p")
+    except Exception:
+        return str(dt)
+
+
+def _get_page_count(instance_path: str, project_id: int, stored_filename: str) -> Optional[int]:
+    try:
+        import os as _os
+        from pypdf import PdfReader as _PR
+        path = _os.path.join(instance_path, "uploads", f"project_{project_id}", "forms", stored_filename)
+        if _os.path.exists(path):
+            return len(_PR(path).pages)
+    except Exception:
+        pass
+    return None
 
 
 def _llm_failed(result_json: Dict[str, Any]) -> bool:
@@ -330,7 +369,11 @@ def _render_observations_section(
             except (ValueError, TypeError):
                 pass
             snap_info = snap_by_page.get(pg) if pg else None
-            view_cell = _focused_snapshot_link(project_id, snap_info)
+            view_cell = _focused_snapshot_link(
+                project_id, snap_info,
+                obs_text=str(obs.get("observation") or ""),
+                conf=conf,
+            )
 
             rows.append(
                 f"<tr>"
@@ -395,6 +438,7 @@ def write_cli_style_report(
     llm_summary: str = "",
     main_form: Optional[Any] = None,
     bench_form: Optional[Any] = None,
+    instance_path: str = "",
 ) -> str:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     tc_name = _safe_slug(getattr(tc, "name", "test"))
@@ -805,26 +849,34 @@ def write_cli_style_report(
     </div>
 
     <div class="card">
-      <div class="section-title">HTML Report</div>
+      <div class="section-title">Document Metadata</div>
       <div class="grid">
         <div>
           <div class="kv">
             <div class="kv-k">Main Form</div>
-            <div class="kv-v">{_esc(getattr(main_form, "original_filename", "") or getattr(main_form, "stored_filename", "") or "")}{" &nbsp;|&nbsp; " + main_pdf_link if main_pdf_link else ""}</div>
+            <div class="kv-v">{_esc(getattr(main_form, "original_filename", "") or getattr(main_form, "stored_filename", "") or "—")}{" &nbsp;|&nbsp; " + main_pdf_link if main_pdf_link else ""}</div>
           </div>
           <div class="kv">
-            <div class="kv-k">Benchmark Form</div>
-            <div class="kv-v">{_esc(getattr(bench_form, "original_filename", "") or getattr(bench_form, "stored_filename", "") or "")}{" &nbsp;|&nbsp; " + bench_pdf_link if bench_pdf_link else ""}</div>
+            <div class="kv-k">Size / Pages</div>
+            <div class="kv-v">{_fmt_size(getattr(main_form, "size_bytes", None))} &nbsp;/&nbsp; {(_get_page_count(instance_path, project_id, getattr(main_form, "stored_filename", "") or "") or "—")} pages</div>
+          </div>
+          <div class="kv">
+            <div class="kv-k">Uploaded</div>
+            <div class="kv-v">{_fmt_date(getattr(main_form, "uploaded_at", None))}</div>
           </div>
         </div>
         <div>
           <div class="kv">
-            <div class="kv-k">Generated</div>
-            <div class="kv-v">{_esc(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))}</div>
+            <div class="kv-k">Benchmark Form</div>
+            <div class="kv-v">{_esc(getattr(bench_form, "original_filename", "") or getattr(bench_form, "stored_filename", "") or "—")}{" &nbsp;|&nbsp; " + bench_pdf_link if bench_pdf_link else ""}</div>
           </div>
           <div class="kv">
-            <div class="kv-k">Report File</div>
-            <div class="kv-v mono">{_esc(filename)}</div>
+            <div class="kv-k">Size / Pages</div>
+            <div class="kv-v">{_fmt_size(getattr(bench_form, "size_bytes", None)) if bench_form else "—"} &nbsp;/&nbsp; {(_get_page_count(instance_path, project_id, getattr(bench_form, "stored_filename", "") or "") or "—") if bench_form else "—"} pages</div>
+          </div>
+          <div class="kv">
+            <div class="kv-k">Report Generated</div>
+            <div class="kv-v">{_esc(datetime.now().strftime("%b %d, %Y %I:%M %p"))} &nbsp;<span class="muted mono">{_esc(filename)}</span></div>
           </div>
         </div>
       </div>
