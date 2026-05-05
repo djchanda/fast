@@ -2124,48 +2124,6 @@ def download_evidence_bundle(project_id: int, run_id: int):
         return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
 
 
-# -----------------------
-# Annotated PDF Download
-# -----------------------
-@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/annotated_pdf")
-def download_annotated_pdf(project_id: int, result_id: int):
-    gate = require_login()
-    if gate:
-        return gate
-
-    rr = RunResult.query.get_or_404(result_id)
-    tc = TestCase.query.filter_by(id=rr.test_case_id, project_id=project_id).first_or_404()
-    form = Form.query.get(tc.form_id) if tc.form_id else None
-
-    if not form or not form.file_path or not os.path.exists(form.file_path):
-        flash("Original PDF not found.", "error")
-        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
-
-    with open(form.file_path, "rb") as f:
-        pdf_bytes = f.read()
-
-    result_obj = {}
-    if rr.result_json:
-        try:
-            result_obj = json.loads(rr.result_json)
-        except Exception:
-            pass
-
-    try:
-        from engine.pdf_annotator import annotate_pdf
-        annotated = annotate_pdf(pdf_bytes, result_obj)
-        log_action("pdf.annotated_download", resource_type="run_result", resource_id=result_id,
-                   project_id=project_id)
-        return send_file(
-            io.BytesIO(annotated),
-            mimetype="application/pdf",
-            as_attachment=True,
-            download_name=f"annotated_result_{result_id}.pdf",
-        )
-    except Exception as e:
-        flash(f"Annotated PDF generation failed: {e}", "error")
-        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
-
 
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>/diffs/download")
 def download_result_diffs(project_id: int, result_id: int):
