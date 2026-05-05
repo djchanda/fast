@@ -2232,7 +2232,8 @@ def export_result_pdf(project_id: int, result_id: int):
             bench_form=bench_form,
             instance_path=current_app.instance_path,
         )
-        tc_slug = re.sub(r"[^a-zA-Z0-9]+", "_", (getattr(tc, "name", "") or "result")).strip("_")[:40]
+        import re as _re
+        tc_slug = _re.sub(r"[^a-zA-Z0-9]+", "_", (getattr(tc, "name", "") or "result")).strip("_")[:40]
         log_action("result.pdf_exported", resource_type="run_result", resource_id=result_id,
                    project_id=project_id)
         return send_file(io.BytesIO(pdf_bytes), mimetype="application/pdf",
