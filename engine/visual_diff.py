@@ -1736,17 +1736,17 @@ class VisualDiff:
         self,
         pdf_path: str,
         dpi: int = 60,
-        max_pages: int = 8,
+        max_pages: Optional[int] = None,
         jpeg_quality: int = 65,
         page_numbers: Optional[List[int]] = None,
     ) -> List[Dict[str, Any]]:
         """Render PDF pages as base64 JPEG for multimodal LLM consumption.
 
         Args:
-            page_numbers: 1-indexed list of page numbers to render. When given,
-                          only those pages are rendered and returned, which keeps
-                          prompt size small. None = render all pages up to max_pages.
+            max_pages: Maximum pages to render. None (default) = all pages.
+            page_numbers: 1-indexed list of specific pages to render.
 
+        At 150 DPI a letter page is ~1275×1650 px ≈ 120 KB JPEG ≈ 160 KB base64.
         At 60 DPI a letter page is ~510×660 px ≈ 30 KB JPEG ≈ 42 KB base64.
 
         Returns:
@@ -1778,8 +1778,10 @@ class VisualDiff:
                     except Exception as _pe:
                         logger.warning("render_pages_for_llm page %d failed: %s", pg, _pe)
             else:
+                # last_page=None tells pdf2image to render ALL pages
                 pages = convert_from_path(pdf_path, dpi=dpi, fmt="jpeg",
-                                          poppler_path=poppler, last_page=max_pages)
+                                          poppler_path=poppler,
+                                          last_page=max_pages if max_pages else None)
                 for idx, page_img in enumerate(pages, start=1):
                     buf = io.BytesIO()
                     page_img.convert("RGB").save(buf, format="JPEG",

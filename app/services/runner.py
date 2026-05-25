@@ -751,11 +751,11 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                 _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
                 baseline_images = _vd_img.render_pages_for_llm(
                     _pdf_abs_path(project_id, bench_form.stored_filename),
-                    dpi=150, max_pages=40, jpeg_quality=85,
+                    dpi=150, max_pages=None, jpeg_quality=85,
                 )
                 current_images_llm = _vd_img.render_pages_for_llm(
                     _pdf_abs_path(project_id, main_form.stored_filename),
-                    dpi=150, max_pages=40, jpeg_quality=85,
+                    dpi=150, max_pages=None, jpeg_quality=85,
                 )
                 logger.debug(
                     "Vision benchmark: %d baseline pages, %d current pages rendered",
