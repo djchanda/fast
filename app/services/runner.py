@@ -751,11 +751,11 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
                 _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
                 baseline_images = _vd_img.render_pages_for_llm(
                     _pdf_abs_path(project_id, bench_form.stored_filename),
-                    dpi=100, max_pages=8, jpeg_quality=72,
+                    dpi=150, max_pages=40, jpeg_quality=85,
                 )
                 current_images_llm = _vd_img.render_pages_for_llm(
                     _pdf_abs_path(project_id, main_form.stored_filename),
-                    dpi=100, max_pages=8, jpeg_quality=72,
+                    dpi=150, max_pages=40, jpeg_quality=85,
                 )
                 logger.debug(
                     "Vision benchmark: %d baseline pages, %d current pages rendered",
@@ -816,10 +816,35 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
 
             result_json = _ensure_schema_defaults({"mode": "benchmark"}, effective_mode)
             result_json["observations"] = observations
-            result_json["overall_summary"] = (
-                llm_summary or f"{len(observations)} observation(s) found."
-            )
             result_json["visual_validation"] = visual
+
+            # Run deterministic reconciler even in benchmark/vision mode so that
+            # pixel-diff signature candidates (PRESIDENT / SECRETARY near changed
+            # pixels) are not silently discarded when the LLM misses them.
+            result_json = _reconcile_visual_findings(result_json)
+
+            # Promote reconciler-found signature items into observations so they
+            # surface in the review UI alongside LLM observations.
+            existing_obs_text = {o.get("observation", "").lower() for o in result_json["observations"]}
+            for item in list(result_json.get("missing_content", [])):
+                desc = item.get("description", "")
+                cat  = item.get("category", "")
+                if "signature" not in desc.lower() and "signature" not in cat.lower():
+                    continue
+                if any(desc.lower()[:60] in t for t in existing_obs_text):
+                    continue   # already reported by LLM
+                result_json["observations"].append({
+                    "current_page": str(item.get("page") or "unknown"),
+                    "observation": desc,
+                    "confidence": "certain",
+                    "change_type": "signature",
+                    "source": "visual_reconciler",
+                })
+                existing_obs_text.add(desc.lower()[:60])
+
+            result_json["overall_summary"] = (
+                llm_summary or f"{len(result_json['observations'])} observation(s) found."
+            )
             result_json = _refresh_summary_fields(result_json)
 
         else:

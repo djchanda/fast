@@ -870,6 +870,15 @@ def build_vision_prompt(
             "if no text actually changed.\n"
             "- Include: logos, colours, watermarks, signatures, structural layout changes.\n"
             "- Do NOT judge whether a change is good or bad.\n\n"
+            "SIGNATURE CHECK — THIS IS MANDATORY FOR EVERY PAGE:\n"
+            "- Scan every page for signature blocks, approval stamps, and sign-off lines.\n"
+            "- Named roles to check: PRESIDENT, SECRETARY, AUTHORIZED SIGNATORY, WITNESS, "
+            "NOTARY, any labelled signature line.\n"
+            "- If BASELINE has a signature/stamp/ink mark and CURRENT does not → report as: "
+            "'[Role] signature is present in BASELINE but missing in CURRENT on page X.'\n"
+            "- If CURRENT has a signature that BASELINE does not → report it.\n"
+            "- An empty signature line where BASELINE had ink IS a difference — report it.\n"
+            "- Do not skip a page just because most content looks the same.\n\n"
             'current_page must be the page number in the CURRENT document only (e.g. "1", "2", '
             '"1-3", or "all"). Use "all" when the change appears on every page.\n\n'
             "Respond ONLY with valid JSON — no text outside the JSON block:\n"
