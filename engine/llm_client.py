@@ -390,3 +390,8 @@ def available_providers() -> list[str]:
     if cfg.openai_api_key:
         out.append("openai")
     return out or ["bedrock"]
+
+
+# v1 compatibility alias — runner.py and other callers use this name
+run_validation = run_llm
+get_available_providers = available_providers
