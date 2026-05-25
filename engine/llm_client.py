@@ -246,13 +246,14 @@ def _run_gemini(messages: list[dict]) -> dict[str, Any]:
     except ImportError as e:
         raise ImportError("google-generativeai not installed. Run: pip install google-generativeai") from e
 
-    from config import llm_config
-    cfg = llm_config()
-    if not cfg.gemini_api_key:
-        raise ValueError("GEMINI_API_KEY not set")
+    # Read env directly at call time — same as v1, avoids singleton timing issues
+    api_key    = os.getenv("GEMINI_API_KEY")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY in environment")
 
-    genai.configure(api_key=cfg.gemini_api_key)
-    model = genai.GenerativeModel(cfg.gemini_model)
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name)
 
     parts = []
     for msg in messages:
@@ -351,10 +352,7 @@ def run_llm(messages: list[dict], provider: str | None = None) -> dict[str, Any]
     Returns:
         Parsed JSON response dict.
     """
-    from config import llm_config
-    cfg = llm_config()
-
-    provider = (provider or cfg.provider).lower()
+    provider = (provider or os.getenv("LLM_PROVIDER", "gemini")).lower()
     fn = _PROVIDERS.get(provider)
     if not fn:
         return {"error": f"Unknown provider: {provider}. Options: {list(_PROVIDERS)}"}
@@ -367,7 +365,8 @@ def run_llm(messages: list[dict], provider: str | None = None) -> dict[str, Any]
         return {"error": "Empty prompt — no messages with content"}
 
     try:
-        return _retry(fn, messages, max_retries=cfg.max_retries)
+        max_retries = int(os.getenv("LLM_MAX_RETRIES", "3"))
+        return _retry(fn, messages, max_retries=max_retries)
     except ValueError as e:
         return {"error": f"Config error ({provider})", "details": str(e)}
     except Exception as e:
