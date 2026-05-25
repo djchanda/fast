@@ -14,7 +14,7 @@ LLMProvider = Literal["claude", "gemini", "openai", "bedrock"]
 @dataclass
 class LLMConfig:
     provider: LLMProvider = field(
-        default_factory=lambda: os.getenv("LLM_PROVIDER", "claude").lower()  # type: ignore[return-value]
+        default_factory=lambda: os.getenv("LLM_PROVIDER", "gemini").lower()  # type: ignore[return-value]
     )
     # Anthropic direct
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))

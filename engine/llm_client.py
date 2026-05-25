@@ -18,6 +18,12 @@ import re
 import time
 from typing import Any
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 
@@ -250,18 +256,22 @@ def _run_gemini(messages: list[dict]) -> dict[str, Any]:
 
     parts = []
     for msg in messages:
+        role = msg.get("role", "user").upper()
         content = msg.get("content", "")
         if isinstance(content, list):
             for block in content:
                 if block.get("type") == "text":
-                    parts.append(block["text"])
+                    parts.append(f"{role}:\n{block['text']}\n\n")
                 elif block.get("type") == "image":
-                    if block.get("label"):
-                        parts.append(f"[{block['label']}]")
-                    parts.append({"mime_type": block.get("mime", "image/jpeg"),
-                                   "data": base64.standard_b64decode(block["b64"])})
+                    label = block.get("label", "")
+                    if label:
+                        parts.append(f"[Image: {label}]\n")
+                    parts.append({
+                        "mime_type": block.get("mime", "image/jpeg"),
+                        "data": base64.standard_b64decode(block["b64"]),
+                    })
         else:
-            parts.append(content)
+            parts.append(f"{role}:\n{content}\n\n")
 
     response = model.generate_content(
         parts,
