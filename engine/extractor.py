@@ -113,7 +113,20 @@ def extract_all(file_bytes: bytes, enable_ocr_fallback: bool = True, ocr_dpi: in
     embedded_pages = extract_pages_text_from_pdf(file_bytes)
     fields = extract_form_fields_from_pdf(file_bytes)
 
-    is_scanned_like = (not text.strip()) and (not fields)
+    # Word-density heuristic: insurance forms have 150–500 words/page.
+    # A PDF with a minimal searchable-text layer (< 50 words/page avg) is
+    # likely a scanned image with an OCR overlay — treat body text as unreliable.
+    page_count = max(len(embedded_pages), 1)
+    word_count = len(text.split()) if text.strip() else 0
+    avg_words_per_page = word_count / page_count
+    text_is_sparse = bool(text.strip()) and avg_words_per_page < 50
+
+    # Fully scanned: no embedded text AND no form fields.
+    # Sparse-text: minimal text layer only (likely OCR overlay), no form fields.
+    is_scanned_like = (
+        (not text.strip() and not fields)
+        or (text_is_sparse and not fields)
+    )
 
     ocr_payload = {"text": "", "pages": []}
     if enable_ocr_fallback and is_scanned_like:
@@ -131,5 +144,7 @@ def extract_all(file_bytes: bytes, enable_ocr_fallback: bool = True, ocr_dpi: in
             "used_ocr": bool(ocr_payload.get("text", "").strip()),
             "ocr_dpi": ocr_dpi if bool(ocr_payload.get("text", "").strip()) else None,
             "page_count": len(final_pages),
+            "avg_words_per_page": round(avg_words_per_page, 1),
+            "text_is_sparse": text_is_sparse,
         },
     }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Dict, Optional
 
@@ -13,6 +14,8 @@ from engine.prompt_builder import build_prompt
 from engine.llm_client import run_validation
 
 from app.reporting.html_report import write_cli_style_report
+
+logger = logging.getLogger(__name__)
 
 
 VISUAL_REVIEW_SIMILARITY_THRESHOLD = 0.9985  # 99.85%
@@ -46,14 +49,18 @@ def _count_list(v: Any) -> int:
 def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
     base: Dict[str, Any] = {
         "mode": mode,
+        "observations": [],
         "spelling_errors": [],
         "format_issues": [],
         "value_mismatches": [],
         "missing_content": [],
         "extra_content": [],
         "layout_anomalies": [],
+        "typography_issues": [],
+        "structural_changes": [],
         "compliance_issues": [],
         "visual_mismatches": [],
+        "accessibility_issues": [],
         "summary_counts": {},
         "pages_impacted": [],
         "top_findings": [],
@@ -75,8 +82,11 @@ def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
         "missing_content",
         "extra_content",
         "layout_anomalies",
+        "typography_issues",
+        "structural_changes",
         "compliance_issues",
         "visual_mismatches",
+        "accessibility_issues",
         "pages_impacted",
         "top_findings",
         "visual_validation",
@@ -90,6 +100,74 @@ def _ensure_schema_defaults(result_json: Any, mode: str) -> Dict[str, Any]:
         base["summary_counts"] = {}
 
     return base
+
+
+def _levenshtein(a: str, b: str) -> int:
+    """Levenshtein edit distance, capped at 100 chars per string."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    a, b = a[:100], b[:100]
+    m, n = len(a), len(b)
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        curr = [i] + [0] * n
+        for j in range(1, n + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            curr[j] = min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+        prev = curr
+    return prev[n]
+
+
+def _is_ocr_artifact(before: str, after: str) -> bool:
+    """Return True when before→after looks like a 1-3 char OCR misread within a single word.
+
+    Conditions: both non-empty, no spaces (multi-word strings can carry real semantic
+    changes), at least 5 chars, similar length (≤1.4×), no digits (numeric changes are
+    always real), and edit distance ≤ max(2, len//3).
+    """
+    if not before or not after:
+        return False
+    if " " in before or " " in after:
+        return False
+    shorter = min(len(before), len(after))
+    longer = max(len(before), len(after))
+    if shorter < 5 or longer / shorter > 1.4:
+        return False
+    if any(c.isdigit() for c in before) or any(c.isdigit() for c in after):
+        return False
+    threshold = max(2, shorter // 3)
+    return _levenshtein(before.lower(), after.lower()) <= threshold
+
+
+def _filter_ocr_artifacts(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop value_mismatches / format_issues entries that look like OCR transcription noise."""
+    import re as _re
+    _pat = _re.compile(r"""[Cc]hanged from ['"](.+?)['"] to ['"](.+?)['"]""", _re.DOTALL)
+    for bucket in ("value_mismatches", "format_issues"):
+        items = result_json.get(bucket) or []
+        if not items:
+            continue
+        filtered = []
+        for item in items:
+            if not isinstance(item, dict):
+                filtered.append(item)
+                continue
+            before = str(item.get("expected_value") or item.get("baseline_value") or "").strip()
+            after  = str(item.get("actual_value")   or item.get("current_value")  or "").strip()
+            if not before and not after:
+                m = _pat.search(item.get("description") or "")
+                if m:
+                    before, after = m.group(1).strip(), m.group(2).strip()
+            if _is_ocr_artifact(before, after):
+                logger.debug("Suppressed OCR artifact: %r → %r", before, after)
+                continue
+            filtered.append(item)
+        result_json[bucket] = filtered
+    return result_json
 
 
 def _contains_signature_issue(page_items: list[dict]) -> bool:
@@ -157,60 +235,160 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
     """
     Precision-first deterministic reconciliation.
 
-    Rules:
-    - If signature_candidate is true and similarity is below a tighter threshold,
-      add it as missing_content so the page is treated as a real defect.
-    - Do NOT flood visual_mismatches with every warned page.
-    - Only add generic visual mismatch for strong pages with tighter similarity.
+    - Converts visual diff rows into missing_content / extra_content / visual_mismatches.
+    - Converts field structure changes (added/removed form fields) into findings.
+    - Signature candidates below the tighter threshold become missing_content.
     """
     visual = result_json.get("visual_validation") or []
     if not isinstance(visual, list):
         visual = []
 
+    # Pull and remove transient _field_diff injected by run_testcase
+    field_diff = result_json.pop("_field_diff", {}) or {}
+
     existing_by_page = _index_existing_items_by_page(result_json)
     result_json.setdefault("visual_mismatches", [])
     result_json.setdefault("missing_content", [])
+    result_json.setdefault("extra_content", [])
+    result_json.setdefault("structural_changes", [])
+
+    # ── Field structure changes (removed / added AcroForm fields) ──────────
+    for fname in field_diff.get("removed_fields", []):
+        result_json["missing_content"].append({
+            "page": None,
+            "severity": "critical",
+            "field_name": fname,
+            "category": "Structural change",
+            "description": f"Form field '{fname}' was removed from the document.",
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "critical",
+            "element_type": "field",
+            "change_type": "removed",
+            "element_name": fname,
+            "description": f"Form field '{fname}' was removed.",
+        })
+
+    for fname in field_diff.get("added_fields", []):
+        result_json["extra_content"].append({
+            "page": None,
+            "severity": "high",
+            "field_name": fname,
+            "category": "Structural change",
+            "description": f"New form field '{fname}' was added to the document.",
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "high",
+            "element_type": "field",
+            "change_type": "added",
+            "element_name": fname,
+            "description": f"Form field '{fname}' was added.",
+        })
+
+    for cf in field_diff.get("changed_fields", []):
+        fname = cf.get("name", "")
+        result_json["visual_mismatches"].append({
+            "page": None,
+            "severity": "high",
+            "category": "Field property",
+            "description": (
+                f"Form field '{fname}' changed type from "
+                f"'{cf.get('expected_type')}' to '{cf.get('actual_type')}'."
+            ),
+            "evidence": "Detected by AcroForm field structure comparison.",
+        })
+
+    # ── Collect page-count changes before the main loop ─────────────────────
+    # The sequence-alignment algorithm marks some baseline pages as "deleted"
+    # whenever the current PDF has fewer pages. This does NOT mean content was
+    # removed — the same content may simply have been consolidated onto fewer
+    # pages. We therefore emit ONE structural note about the page count change
+    # rather than a per-page CRITICAL "page removed" finding which is almost
+    # always misleading and causes false positives.
+    deleted_pages = []
+    inserted_pages = []
+    all_exp_pages = [v.get("expected_page_num") or v.get("page") for v in visual
+                     if isinstance(v, dict) and v.get("alignment_op", "matched") != "inserted"]
+    all_act_pages = [v.get("actual_page_num") or v.get("page") for v in visual
+                     if isinstance(v, dict) and v.get("alignment_op", "matched") != "deleted"]
+    baseline_total = max((p for p in all_exp_pages if p), default=0)
+    current_total  = max((p for p in all_act_pages if p), default=0)
+
+    for v in visual:
+        if not isinstance(v, dict):
+            continue
+        op = str(v.get("alignment_op") or "matched").lower()
+        if op == "deleted":
+            pg = v.get("expected_page_num") or v.get("page")
+            if pg:
+                deleted_pages.append(pg)
+        elif op == "inserted":
+            pg = v.get("actual_page_num") or v.get("page")
+            if pg:
+                inserted_pages.append(pg)
+
+    if deleted_pages:
+        pg_list = ", ".join(str(p) for p in sorted(deleted_pages))
+        result_json["structural_changes"].append({
+            "page": None,
+            "severity": "high",
+            "element_type": "page_count",
+            "change_type": "reduced",
+            "element_name": "page_count",
+            "description": (
+                f"Page count changed: baseline has {baseline_total} page(s), "
+                f"current has {current_total} page(s). "
+                f"Baseline page(s) {pg_list} have no direct counterpart in the current PDF — "
+                f"content may have been consolidated, reformatted, or genuinely removed. "
+                f"Review the matched pages for content differences."
+            ),
+        })
+
+    if inserted_pages:
+        for label_pg in inserted_pages:
+            # Look up the original visual entry to get is_blank_page
+            entry = next((v for v in visual if isinstance(v, dict)
+                          and str(v.get("alignment_op") or "").lower() == "inserted"
+                          and (v.get("actual_page_num") or v.get("page")) == label_pg), {})
+            is_blank = entry.get("is_blank_page") is True
+            if is_blank:
+                result_json["extra_content"].append({
+                    "page": label_pg,
+                    "severity": "low",
+                    "field_name": f"page_{label_pg}_blank",
+                    "category": "Blank page inserted",
+                    "description": (
+                        f"Page {label_pg} of the current PDF is a blank page with no counterpart "
+                        f"in the baseline — likely an intentional separator or placeholder."
+                    ),
+                    "evidence": entry.get("note") or "Blank page found in current PDF.",
+                })
+            else:
+                result_json["extra_content"].append({
+                    "page": label_pg,
+                    "severity": "high",
+                    "field_name": f"page_{label_pg}",
+                    "category": "Inserted page",
+                    "description": (
+                        f"Page {label_pg} of the current PDF has no counterpart in the baseline "
+                        f"— this is an extra / inserted page with content."
+                    ),
+                    "evidence": entry.get("note") or "Extra page found in current PDF.",
+                })
 
     for v in visual:
         if not isinstance(v, dict):
             continue
 
-        # ── Handle structural page changes (removed / inserted pages) ──────
+        # ── Skip deleted / inserted — handled above ──────────────────────────
         alignment_op = str(v.get("alignment_op") or "matched").lower()
-
-        if alignment_op == "deleted":
-            exp_pg = v.get("expected_page_num")
-            out_pg = v.get("page")
-            label_pg = exp_pg if exp_pg is not None else out_pg
-            result_json["missing_content"].append({
-                "page": label_pg,
-                "severity": "critical",
-                "field_name": f"page_{label_pg}",
-                "category": "Removed page",
-                "description": (
-                    f"Page {label_pg} of the expected PDF is absent in the actual PDF "
-                    f"— this page was removed."
-                ),
-                "evidence": v.get("note") or "Page missing from actual PDF.",
-            })
+        if alignment_op in ("deleted", "inserted"):
             continue
 
-        if alignment_op == "inserted":
-            act_pg = v.get("actual_page_num")
-            out_pg = v.get("page")
-            label_pg = act_pg if act_pg is not None else out_pg
-            result_json["extra_content"].append({
-                "page": label_pg,
-                "severity": "critical",
-                "field_name": f"page_{label_pg}",
-                "category": "Inserted page",
-                "description": (
-                    f"Page {label_pg} of the actual PDF has no counterpart in the expected PDF "
-                    f"— this is an extra / inserted page."
-                ),
-                "evidence": v.get("note") or "Extra page found in actual PDF.",
-            })
-            continue
         # ── Standard per-page comparison ────────────────────────────────────
 
         p = v.get("page")
@@ -267,34 +445,75 @@ def _reconcile_visual_findings(result_json: Dict[str, Any]) -> Dict[str, Any]:
             and not page_items
             and not has_real_business_issue
         ):
+            zone = v.get("zone_analysis") or {}
+            change_pattern = zone.get("change_pattern", "")
+            change_hint = zone.get("change_hint", "")
+            changed_zones = zone.get("changed_zones", [])
+
+            has_text_changes = v.get("has_text_changes", False)
+            has_fmt_changes = v.get("has_formatting_changes", False)
+            formatting_summary = v.get("formatting_summary", "")
+
+            # If only alignment shifts (no text changes, no bold) — skip entirely, too noisy
+            if (
+                not has_text_changes
+                and has_fmt_changes
+                and formatting_summary
+                and "bold" not in formatting_summary.lower()
+                and "indented" in formatting_summary.lower()
+            ):
+                continue
+
+            # Page-wide diff at this similarity almost always means rendering/font noise
+            if change_pattern == "page_wide":
+                severity = "low"
+                description = (
+                    f"Page-wide rendering difference (similarity={sim:.3f}, "
+                    f"{v.get('diff_pixels_pct', 0):.1f}% pixels differ). "
+                    "Changes are spread across the entire page, which typically indicates "
+                    "a font rendering, watermark, or DPI difference rather than a content change. "
+                    "Review the visual snapshot to confirm."
+                )
+            elif change_pattern == "header_only":
+                severity = "medium"
+                description = (
+                    f"Header area changed (similarity={sim:.3f}). "
+                    "Check policy number, effective date, named insured, or logo in the page header."
+                )
+            elif change_pattern == "footer_area":
+                severity = "high"
+                description = (
+                    f"Footer/signature area changed (similarity={sim:.3f}). "
+                    "Check signature blocks, footer dates, and footer text."
+                )
+            elif changed_zones:
+                severity = "medium" if v.get("warn") else "high"
+                description = (
+                    f"Visual difference in {', '.join(changed_zones)} "
+                    f"(similarity={sim:.3f}). {change_hint}"
+                ).strip()
+            else:
+                severity = "medium" if v.get("warn") else "high"
+                description = v.get("note") or f"Visual difference detected (similarity={sim:.3f})."
+
             result_json["visual_mismatches"].append(
                 {
                     "page": p,
-                    "severity": "medium" if v.get("warn") else "high",
+                    "severity": severity,
                     "category": "Visual difference",
-                    "description": v.get("note") or "Visual difference detected.",
-                    "evidence": f"similarity={v.get('similarity')}, diff_pixels_pct={v.get('diff_pixels_pct')}",
+                    "description": description,
+                    "evidence": (
+                        f"similarity={v.get('similarity')}, "
+                        f"diff_pixels_pct={v.get('diff_pixels_pct')}, "
+                        f"zones={', '.join(changed_zones) if changed_zones else 'unknown'}"
+                    ),
                 }
             )
             existing_by_page.setdefault(p, []).append(
                 {
                     "page": p,
-                    "description": v.get("note") or "Visual difference detected.",
+                    "description": description,
                     "_bucket": "visual_mismatches",
-                }
-            )
-        if v.get("signature_candidate") and sig_conf in {"high", "medium"} and not already_signature_like:
-            label = v.get("signature_label") or "signature"
-            reason = v.get("signature_reason") or f"Visual diff is near '{label}' in a signature zone."
-
-            result_json["missing_content"].append(
-                {
-                    "page": p,
-                    "severity": "high",
-                    "field_name": f"{str(label).lower()}_signature",
-                    "category": "Signature / approval block",
-                    "description": f"Signature missing or changed near {label}.",
-                    "evidence": reason,
                 }
             )
     return result_json
@@ -308,6 +527,8 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
         "missing_content",
         "extra_content",
         "layout_anomalies",
+        "typography_issues",
+        "structural_changes",
         "visual_mismatches",
     ]
 
@@ -316,7 +537,7 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
     result_json["summary_counts"] = counts
 
     pages = set()
-    for bucket in buckets + ["compliance_issues"]:
+    for bucket in buckets + ["compliance_issues", "accessibility_issues"]:
         for it in result_json.get(bucket, []) or []:
             if isinstance(it, dict):
                 p = it.get("page")
@@ -356,7 +577,59 @@ def _refresh_summary_fields(result_json: Dict[str, Any]) -> Dict[str, Any]:
     return result_json
 
 
+def _reconcile_benchmark_visual(result_json: Dict[str, Any]) -> Dict[str, Any]:
+    """For benchmark runs: add visual_mismatch entries for pages with >=2% pixel
+    diff that the LLM did not produce a finding for (missed detections, not FP-suppressed items)."""
+    visual = result_json.get("visual_validation") or []
+    # Check ALL finding buckets — a page already covered by missing_content,
+    # structural_changes, value_mismatches, etc. must not also get a spurious
+    # "not classified by LLM" visual_mismatch entry.
+    all_buckets = [
+        "visual_mismatches", "missing_content", "extra_content",
+        "value_mismatches", "format_issues", "layout_anomalies",
+        "structural_changes", "spelling_errors", "typography_issues",
+    ]
+    existing_pages = {
+        item.get("page")
+        for bucket in all_buckets
+        for item in (result_json.get(bucket) or [])
+        if isinstance(item, dict) and item.get("page") is not None
+    }
+    added = []
+    for entry in visual:
+        if not entry.get("major"):
+            continue
+        # Deleted/inserted pages are already handled by _reconcile_visual_findings
+        op = str(entry.get("alignment_op") or "matched").lower()
+        if op in ("deleted", "inserted"):
+            continue
+        page = entry.get("page") or entry.get("actual_page_num")
+        if page is None or page in existing_pages:
+            continue
+        diff_pct = entry.get("diff_pixels_pct") or entry.get("diff_pct") or 0.0
+        added.append({
+            "page": page,
+            "severity": "medium",
+            "description": (
+                f"Significant visual difference detected on page {page} "
+                f"({diff_pct:.1f}% pixel diff) — not classified by LLM."
+            ),
+            "category": "Visual Mismatch",
+            "source": "reconciler",
+        })
+        existing_pages.add(page)
+    if added:
+        result_json["visual_mismatches"] = list(result_json.get("visual_mismatches") or []) + added
+    return result_json
+
+
 def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
+    # Vision-mode benchmark: each observation counts as an error so the run
+    # is placed in_review rather than auto-passing.
+    observations = result_json.get("observations") or []
+    if observations and isinstance(observations, list):
+        return len(observations), 0, 0
+
     errors = (
         _count_list(result_json.get("spelling_errors"))
         + _count_list(result_json.get("format_issues"))
@@ -364,30 +637,14 @@ def _derive_metrics(result_json: Dict[str, Any]) -> tuple[int, int, int]:
         + _count_list(result_json.get("missing_content"))
         + _count_list(result_json.get("compliance_issues"))
         + _count_list(result_json.get("visual_mismatches"))
+        + _count_list(result_json.get("structural_changes"))
     )
     warnings = (
         _count_list(result_json.get("extra_content"))
         + _count_list(result_json.get("layout_anomalies"))
+        + _count_list(result_json.get("typography_issues"))
+        + _count_list(result_json.get("accessibility_issues"))
     )
-
-    visual = result_json.get("visual_validation") or []
-    if isinstance(visual, list):
-        promoted_pages = {
-            int(str(it.get("page")).strip())
-            for it in (result_json.get("visual_mismatches") or []) + (result_json.get("missing_content") or [])
-            if isinstance(it, dict) and it.get("page") not in (None, "")
-        }
-
-        warned_pages = {
-            int(str(v.get("page")).strip())
-            for v in visual
-            if isinstance(v, dict)
-            and v.get("warn")
-            and v.get("page") not in (None, "")
-            and _safe_similarity(v) <= VISUAL_REVIEW_SIMILARITY_THRESHOLD
-        }
-
-        warnings += len([p for p in warned_pages if p not in promoted_pages])
 
     passed = 1 if errors == 0 else 0
     return errors, warnings, passed
@@ -469,41 +726,143 @@ def run_testcase(*, project_id: int, tc: TestCase, run_id: int, rr_id: int) -> d
         current_doc = extract_all(current_bytes)
 
         visual = []
-        if effective_mode == "benchmark" and bench_form:
-            bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
-            benchmark_doc = extract_all(bench_bytes)
-
+        # Render single-panel page snapshots for the View button in basic/specific reports.
+        # For benchmark mode, compare_pdfs_detailed generates 3-panel diff snapshots instead.
+        if effective_mode in ("basic", "specific"):
             try:
                 from engine.visual_diff import VisualDiff
-                vd = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
-                visual = vd.compare_pdfs_detailed(
-                    original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
-                    expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                vd_snap = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = vd_snap.render_pages(
+                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
                     result_id=f"run{run_id}_rr{rr_id}",
                 ) or []
-            except Exception as e:
-                visual = []
-                current_doc.setdefault("meta", {})
-                current_doc["meta"]["visual_diff_error"] = str(e)
+            except Exception as _re:
+                logger.warning("Page snapshot render failed: %s", _re)
 
-            current_doc["visual_diffs"] = visual
-            if benchmark_doc is not None:
-                benchmark_doc["visual_diffs"] = visual
+        # ── Benchmark mode: vision-first LLM comparison ─────────────────────
+        # Render both documents as page images and send them directly to the LLM.
+        # The LLM reads the actual form pages visually — no pixel diff, no OCR
+        # extraction, no sequence-alignment algorithm needed.
+        baseline_images: list = []
+        current_images_llm: list = []
+        if effective_mode == "benchmark" and bench_form:
+            try:
+                from engine.visual_diff import VisualDiff as _VD2
+                _vd_img = _VD2(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                baseline_images = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, bench_form.stored_filename),
+                    dpi=100, max_pages=8, jpeg_quality=72,
+                )
+                current_images_llm = _vd_img.render_pages_for_llm(
+                    _pdf_abs_path(project_id, main_form.stored_filename),
+                    dpi=100, max_pages=8, jpeg_quality=72,
+                )
+                logger.debug(
+                    "Vision benchmark: %d baseline pages, %d current pages rendered",
+                    len(baseline_images), len(current_images_llm),
+                )
+            except Exception as _img_err:
+                logger.warning("Vision page render failed: %s", _img_err)
 
-        messages = build_prompt(
-            mode=effective_mode,
-            current_doc=current_doc,
-            benchmark_doc=benchmark_doc,
-            base_prompt=rules_text,
-        )
+            # Generate 3-panel side-by-side diff snapshots for the "View" link.
+            # These are stored in visual_validation so the report can offer a
+            # colour-coded baseline | diff | current view per page.
+            try:
+                from engine.visual_diff import VisualDiff as _VD3
+                _vd_diff = _VD3(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                visual = _vd_diff.compare_pdfs_detailed(
+                    original_pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    expected_pdf_path=_pdf_abs_path(project_id, bench_form.stored_filename),
+                    result_id=f"run{run_id}_rr{rr_id}_diff",
+                    dpi=120,
+                ) or []
+                logger.debug("Benchmark diff snapshots: %d pages", len(visual))
+            except Exception as _diff_err:
+                logger.warning("Benchmark diff snapshot generation failed: %s", _diff_err)
+
+        # ── Build LLM messages ───────────────────────────────────────────────
+        if effective_mode == "benchmark" and (baseline_images or current_images_llm):
+            from engine.prompt_builder import build_vision_prompt
+            messages = build_vision_prompt(baseline_images, current_images_llm)
+        else:
+            # basic / specific modes, or fallback when image rendering failed
+            benchmark_doc = None
+            if effective_mode == "benchmark" and bench_form:
+                try:
+                    bench_bytes = _read_pdf_bytes(project_id, bench_form.stored_filename)
+                    benchmark_doc = extract_all(bench_bytes)
+                except Exception as _be:
+                    logger.warning("Benchmark text extraction fallback failed: %s", _be)
+            messages = build_prompt(
+                mode=effective_mode,
+                current_doc=current_doc,
+                benchmark_doc=benchmark_doc,
+                base_prompt=rules_text,
+                extra_context={},
+            )
 
         llm_out = run_validation(messages)
-        result_json = _ensure_schema_defaults(llm_out, effective_mode)
 
-        result_json["visual_validation"] = visual
+        if effective_mode == "benchmark" and (baseline_images or current_images_llm):
+            # Vision path: LLM returns observations, not bucket-classified findings.
+            observations = []
+            if isinstance(llm_out, dict):
+                raw_obs = llm_out.get("observations") or []
+                if isinstance(raw_obs, list):
+                    observations = [o for o in raw_obs if isinstance(o, dict)]
+            llm_summary = (
+                (llm_out.get("summary") if isinstance(llm_out, dict) else "") or ""
+            ).strip()
 
-        result_json = _reconcile_visual_findings(result_json)
-        result_json = _refresh_summary_fields(result_json)
+            result_json = _ensure_schema_defaults({"mode": "benchmark"}, effective_mode)
+            result_json["observations"] = observations
+            result_json["overall_summary"] = (
+                llm_summary or f"{len(observations)} observation(s) found."
+            )
+            result_json["visual_validation"] = visual
+            result_json = _refresh_summary_fields(result_json)
+
+        else:
+            # Text / fallback path for basic, specific, or when image render failed.
+            result_json = _ensure_schema_defaults(llm_out, effective_mode)
+            result_json = _filter_ocr_artifacts(result_json)
+            result_json["visual_validation"] = visual
+            result_json = _reconcile_visual_findings(result_json)
+
+            if effective_mode == "specific":
+                for _oos in (
+                    "spelling_errors", "format_issues", "extra_content",
+                    "layout_anomalies", "typography_issues",
+                    "accessibility_issues", "visual_mismatches", "structural_changes",
+                ):
+                    result_json[_oos] = []
+
+            if effective_mode == "basic":
+                result_json["spelling_errors"] = []
+
+            result_json = _refresh_summary_fields(result_json)
+
+            try:
+                from app.services.auto_learning import suppress_false_positives
+                form_id = main_form.id if main_form else None
+                result_json = suppress_false_positives(result_json, project_id=project_id, form_id=form_id)
+                result_json = _refresh_summary_fields(result_json)
+            except Exception as _sfe:
+                logger.warning("False-positive suppression failed: %s", _sfe)
+
+        # Annotate snapshots with problem-area boxes for basic/specific modes.
+        # Done after reconcile so all findings (including LLM + reconciler) are present.
+        if effective_mode in ("basic", "specific") and visual:
+            try:
+                from engine.visual_diff import VisualDiff
+                vd_ann = VisualDiff(output_dir=os.path.join(current_app.instance_path, "visual_diffs"))
+                vd_ann.annotate_snapshots_with_findings(
+                    pdf_path=_pdf_abs_path(project_id, main_form.stored_filename),
+                    result_json=result_json,
+                    visual_entries=visual,
+                )
+            except Exception as _ae:
+                logger.warning("Snapshot annotation failed: %s", _ae)
 
         overall = (result_json.get("overall_summary") or "").strip()
         if result_json.get("error"):

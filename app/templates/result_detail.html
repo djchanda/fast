@@ -38,15 +38,21 @@
       </a>
 
       <a class="btn btn-outline"
-         href="{{ url_for('web.download_annotated_pdf', project_id=project.id, result_id=rr.id) }}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Annotated PDF
-      </a>
-
-      <a class="btn btn-outline"
          href="{{ url_for('web.download_evidence_bundle', project_id=project.id, run_id=rr.run_id) }}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Evidence Bundle
+      </a>
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.download_result_diffs', project_id=project.id, result_id=rr.id) }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Diffs
+      </a>
+
+      <a class="btn btn-outline"
+         href="{{ url_for('web.export_result_pdf', project_id=project.id, result_id=rr.id) }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 18h6M9 12h2"/></svg>
+        Export PDF
       </a>
 
       <a class="btn btn-outline"
@@ -70,6 +76,33 @@
       </div>
 
       <div class="rd-iframe-wrap">
+        <!-- Live status banner — always reflects current DB state, not the static HTML report -->
+        {% set _s = rr.status or 'unknown' %}
+        {% if _s == 'passed' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#22c55e;">PASSED</span>
+            <span style="font-size:12px;color:var(--text-muted);">All findings reviewed and cleared. The static report below is for reference only.</span>
+          </div>
+        {% elif _s == 'failed' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#ef4444;">FAILED</span>
+            {% if has_confirmed_defects %}
+              <span style="font-size:12px;color:var(--text-muted);">Confirmed defects found. See <a href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="color:#ef4444;">Review Findings</a> for details.</span>
+            {% elif llm_failed_msg %}
+              <span style="font-size:12px;color:var(--text-muted);">LLM classification unavailable — no findings could be extracted. <a href="{{ url_for('web.project_execute', project_id=project.id) }}" style="color:#ef4444;">Re-run</a> when the LLM is available.</span>
+            {% else %}
+              <span style="font-size:12px;color:var(--text-muted);">Run failed. See the report below for details.</span>
+            {% endif %}
+          </div>
+        {% elif _s == 'in_review' %}
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.3);border-radius:8px;margin-bottom:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#d97706;">IN REVIEW</span>
+            <span style="font-size:12px;color:var(--text-muted);">Findings require human review. Visit <a href="{{ url_for('web.result_reviews', project_id=project.id, result_id=rr.id) }}" style="color:#d97706;">Review Findings</a> to act on them.</span>
+          </div>
+        {% endif %}
         {% if report_url %}
           <iframe id="report-iframe" class="rd-iframe" src="{{ report_url }}" loading="lazy"></iframe>
         {% else %}
@@ -118,15 +151,48 @@
     'a{color:#60a5fa !important;}'
   ].join('');
 
+  var LIGHT = [
+    ':root{',
+    '--bg:#f5f5f7 !important;',
+    '--card:#ffffff !important;',
+    '--card2:#f4f7fa !important;',
+    '--text:#0f172a !important;',
+    '--muted:#64748b !important;',
+    '--border:rgba(0,0,0,.08) !important;',
+    '--border2:rgba(0,0,0,.05) !important;',
+    '--shadow:0 1px 4px rgba(0,0,0,.08) !important;',
+    '--ok-bg:rgba(22,163,74,.08) !important;--ok-b:rgba(22,163,74,.2) !important;--ok-t:#16a34a !important;',
+    '--warn-bg:rgba(217,119,6,.08) !important;--warn-b:rgba(217,119,6,.2) !important;--warn-t:#b45309 !important;',
+    '--bad-bg:rgba(220,38,38,.08) !important;--bad-b:rgba(220,38,38,.2) !important;--bad-t:#dc2626 !important;',
+    '--info-bg:rgba(2,132,199,.08) !important;--info-b:rgba(2,132,199,.2) !important;--info-t:#0284c7 !important;',
+    '--neutral-bg:rgba(0,0,0,.04) !important;--neutral-b:rgba(0,0,0,.1) !important;--neutral-t:#475569 !important;',
+    '}',
+    'html,body{background:#f5f5f7 !important;color:#0f172a !important;}',
+    '.topbar,.card{background:#ffffff !important;border-color:rgba(0,0,0,.08) !important;}',
+    '.table-wrap{background:#ffffff !important;border-color:rgba(0,0,0,.08) !important;}',
+    '.fast-table th{background:#f4f7fa !important;color:#475569 !important;}',
+    '.fast-table th,.fast-table td{border-bottom-color:rgba(0,0,0,.06) !important;}',
+    '.kv{border-bottom-color:rgba(0,0,0,.05) !important;}',
+    '.rd-filter-btn{background:#f4f7fa !important;color:#0f172a !important;border-color:rgba(0,0,0,.1) !important;}',
+    '.rd-filter-btn:hover{background:rgba(0,0,0,.06) !important;}',
+    '.rd-filter-btn.active{background:rgba(2,132,199,.08) !important;border-color:rgba(2,132,199,.2) !important;color:#0284c7 !important;}',
+    '.banner{background:rgba(217,119,6,.08) !important;border-color:#d97706 !important;color:#b45309 !important;}',
+    'a{color:#0284c7 !important;}'
+  ].join('');
+
   function inject(iframe) {
     try {
       var doc = iframe.contentDocument || iframe.contentWindow.document;
       if (!doc || !doc.head) return;
-      var s = doc.createElement('style');
-      s.id = 'fast-dark-override';
-      if (doc.getElementById('fast-dark-override')) return;
-      s.textContent = DARK;
-      doc.head.appendChild(s);
+      var theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      var css = theme === 'light' ? LIGHT : DARK;
+      var s = doc.getElementById('fast-theme-override');
+      if (!s) {
+        s = doc.createElement('style');
+        s.id = 'fast-theme-override';
+        doc.head.appendChild(s);
+      }
+      s.textContent = css;
     } catch (e) {}
   }
 
@@ -137,6 +203,10 @@
     }
     iframe.addEventListener('load', function () { inject(this); });
   }
+
+  new MutationObserver(function () {
+    if (iframe) inject(iframe);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
 {% endif %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% set dark_page = True %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="ov-actions">
+    <a class="btn btn-ghost" href="{{ url_for('web.project_testcases', project_id=project.id) }}">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to Test Cases
+    </a>
+    {% if session.get('role') == 'admin' %}
+    <a class="btn btn-outline" href="{{ url_for('web.edit_testcase', project_id=project.id, testcase_id=tc.id) }}">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card tc-form-card">
+  <div class="card-header">
+    Test Case Detail
+    <span style="margin-left:10px;">
+      {% if tc.mode == 'benchmark' %}
+        <span class="mode-badge mode-benchmark">Benchmark</span>
+      {% elif tc.mode == 'specific' %}
+        <span class="mode-badge mode-specific">Specific</span>
+      {% else %}
+        <span class="mode-badge mode-basic">{{ tc.mode | title }}</span>
+      {% endif %}
+    </span>
+  </div>
+  <div class="card-body">
+    <div class="kv-list" style="display:flex;flex-direction:column;gap:16px;">
+
+      <div class="kv" style="display:flex;flex-direction:column;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+        <span class="form-label-clean" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Name</span>
+        <span style="font-size:15px;font-weight:600;">{{ tc.name }}</span>
+      </div>
+
+      <div class="kv" style="display:flex;flex-direction:column;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+        <span class="form-label-clean" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Mode</span>
+        <span>
+          {% if tc.mode == 'benchmark' %}
+            <span class="mode-badge mode-benchmark">Benchmark</span>
+            <span style="font-size:13px;color:var(--text-muted);margin-left:8px;">Compare against a golden copy with custom rules</span>
+          {% elif tc.mode == 'specific' %}
+            <span class="mode-badge mode-specific">Specific</span>
+            <span style="font-size:13px;color:var(--text-muted);margin-left:8px;">Prompt-driven — checks exactly what you define</span>
+          {% else %}
+            <span class="mode-badge mode-basic">Basic</span>
+            <span style="font-size:13px;color:var(--text-muted);margin-left:8px;">Built-in structural checks, no prompt required</span>
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="kv" style="display:flex;flex-direction:column;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+        <span class="form-label-clean" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Form Under Test</span>
+        <span style="font-size:14px;">
+          {% if tc.form %}
+            {{ tc.form.original_filename }}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </span>
+      </div>
+
+      {% if tc.mode == 'benchmark' %}
+      <div class="kv" style="display:flex;flex-direction:column;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--border);">
+        <span class="form-label-clean" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Golden Copy (Benchmark)</span>
+        <span style="font-size:14px;">
+          {% set bench = form_map.get(tc.benchmark_form_id) %}
+          {% if bench %}
+            {{ bench.original_filename }}
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if tc.prompt_text %}
+      <div class="kv" style="display:flex;flex-direction:column;gap:6px;">
+        <span class="form-label-clean" style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Test Steps / Prompt</span>
+        <pre style="margin:0;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:8px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text);">{{ tc.prompt_text }}</pre>
+      </div>
+      {% endif %}
+
+      <div style="font-size:12px;color:var(--text-muted);padding-top:4px;">
+        Created {{ tc.created_at.strftime("%Y-%m-%d %H:%M") }} UTC
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

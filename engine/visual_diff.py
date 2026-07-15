@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pdfplumber
 from pdf2image import convert_from_path
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -158,8 +159,9 @@ class VisualDiff:
                         "major": True,
                         "warn": False,
                         "note": (
-                            f"Page {exp_idx + 1} of the expected PDF is absent in "
-                            f"the actual PDF — this page was removed."
+                            f"Baseline page {exp_idx + 1} has no direct visual counterpart "
+                            f"in the current PDF — content may have been consolidated onto "
+                            f"adjacent pages or reformatted."
                         ),
                         "snapshot_path": f"visual_diffs/{out_path.name}",
                         "diff_bbox": None,
@@ -175,24 +177,34 @@ class VisualDiff:
                 if op == "inserted":
                     # Page present in actual but absent in expected
                     act = actual_pages[act_idx].convert("RGB")
+                    is_blank = self._is_blank_page(act)
                     blank = self._create_blank_image(act.size)
                     blank_n, act_n = self._normalize_sizes(blank, act)
                     empty_mask = Image.new("L", act_n.size, 0)
                     panel = self._build_three_panel(blank_n, act_n, empty_mask)
                     out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                     panel.save(out_path, "PNG")
+                    if is_blank:
+                        inserted_note = (
+                            f"Page {act_idx + 1} of the actual PDF is a blank page with no "
+                            f"counterpart in the expected PDF — likely intentional (separator/placeholder). "
+                            f"Validation continues from next page."
+                        )
+                    else:
+                        inserted_note = (
+                            f"Page {act_idx + 1} of the actual PDF has no counterpart "
+                            f"in the expected PDF — this is an extra / inserted page."
+                        )
                     rows.append({
                         "page": output_row_num,
                         "expected_page_num": None,
                         "actual_page_num": act_idx + 1,
                         "alignment_op": "inserted",
+                        "is_blank_page": is_blank,
                         "similarity": 0.0,
-                        "major": True,
-                        "warn": False,
-                        "note": (
-                            f"Page {act_idx + 1} of the actual PDF has no counterpart "
-                            f"in the expected PDF — this is an extra / inserted page."
-                        ),
+                        "major": not is_blank,
+                        "warn": is_blank,
+                        "note": inserted_note,
                         "snapshot_path": f"visual_diffs/{out_path.name}",
                         "diff_bbox": None,
                         "diff_pixels_pct": 100.0,
@@ -217,11 +229,63 @@ class VisualDiff:
                 major = diff_pct >= 2.0
                 warn = (diff_pct >= 0.10) and not major
 
-                note = "No material visual differences detected."
-                if major:
-                    note = "Significant content-level visual differences detected."
-                elif warn:
-                    note = "Minor visual differences detected."
+                # Zone-aware semantic analysis
+                zone_analysis = self._analyze_diff_zones(mask, diff_pct)
+                diff_regions = self._extract_top_diff_regions(mask) if (major or warn) else []
+
+                # Word-level text comparison (most reliable signal for real vs. noise)
+                try:
+                    text_diff = self._build_text_diff_annotations(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                        exp.size,
+                    )
+                except Exception as _te:
+                    logger.warning("Text diff failed for page %d: %s", output_row_num, _te)
+                    text_diff = {
+                        "added_regions": [], "removed_regions": [],
+                        "added_texts": [], "removed_texts": [],
+                        "summary": "", "has_text_changes": False,
+                    }
+
+                # Compare PDF graphical elements (rects, lines, borders)
+                try:
+                    graphics_diff = self._compare_pdf_graphics(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                    )
+                except Exception as _ge:
+                    logger.warning("Graphics diff failed for page %d: %s", output_row_num, _ge)
+                    graphics_diff = {"added_rects": 0, "removed_rects": 0, "has_graphics_changes": False, "summary": ""}
+
+                has_graphics_changes = graphics_diff.get("has_graphics_changes", False)
+
+                # Suppress noise ONLY when pixel diff is truly tiny (< 1%) —
+                # real graphical changes (border boxes, annotations, decorations) still show up
+                if (
+                    not text_diff["has_text_changes"]
+                    and not text_diff.get("has_formatting_changes")
+                    and not has_graphics_changes
+                    and zone_analysis.get("change_pattern") == "page_wide"
+                    and diff_pct < 1.0  # sub-1% = pure DPI/font-hinting noise
+                ):
+                    major = False
+                    warn = False
+                elif (
+                    not text_diff["has_text_changes"]
+                    and not text_diff.get("has_formatting_changes")
+                    and not has_graphics_changes
+                    and zone_analysis.get("change_pattern") == "page_wide"
+                    and diff_pct < 5.0  # 1-5% with no text/fmt/graphics change = rendering noise
+                ):
+                    major = False
+                    # keep warn so tester still sees a low-level notice
+
+                note = self._generate_semantic_note(diff_pct, zone_analysis, major, warn)
+                if text_diff["summary"]:
+                    note = f"{note} TEXT: {text_diff['summary']}"
+                if graphics_diff.get("summary"):
+                    note = f"{note} GRAPHICS: {graphics_diff['summary']}"
 
                 # Annotate when pages were re-ordered / shifted
                 if exp_idx != act_idx:
@@ -258,7 +322,80 @@ class VisualDiff:
                         else:
                             note = "Possible signature-region change detected."
 
-                panel = self._build_three_panel(exp, act, mask)
+                # ── Annotate EXPECTED panel ──────────────────────────────────
+                # Line-level removed: thick 3px red border around the whole line
+                # Word-level removed: thinner 2px red border around the word
+                exp_annotated = exp.copy()
+                draw_e = ImageDraw.Draw(exp_annotated)
+                font_e = self._get_small_font(10)
+                for region in text_diff["removed_regions"][:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    bw = 3 if region.get("line_level") else 2
+                    pad = 2 if region.get("line_level") else 1
+                    draw_e.rectangle(
+                        [max(0, x0 - pad), max(0, y0 - pad),
+                         min(exp.width - 1, x1 + pad), min(exp.height - 1, y1 + pad)],
+                        outline=(220, 40, 40), width=bw,
+                    )
+
+                # ── Annotate ACTUAL panel ────────────────────────────────────
+                # Line-level added: thick 3px green border
+                # Word-level added: thinner 2px green border
+                # Orange = bold changed  |  Yellow = font size changed  |  Blue = alignment shifted
+                act_annotated = act.copy()
+                draw_a = ImageDraw.Draw(act_annotated)
+                font_a = self._get_small_font(10)
+
+                for region in text_diff["added_regions"][:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    bw = 3 if region.get("line_level") else 2
+                    pad = 2 if region.get("line_level") else 1
+                    draw_a.rectangle(
+                        [max(0, x0 - pad), max(0, y0 - pad),
+                         min(act.width - 1, x1 + pad), min(act.height - 1, y1 + pad)],
+                        outline=(40, 200, 70), width=bw,
+                    )
+
+                for region in text_diff.get("bold_changed_regions", [])[:30]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(255, 140, 0), width=2,   # orange — bold changed
+                    )
+
+                for region in text_diff.get("size_changed_regions", [])[:20]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(255, 210, 0), width=2,   # yellow — font size changed
+                    )
+
+                for region in text_diff.get("alignment_shifted_regions", [])[:30]:
+                    x0, y0, x1, y1 = region["bbox_act"]
+                    # List markers get a thicker border to call attention
+                    border_w = 3 if region.get("is_list_marker") else 2
+                    draw_a.rectangle(
+                        [max(0, x0 - 2), max(0, y0 - 2),
+                         min(act.width - 1, x1 + 2), min(act.height - 1, y1 + 2)],
+                        outline=(80, 160, 255), width=border_w,  # blue — alignment shifted
+                    )
+
+                # Diff count summary for header
+                diff_counts = {
+                    "added": len(text_diff["added_texts"]),
+                    "removed": len(text_diff["removed_texts"]),
+                    "bold": len(text_diff.get("bold_changed_regions", [])),
+                    "size": len(text_diff.get("size_changed_regions", [])),
+                    "align": len(text_diff.get("alignment_shifted_regions", [])),
+                }
+
+                panel = self._build_three_panel(
+                    exp_annotated, act_annotated, mask,
+                    diff_regions, zone_analysis, signature_candidate,
+                    diff_counts=diff_counts,
+                )
                 out_path = self.output_dir / f"{base_name}_page{output_row_num}.png"
                 panel.save(out_path, "PNG")
 
@@ -279,6 +416,134 @@ class VisualDiff:
                     "signature_label": signature_label,
                     "signature_reason": signature_reason,
                     "signature_confidence": signature_confidence,
+                    "zone_analysis": zone_analysis,
+                    "diff_regions": diff_regions,
+                    "text_diff_summary": text_diff["summary"],
+                    "added_texts": text_diff["added_texts"],
+                    "removed_texts": text_diff["removed_texts"],
+                    "has_text_changes": text_diff["has_text_changes"],
+                    "has_formatting_changes": text_diff.get("has_formatting_changes", False),
+                    "formatting_summary": text_diff.get("formatting_summary", ""),
+                    "bold_changed": [r["text"] for r in text_diff.get("bold_changed_regions", [])],
+                    "size_changed": [
+                        f"{r['text']} ({r['exp_size']}pt→{r['act_size']}pt)"
+                        for r in text_diff.get("size_changed_regions", [])
+                    ],
+                    "list_alignment_shifted": [
+                        r["text"] for r in text_diff.get("alignment_shifted_regions", [])
+                        if r.get("is_list_marker")
+                    ],
+                    "graphics_diff": graphics_diff.get("summary", ""),
+                    "has_graphics_changes": has_graphics_changes,
+                })
+
+            # ── Supplementary positional comparisons for deleted pages ──────
+            # The DP alignment skips a baseline page when it finds a better
+            # global match elsewhere (e.g. B2 is "deleted" because B3↔C2 scores
+            # higher).  This is mathematically correct but means the baseline
+            # page is never compared to the current page at the same position.
+            # For pages with filled-in values or watermarks the thumbnail
+            # similarity is lowered enough that the DP skips them — yet the
+            # content differences are exactly what the user needs to see.
+            #
+            # Fix: after the main loop, for every deleted baseline page whose
+            # 0-based index falls within the current page range, run a direct
+            # positional comparison and append it as an extra row.
+            deleted_exp_indices = {
+                ei
+                for op, ei, _ in alignment
+                if op == "deleted" and ei is not None
+            }
+
+            for exp_idx in sorted(deleted_exp_indices):
+                act_idx = exp_idx   # same position in the current document
+                if act_idx >= len(actual_pages):
+                    continue
+
+                output_row_num = len(rows) + 1
+                exp = expected_pages[exp_idx].convert("RGB")
+                act = actual_pages[act_idx].convert("RGB")
+                exp_n, act_n = self._normalize_sizes(exp, act)
+
+                similarity, diff_pct, mask = self._compute_similarity_and_mask(act_n, exp_n)
+                diff_bbox     = self._get_diff_bbox(mask)
+                diff_area_pct = self._bbox_area_pct(diff_bbox, exp_n.size) if diff_bbox else 0.0
+                major = diff_pct >= 2.0
+                warn  = (diff_pct >= 0.10) and not major
+                zone_analysis = self._analyze_diff_zones(mask, exp_n.size)
+                diff_regions  = self._extract_top_diff_regions(mask) if (major or warn) else []
+
+                # Text diff using the PDF paths available in this scope
+                try:
+                    text_diff = self._build_text_diff_annotations(
+                        expected_pdf_path, original_pdf_path,
+                        exp_idx + 1, act_idx + 1,
+                        exp_n.size,
+                    )
+                except Exception as _te:
+                    logger.warning("Text diff (direct) failed p%d: %s", exp_idx + 1, _te)
+                    text_diff = {
+                        "added_regions": [], "removed_regions": [],
+                        "added_texts": [], "removed_texts": [],
+                        "summary": "", "has_text_changes": False,
+                        "has_formatting_changes": False, "formatting_summary": "",
+                    }
+
+                # Annotate panels (simpler than main loop — no bold/size/align boxes)
+                exp_ann = exp_n.copy()
+                act_ann = act_n.copy()
+                draw_e = ImageDraw.Draw(exp_ann)
+                draw_a = ImageDraw.Draw(act_ann)
+                for region in text_diff.get("removed_regions", [])[:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    draw_e.rectangle([x0 - 1, y0 - 1, x1 + 1, y1 + 1],
+                                     outline=(220, 40, 40), width=2)
+                for region in text_diff.get("added_regions", [])[:50]:
+                    x0, y0, x1, y1 = region["bbox"]
+                    draw_a.rectangle([x0 - 1, y0 - 1, x1 + 1, y1 + 1],
+                                     outline=(40, 200, 70), width=2)
+
+                panel = self._build_three_panel(exp_ann, act_ann, mask,
+                                                diff_regions, zone_analysis, False)
+                out_path = self.output_dir / f"{base_name}_page{output_row_num}_direct.png"
+                panel.save(out_path, "PNG")
+
+                rows.append({
+                    "page":              output_row_num,
+                    "expected_page_num": exp_idx + 1,
+                    "actual_page_num":   act_idx + 1,
+                    "alignment_op":      "direct_comparison",
+                    "similarity":        round(similarity, 3),
+                    "major":             bool(major),
+                    "warn":              bool(warn),
+                    "note": (
+                        f"Direct positional comparison: baseline page {exp_idx + 1} "
+                        f"vs current page {act_idx + 1}. The sequence alignment matched "
+                        f"these pages to different counterparts, but they occupy the same "
+                        f"position — comparing them directly surfaces filled-in values, "
+                        f"watermarks, and layout changes that the alignment would otherwise skip."
+                    ),
+                    "snapshot_path":     f"visual_diffs/{out_path.name}",
+                    "diff_bbox":         list(diff_bbox) if diff_bbox else None,
+                    "diff_pixels_pct":   round(diff_pct, 4),
+                    "diff_area_pct":     round(diff_area_pct, 4),
+                    "signature_candidate":    False,
+                    "signature_label":        None,
+                    "signature_reason":       "",
+                    "signature_confidence":   "none",
+                    "zone_analysis":          zone_analysis,
+                    "diff_regions":           diff_regions,
+                    "text_diff_summary":      text_diff.get("summary", ""),
+                    "added_texts":            text_diff.get("added_texts", []),
+                    "removed_texts":          text_diff.get("removed_texts", []),
+                    "has_text_changes":       text_diff.get("has_text_changes", False),
+                    "has_formatting_changes": text_diff.get("has_formatting_changes", False),
+                    "formatting_summary":     text_diff.get("formatting_summary", ""),
+                    "bold_changed":           [],
+                    "size_changed":           [],
+                    "list_alignment_shifted": [],
+                    "graphics_diff":          "",
+                    "has_graphics_changes":   False,
                 })
 
             return rows
@@ -410,6 +675,18 @@ class VisualDiff:
     # ---------------------------------------------------
     # Internals
     # ---------------------------------------------------
+    def _is_blank_page(self, img: Image.Image, white_threshold: int = 250, blank_pct: float = 98.0) -> bool:
+        """Return True when ≥ blank_pct % of pixels are near-white (blank / near-blank page)."""
+        try:
+            gray = img.convert("L")
+            pixels = list(gray.getdata())
+            if not pixels:
+                return False
+            near_white = sum(1 for p in pixels if p >= white_threshold)
+            return (near_white / len(pixels)) * 100.0 >= blank_pct
+        except Exception:
+            return False
+
     def _create_blank_image(self, size: Optional[Tuple[int, int]]) -> Image.Image:
         if not size:
             size = (1000, 1400)
@@ -435,11 +712,12 @@ class VisualDiff:
     def _compute_similarity_and_mask(self, actual: Image.Image, expected: Image.Image) -> Tuple[float, float, Image.Image]:
         diff = ImageChops.difference(actual, expected).convert("L")
 
-        # Keep sensitivity high enough for missing signatures, but not too low
-        threshold = 18
+        # Threshold 25 filters anti-aliasing/JPEG noise while still catching real changes
+        threshold = 25
         mask = diff.point(lambda x: 255 if x > threshold else 0)
 
-        diff_pixels = sum(1 for px in mask.getdata() if px > 0)
+        hist = mask.histogram()           # 256 buckets; [0] = unchanged pixels
+        diff_pixels = sum(hist[1:])
         total_pixels = actual.width * actual.height if actual.width and actual.height else 0
 
         diff_pct = (diff_pixels / total_pixels) * 100.0 if total_pixels else 0.0
@@ -620,30 +898,1143 @@ class VisualDiff:
             "confidence": confidence,
         }
 
-    def _build_three_panel(self, expected: Image.Image, actual: Image.Image, mask: Image.Image) -> Image.Image:
-        red = Image.new("RGB", actual.size, (255, 0, 0))
-        overlay = Image.composite(red, actual, mask)
-        overlay = ImageEnhance.Brightness(overlay).enhance(1.05)
+    def _analyze_diff_zones(
+        self,
+        mask: Image.Image,
+        diff_pct: float,
+    ) -> Dict[str, Any]:
+        """Analyze which page zones contain differences and classify the change pattern."""
+        w, h = mask.size
+        zone_bounds = {
+            "header":      (0, 0,            w, int(h * 0.12)),
+            "upper_body":  (0, int(h * 0.12), w, int(h * 0.42)),
+            "middle_body": (0, int(h * 0.42), w, int(h * 0.72)),
+            "lower_body":  (0, int(h * 0.72), w, int(h * 0.87)),
+            "footer":      (0, int(h * 0.87), w, h),
+        }
+        zone_pcts: Dict[str, float] = {}
+        for name, bbox in zone_bounds.items():
+            cropped = mask.crop(bbox)
+            pixels = list(cropped.getdata())
+            if pixels:
+                diff = sum(1 for p in pixels if p > 0)
+                zone_pcts[name] = round((diff / len(pixels)) * 100.0, 2)
+            else:
+                zone_pcts[name] = 0.0
+
+        SIG = 1.5
+        changed_zones = [name for name, pct in zone_pcts.items() if pct > SIG]
+
+        if not changed_zones:
+            pattern = "no_change"
+            hint = "No significant visual differences detected."
+        elif len(changed_zones) >= 4:
+            pattern = "page_wide"
+            hint = (
+                "Changes are spread across the entire page. "
+                "This is likely a rendering, font, watermark, or DPI difference "
+                "rather than specific content changes."
+            )
+        elif changed_zones == ["header"]:
+            pattern = "header_only"
+            hint = "Change confined to page header — check policy number, date, logo, or named insured field."
+        elif set(changed_zones) <= {"header", "upper_body"}:
+            pattern = "header_and_fields"
+            hint = "Changes in header and upper body — likely field values were populated or modified."
+        elif set(changed_zones) <= {"upper_body", "middle_body", "lower_body"}:
+            pattern = "body_content"
+            hint = "Changes in the main body — check for text updates, inserted/deleted clauses, or field values."
+        elif "lower_body" in changed_zones or "footer" in changed_zones:
+            pattern = "footer_area"
+            hint = "Changes near the footer/signature area — check signature blocks, dates, and footer text."
+        else:
+            pattern = "partial"
+            hint = f"Changes detected in: {', '.join(changed_zones)}."
+
+        return {
+            "zone_diff_pcts": zone_pcts,
+            "changed_zones": changed_zones,
+            "change_pattern": pattern,
+            "change_hint": hint,
+        }
+
+    def _extract_top_diff_regions(
+        self,
+        mask: Image.Image,
+        grid_cols: int = 8,
+        grid_rows: int = 14,
+        min_cell_diff_pct: float = 8.0,
+        max_regions: int = 8,
+    ) -> List[Tuple[int, int, int, int]]:
+        """Extract bounding boxes of the most significant diff regions via grid sampling."""
+        w, h = mask.size
+        cell_w = max(1, w // grid_cols)
+        cell_h = max(1, h // grid_rows)
+
+        hot_cells: List[Tuple[int, int, int, int]] = []
+        for row in range(grid_rows):
+            for col in range(grid_cols):
+                x0 = col * cell_w
+                y0 = row * cell_h
+                x1 = min(x0 + cell_w, w)
+                y1 = min(y0 + cell_h, h)
+                cell = mask.crop((x0, y0, x1, y1))
+                pixels = list(cell.getdata())
+                if not pixels:
+                    continue
+                diff_count = sum(1 for p in pixels if p > 0)
+                if (diff_count / len(pixels)) * 100.0 >= min_cell_diff_pct:
+                    hot_cells.append((x0, y0, x1, y1))
+
+        if not hot_cells:
+            return []
+
+        merged = self._merge_boxes(hot_cells, padding=cell_w)
+        merged.sort(key=lambda b: (b[2] - b[0]) * (b[3] - b[1]), reverse=True)
+        return merged[:max_regions]
+
+    def _merge_boxes(
+        self,
+        boxes: List[Tuple[int, int, int, int]],
+        padding: int = 5,
+    ) -> List[Tuple[int, int, int, int]]:
+        """Merge overlapping or adjacent bounding boxes."""
+        if not boxes:
+            return []
+        changed = True
+        result = list(boxes)
+        while changed:
+            changed = False
+            new_result: List[Tuple[int, int, int, int]] = []
+            used = [False] * len(result)
+            for i in range(len(result)):
+                if used[i]:
+                    continue
+                x0, y0, x1, y1 = result[i]
+                for j in range(i + 1, len(result)):
+                    if used[j]:
+                        continue
+                    bx0, by0, bx1, by1 = result[j]
+                    if not (x1 + padding < bx0 or bx1 + padding < x0 or
+                            y1 + padding < by0 or by1 + padding < y0):
+                        x0 = min(x0, bx0)
+                        y0 = min(y0, by0)
+                        x1 = max(x1, bx1)
+                        y1 = max(y1, by1)
+                        used[j] = True
+                        changed = True
+                new_result.append((x0, y0, x1, y1))
+            result = new_result
+        return result
+
+    def _generate_semantic_note(
+        self,
+        diff_pct: float,
+        zone_analysis: Dict[str, Any],
+        major: bool,
+        warn: bool,
+    ) -> str:
+        """Generate a human-readable description of the visual difference."""
+        if not major and not warn:
+            return "No material visual differences detected."
+        hint = zone_analysis.get("change_hint", "")
+        if major:
+            base = f"Significant visual differences detected ({diff_pct:.1f}% of pixels differ)."
+        else:
+            base = f"Minor visual differences detected ({diff_pct:.2f}% of pixels differ)."
+        return f"{base} {hint}".strip() if hint else base
+
+    # Words that are almost certainly watermark/stamp artifacts, not real content
+    _WATERMARK_WORDS: frozenset = frozenset({
+        "SPECIMEN", "SAMPLE", "DRAFT", "VOID", "COPY",
+        "CONFIDENTIAL", "DUPLICATE", "CANCELLED", "CANCELED", "SUPERSEDED",
+    })
+
+    def _compare_pdf_graphics(
+        self,
+        expected_pdf_path: str,
+        actual_pdf_path: str,
+        expected_page_num: int,
+        actual_page_num: int,
+    ) -> Dict[str, Any]:
+        """
+        Compare PDF graphical elements (rectangles, lines, curves) between two pages.
+
+        This catches visual differences that are invisible to word extraction:
+        - Decorative border boxes drawn around text
+        - Underlines / strikethroughs implemented as drawn lines
+        - Shaded / highlighted regions
+        - Added or removed divider lines
+
+        Returns counts of added/removed rects and a human-readable summary.
+        """
+        _SNAP = 5.0   # points — positions within this distance are treated as the same
+
+        def _extract_rects(pdf_path: str, page_num: int) -> List[Tuple[float, float, float, float]]:
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    if not (1 <= page_num <= len(pdf.pages)):
+                        return []
+                    page = pdf.pages[page_num - 1]
+                    out: List[Tuple[float, float, float, float]] = []
+                    for r in (page.rects or []):
+                        try:
+                            out.append((
+                                round(float(r.get("x0", 0)), 1),
+                                round(float(r.get("top", 0)), 1),
+                                round(float(r.get("x1", 0)), 1),
+                                round(float(r.get("bottom", 0)), 1),
+                            ))
+                        except Exception:
+                            pass
+                    for ln in (page.lines or []):
+                        try:
+                            out.append((
+                                round(float(ln.get("x0", 0)), 1),
+                                round(float(ln.get("top", 0)), 1),
+                                round(float(ln.get("x1", 0)), 1),
+                                round(float(ln.get("bottom", 0)), 1),
+                            ))
+                        except Exception:
+                            pass
+                    return out
+            except Exception:
+                return []
+
+        def _find_unmatched(set_a, set_b):
+            """Return items in set_a that have no near-match in set_b."""
+            unmatched = []
+            for a in set_a:
+                matched = any(
+                    abs(a[0] - b[0]) <= _SNAP and abs(a[1] - b[1]) <= _SNAP
+                    and abs(a[2] - b[2]) <= _SNAP and abs(a[3] - b[3]) <= _SNAP
+                    for b in set_b
+                )
+                if not matched:
+                    unmatched.append(a)
+            return unmatched
+
+        exp_rects = _extract_rects(expected_pdf_path, expected_page_num)
+        act_rects = _extract_rects(actual_pdf_path, actual_page_num)
+
+        removed_rects = _find_unmatched(exp_rects, act_rects)  # in expected, not in actual
+        added_rects   = _find_unmatched(act_rects, exp_rects)  # in actual, not in expected
+
+        has_graphics_changes = bool(removed_rects or added_rects)
+        parts = []
+        if removed_rects:
+            parts.append(f"{len(removed_rects)} border/line element(s) removed from current PDF")
+        if added_rects:
+            parts.append(f"{len(added_rects)} border/line element(s) added in current PDF")
+
+        return {
+            "added_rects": len(added_rects),
+            "removed_rects": len(removed_rects),
+            "has_graphics_changes": has_graphics_changes,
+            "summary": " | ".join(parts),
+        }
+
+    # List/bullet marker pattern — these have tighter alignment tolerance
+    _LIST_MARKER_RE = re.compile(
+        r'^(\([a-zA-Z0-9]\)|[a-zA-Z]\.|[0-9]+\.|'
+        r'\([ivxIVX]+\)|[ivxIVX]+\.|[\u2022\u2023\u25e6\u2043\u2219•\-–])$'
+    )
+
+    @staticmethod
+    def _is_list_marker(text: str) -> bool:
+        return bool(VisualDiff._LIST_MARKER_RE.match(text.strip()))
+
+    def _build_text_diff_annotations(
+        self,
+        expected_pdf_path: str,
+        actual_pdf_path: str,
+        expected_page_num: int,
+        actual_page_num: int,
+        image_size: Tuple[int, int],
+    ) -> Dict[str, Any]:
+        """
+        Paragraph-level diff engine — clean, precise visual annotations.
+
+        KEY INSIGHT: PDF line breaks are visual rendering artifacts, NOT semantic
+        boundaries.  The same sentence may wrap at different positions in two
+        renders of nearly identical documents.  Diffing at line level treats these
+        reflow differences as content changes and floods every panel with boxes.
+
+        Algorithm:
+        1. Extract words → cluster into text lines (4pt Y-band).
+        2. Cluster lines into paragraphs (gap > 0.7 × line-height = new paragraph).
+        3. Run SequenceMatcher diff on paragraph texts — reflow-resistant because
+           the full paragraph text matches even when internal line breaks differ.
+        4. For changed paragraphs (1-to-1 replace): word-level diff to box only
+           the exact changed words.  Small, precise boxes.
+        5. For deleted/inserted whole paragraphs: one thin rectangle around the
+           paragraph.
+        6. For equal paragraphs: detect bold/size/alignment changes.
+        7. Cap annotation boxes at 20 per panel to prevent visual flooding.
+        """
+        import difflib
+
+        _Y_LINE_TOL  = 4.0   # points — Y-band for line clustering
+        _PARA_GAP    = 0.7   # gap > this × line_height = paragraph break
+        _MAX_BOXES   = 20    # max boxes drawn per panel
+
+        _ALIGN_TOLERANCE_BODY = 15.0
+        _ALIGN_TOLERANCE_LIST = 5.0
+        _MIN_ALIGN_WORDS_BODY = 3
+        _SIZE_TOLERANCE = 1.2
+
+        # ── Helpers ──────────────────────────────────────────────────────────
+        def _extract_lines(pdf_path: str, page_num: int):
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    if not (1 <= page_num <= len(pdf.pages)):
+                        return [], 612.0, 792.0
+                    page = pdf.pages[page_num - 1]
+                    try:
+                        words = page.extract_words(
+                            extra_attrs=["fontname", "size"],
+                            x_tolerance=3, y_tolerance=3
+                        ) or []
+                    except Exception:
+                        words = page.extract_words() or []
+                    pw = float(page.width or 612.0)
+                    ph = float(page.height or 792.0)
+            except Exception:
+                return [], 612.0, 792.0
+
+            words = [
+                w for w in words
+                if len(w.get("text", "").strip()) >= 1
+                and w.get("text", "").strip().upper() not in self._WATERMARK_WORDS
+            ]
+            if not words:
+                return [], pw, ph
+
+            words = sorted(words, key=lambda w: float(w.get("top", 0)))
+            lines: List[List[dict]] = []
+            cur: List[dict] = [words[0]]
+            cur_y = float(words[0].get("top", 0))
+            for w in words[1:]:
+                wy = float(w.get("top", 0))
+                if abs(wy - cur_y) <= _Y_LINE_TOL:
+                    cur.append(w)
+                else:
+                    cur.sort(key=lambda x: float(x.get("x0", 0)))
+                    lines.append(cur)
+                    cur = [w]
+                    cur_y = wy
+            if cur:
+                cur.sort(key=lambda x: float(x.get("x0", 0)))
+                lines.append(cur)
+            return lines, pw, ph
+
+        def _cluster_paragraphs(lines):
+            """Group lines into paragraphs by detecting larger vertical gaps."""
+            if not lines:
+                return []
+            paras = [[lines[0]]]
+            for i in range(1, len(lines)):
+                prev, curr = lines[i - 1], lines[i]
+                prev_bottom = max(float(w.get("bottom", 0)) for w in prev)
+                curr_top    = min(float(w.get("top",    0)) for w in curr)
+                h = max((float(w.get("bottom", 0)) - float(w.get("top", 0)) for w in curr), default=10.0)
+                if (curr_top - prev_bottom) > h * _PARA_GAP:
+                    paras.append([curr])
+                else:
+                    paras[-1].append(curr)
+            return paras
+
+        def _para_text(para):
+            return " ".join(w.get("text", "") for line in para for w in line)
+
+        def _para_words(para):
+            return [w for line in para for w in line]
+
+        def _para_bbox(para, sx, sy):
+            ws = _para_words(para)
+            return (
+                int(min(float(w.get("x0",     0)) for w in ws) * sx),
+                int(min(float(w.get("top",    0)) for w in ws) * sy),
+                int(max(float(w.get("x1",     0)) for w in ws) * sx),
+                int(max(float(w.get("bottom", 0)) for w in ws) * sy),
+            )
+
+        def _scale_word(w, sx, sy):
+            return (
+                int(float(w.get("x0",     0)) * sx),
+                int(float(w.get("top",    0)) * sy),
+                int(float(w.get("x1",     0)) * sx),
+                int(float(w.get("bottom", 0)) * sy),
+            )
+
+        def _is_bold(w):
+            f = str(w.get("fontname", "") or "").lower()
+            return (
+                "bold" in f or "heavy" in f or "black" in f
+                or "demibold" in f or "semibold" in f
+                or ",b" in f or "-bd" in f or "-b," in f
+                or f.endswith(",b") or f.endswith("-b")
+                or f.endswith("bold") or f.endswith("heavy")
+            )
+
+        # ── Extract + cluster ────────────────────────────────────────────────
+        img_w, img_h = image_size
+        exp_lines, exp_pw, exp_ph = _extract_lines(expected_pdf_path, expected_page_num)
+        act_lines, act_pw, act_ph = _extract_lines(actual_pdf_path,   actual_page_num)
+        exp_sx, exp_sy = img_w / exp_pw, img_h / exp_ph
+        act_sx, act_sy = img_w / act_pw, img_h / act_ph
+
+        exp_paras = _cluster_paragraphs(exp_lines)
+        act_paras = _cluster_paragraphs(act_lines)
+
+        exp_ptexts = [_para_text(p) for p in exp_paras]
+        act_ptexts = [_para_text(p) for p in act_paras]
+
+        # ── Paragraph-level diff ─────────────────────────────────────────────
+        matcher  = difflib.SequenceMatcher(None, exp_ptexts, act_ptexts, autojunk=False)
+        opcodes  = matcher.get_opcodes()
+
+        changes:         List[Dict] = []
+        added_regions:   List[Dict] = []
+        removed_regions: List[Dict] = []
+        raw_added:   List[str] = []
+        raw_removed: List[str] = []
+
+        for tag, i1, i2, j1, j2 in opcodes:
+            if tag == "equal":
+                continue
+            exp_chunk = exp_paras[i1:i2]
+            act_chunk = act_paras[j1:j2]
+
+            if tag == "delete":
+                for para in exp_chunk:
+                    txt = _para_text(para)
+                    removed_regions.append({"text": txt, "bbox": _para_bbox(para, exp_sx, exp_sy), "line_level": True})
+                    raw_removed.append(txt)
+                changes.append({"type": "deleted",
+                                 "exp_text": "\n".join(_para_text(p) for p in exp_chunk), "act_text": ""})
+
+            elif tag == "insert":
+                for para in act_chunk:
+                    txt = _para_text(para)
+                    added_regions.append({"text": txt, "bbox": _para_bbox(para, act_sx, act_sy), "line_level": True})
+                    raw_added.append(txt)
+                changes.append({"type": "inserted",
+                                 "exp_text": "", "act_text": "\n".join(_para_text(p) for p in act_chunk)})
+
+            elif tag == "replace":
+                if len(exp_chunk) == len(act_chunk) == 1:
+                    # 1-to-1 paragraph: word-level diff for precise boxes
+                    ep = exp_chunk[0]; ap = act_chunk[0]
+                    ews = _para_words(ep); aws = _para_words(ap)
+                    et  = [w.get("text", "") for w in ews]
+                    at  = [w.get("text", "") for w in aws]
+                    wm  = difflib.SequenceMatcher(None, et, at, autojunk=False)
+                    word_changed = False
+                    for wtag, wi1, wi2, wj1, wj2 in wm.get_opcodes():
+                        if wtag == "equal":
+                            continue
+                        word_changed = True
+                        if wtag in ("delete", "replace"):
+                            for w in ews[wi1:wi2]:
+                                removed_regions.append({"text": w.get("text", ""),
+                                                         "bbox": _scale_word(w, exp_sx, exp_sy),
+                                                         "line_level": False})
+                                raw_removed.append(w.get("text", ""))
+                        if wtag in ("insert", "replace"):
+                            for w in aws[wj1:wj2]:
+                                added_regions.append({"text": w.get("text", ""),
+                                                       "bbox": _scale_word(w, act_sx, act_sy),
+                                                       "line_level": False})
+                                raw_added.append(w.get("text", ""))
+                    if word_changed:
+                        changes.append({"type": "modified",
+                                         "exp_text": _para_text(ep), "act_text": _para_text(ap)})
+                else:
+                    # Multi-para replacement: one rectangle per paragraph
+                    for para in exp_chunk:
+                        txt = _para_text(para)
+                        removed_regions.append({"text": txt, "bbox": _para_bbox(para, exp_sx, exp_sy), "line_level": True})
+                        raw_removed.append(txt)
+                    for para in act_chunk:
+                        txt = _para_text(para)
+                        added_regions.append({"text": txt, "bbox": _para_bbox(para, act_sx, act_sy), "line_level": True})
+                        raw_added.append(txt)
+                    changes.append({"type": "replaced_block",
+                                     "exp_text": "\n".join(_para_text(p) for p in exp_chunk)[:200],
+                                     "act_text": "\n".join(_para_text(p) for p in act_chunk)[:200]})
+
+        # Cap boxes to prevent flooding
+        added_regions   = added_regions[:_MAX_BOXES]
+        removed_regions = removed_regions[:_MAX_BOXES]
+
+        # ── Formatting diff on EQUAL paragraphs and 1-to-1 replacements ────────
+        # Covers:
+        #   equal  → same text, may differ in bold/size/alignment
+        #   replace 1:1 → text changed but same paragraph structure; bold may
+        #                 have changed simultaneously (e.g. heading became bold
+        #                 while its wording was also updated)
+        bold_changed_regions:   List[Dict] = []
+        size_changed_regions:   List[Dict] = []
+        alignment_shifted_list: List[Dict] = []
+        alignment_shifted_body: List[Dict] = []
+
+        def _check_paragraph_formatting(ep, ap):
+            """Compare word-level formatting between two corresponding paragraphs."""
+            exp_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ep]
+            act_llines = [sorted(line, key=lambda w: float(w.get("x0", 0))) for line in ap]
+            for el, al in zip(exp_llines, act_llines):
+                # Position-based matching handles duplicate words correctly
+                for ew, aw in zip(el, al):
+                    exp_t = ew.get("text", "").strip()
+                    act_t = aw.get("text", "").strip()
+                    # For equal paragraphs: only compare formatting for same text
+                    # For replace paragraphs: compare any word at same position
+                    if not exp_t or not act_t:
+                        continue
+                    txt = act_t  # label by actual text
+                    is_m = self._is_list_marker(txt)
+
+                    # ── Bold ──────────────────────────────────────────────────
+                    eb, ab = _is_bold(ew), _is_bold(aw)
+                    if eb != ab:
+                        bold_changed_regions.append({
+                            "text": txt,
+                            "change": "bold_added" if ab else "bold_removed",
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        })
+
+                    # ── Size (independent of bold — a word can change BOTH) ──
+                    es  = float(ew.get("size", 0) or 0)
+                    as_ = float(aw.get("size", 0) or 0)
+                    if es > 0 and as_ > 0 and abs(as_ - es) > _SIZE_TOLERANCE:
+                        size_changed_regions.append({
+                            "text": txt,
+                            "exp_size": round(es, 1),
+                            "act_size": round(as_, 1),
+                            "change": "larger" if as_ > es else "smaller",
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        })
+
+                    # ── Alignment ─────────────────────────────────────────────
+                    xs = float(aw.get("x0", 0)) - float(ew.get("x0", 0))
+                    tol = _ALIGN_TOLERANCE_LIST if is_m else _ALIGN_TOLERANCE_BODY
+                    if abs(xs) > tol:
+                        rec = {
+                            "text": txt, "x_shift_pts": round(xs, 1),
+                            "direction": "right" if xs > 0 else "left",
+                            "is_list_marker": is_m,
+                            "bbox_exp": _scale_word(ew, exp_sx, exp_sy),
+                            "bbox_act": _scale_word(aw, act_sx, act_sy),
+                        }
+                        (alignment_shifted_list if is_m else alignment_shifted_body).append(rec)
+
+        for tag, i1, i2, j1, j2 in opcodes:
+            if tag == "equal":
+                for ep, ap in zip(exp_paras[i1:i2], act_paras[j1:j2]):
+                    _check_paragraph_formatting(ep, ap)
+            elif tag == "replace" and (i2 - i1) == (j2 - j1):
+                # 1-to-1 paragraph replacement: check formatting changes
+                # even though text content also changed
+                for ep, ap in zip(exp_paras[i1:i2], act_paras[j1:j2]):
+                    _check_paragraph_formatting(ep, ap)
+
+        reportable_align_list = alignment_shifted_list
+        reportable_align_body = alignment_shifted_body if len(alignment_shifted_body) >= _MIN_ALIGN_WORDS_BODY else []
+        alignment_shifted_regions = reportable_align_list + reportable_align_body
+
+        # ── Summaries ────────────────────────────────────────────────────────
+        has_text_changes = bool(changes)
+        has_fmt_changes  = bool(bold_changed_regions or size_changed_regions or alignment_shifted_regions)
+
+        fmt_parts: List[str] = []
+        if bold_changed_regions:
+            b_add = [r for r in bold_changed_regions if r["change"] == "bold_added"]
+            b_rem = [r for r in bold_changed_regions if r["change"] == "bold_removed"]
+            if b_add: fmt_parts.append("Text became bold: " + ", ".join(repr(r["text"]) for r in b_add[:5]))
+            if b_rem: fmt_parts.append("Text lost bold: "  + ", ".join(repr(r["text"]) for r in b_rem[:5]))
+        if size_changed_regions:
+            fmt_parts.append("Font size changed: " + ", ".join(
+                f"{repr(r['text'])} ({r['exp_size']}pt→{r['act_size']}pt)" for r in size_changed_regions[:5]))
+        if reportable_align_list:
+            fmt_parts.append("List marker(s) alignment shifted: " +
+                              ", ".join(repr(r["text"]) for r in reportable_align_list[:5]))
+        if reportable_align_body:
+            rn = sum(1 for r in reportable_align_body if r["direction"] == "right")
+            ln = sum(1 for r in reportable_align_body if r["direction"] == "left")
+            if rn: fmt_parts.append(f"{rn} body text element(s) indented right")
+            if ln: fmt_parts.append(f"{ln} body text element(s) indented left")
+        formatting_summary = " | ".join(fmt_parts)
+
+        cl: List[str] = []
+        for c in changes[:20]:
+            ct = c["type"]
+            if ct == "deleted":
+                cl.append(f'  REMOVED: "{c["exp_text"][:120]}"')
+            elif ct == "inserted":
+                cl.append(f'  ADDED:   "{c["act_text"][:120]}"')
+            elif ct == "modified":
+                cl.append(f'  CHANGED: was="{c["exp_text"][:80]}"\n           now="{c["act_text"][:80]}"')
+            elif ct == "replaced_block":
+                cl.append(f'  BLOCK WAS: "{c["exp_text"][:100]}"\n  BLOCK NOW: "{c["act_text"][:100]}"')
+
+        if cl:
+            summary = "\n".join(cl)
+            if formatting_summary:
+                summary += "\n  FORMATTING: " + formatting_summary
+        elif formatting_summary:
+            summary = "FORMATTING: " + formatting_summary
+        else:
+            summary = "Text content identical — visual differences are rendering/watermark noise only."
+
+        return {
+            "changes":    changes,
+            "added_regions":   added_regions,
+            "removed_regions": removed_regions,
+            "bold_changed_regions":      bold_changed_regions[:30],
+            "size_changed_regions":      size_changed_regions[:30],
+            "alignment_shifted_regions": alignment_shifted_regions[:30],
+            "added_texts":   sorted(set(t.strip() for t in raw_added   if t.strip()))[:25],
+            "removed_texts": sorted(set(t.strip() for t in raw_removed if t.strip()))[:25],
+            "has_text_changes":       has_text_changes,
+            "has_formatting_changes": has_fmt_changes,
+            "formatting_summary": formatting_summary,
+            "summary": summary,
+        }
+
+    # Per-pattern overlay colors: (R, G, B), alpha, diff-panel header label
+    _PATTERN_COLORS: Dict[str, tuple] = {
+        "page_wide":         ((220,  80,  80), 140, "VISUAL / GRAPHICAL CHANGE"),
+        "header_only":       ((255,  50,  50), 160, "HEADER / FIELD CHANGE"),
+        "header_and_fields": ((255,  50,  50), 160, "VALUE CHANGE"),
+        "body_content":      ((255, 130,   0), 150, "CONTENT CHANGE"),
+        "footer_area":       ((180,  60, 220), 160, "FOOTER / SIGNATURE"),
+        "partial":           ((255, 200,   0), 140, "PARTIAL CHANGE"),
+        "no_change":         ((  0, 200,   0),   0, "NO CHANGE"),
+    }
+    _DEFAULT_DIFF_COLOR: tuple = ((255, 50, 50), 150, "DIFFERENCE")
+
+    def _resolve_diff_color(
+        self,
+        zone_analysis: Optional[Dict[str, Any]],
+        signature_candidate: bool,
+    ) -> tuple:
+        """Return (rgb_tuple, alpha, label) for the diff overlay."""
+        if signature_candidate:
+            return (180, 60, 220), 155, "SIGNATURE / FOOTER"
+        pattern = (zone_analysis or {}).get("change_pattern", "")
+        return self._PATTERN_COLORS.get(pattern, self._DEFAULT_DIFF_COLOR)
+
+    # Try to load a small font for labels; fall back to PIL default bitmap font
+    @staticmethod
+    def _get_small_font(size: int = 11):
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "C:/Windows/Fonts/arial.ttf",
+        ]
+        for path in candidates:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        try:
+            return ImageFont.load_default()
+        except Exception:
+            return None
+
+    def _build_three_panel(
+        self,
+        expected: Image.Image,
+        actual: Image.Image,
+        mask: Image.Image,
+        diff_regions: Optional[List[Tuple[int, int, int, int]]] = None,
+        zone_analysis: Optional[Dict[str, Any]] = None,
+        signature_candidate: bool = False,
+        diff_counts: Optional[Dict[str, int]] = None,
+    ) -> Image.Image:
+        """
+        Build three-panel comparison image with color legend strip.
+        Diff panel overlay color:
+          gray   = rendering / watermark noise
+          red    = value / header field change
+          orange = body content change
+          purple = footer / signature area
+          yellow = partial / mixed change
+
+        Box colors on EXPECTED panel (left):
+          red border = text removed from baseline
+
+        Box colors on ACTUAL panel (middle):
+          green  = text added in current version
+          orange = bold formatting changed
+          yellow = font size changed
+          blue   = horizontal alignment / indentation shifted
+        """
+        rgb, alpha, diff_label = self._resolve_diff_color(zone_analysis, signature_candidate)
+        r, g, b = rgb
+
+        # Translucent colored overlay (original content stays readable)
+        actual_rgba = actual.convert("RGBA")
+        overlay = Image.new("RGBA", actual.size, (r, g, b, 0))
+        mask_alpha = mask.point(lambda x: alpha if x > 0 else 0)
+        overlay.putalpha(mask_alpha)
+        diff_panel = Image.alpha_composite(actual_rgba, overlay).convert("RGB")
+
+        # Draw bounding boxes in the same color around the most significant regions
+        if diff_regions:
+            draw = ImageDraw.Draw(diff_panel)
+            for x0, y0, x1, y1 in diff_regions[:8]:
+                draw.rectangle(
+                    [
+                        max(0, x0 - 2),
+                        max(0, y0 - 2),
+                        min(actual.width - 1, x1 + 2),
+                        min(actual.height - 1, y1 + 2),
+                    ],
+                    outline=(r, g, b),
+                    width=3,
+                )
 
         w, h = actual.size
-        out = Image.new("RGB", (w * 3, h), (0, 0, 0))
 
+        # ── Build the three-panel composite ────────────────────────────────
+        out = Image.new("RGB", (w * 3, h), (0, 0, 0))
         out.paste(expected, (0, 0))
         out.paste(actual, (w, 0))
-        out.paste(overlay, (w * 2, 0))
+        out.paste(diff_panel, (w * 2, 0))
 
-        out = self._add_headers(out, w)
-        return out
+        out = self._add_headers(out, w, diff_label=diff_label, diff_header_color=rgb,
+                                diff_counts=diff_counts)
 
-    def _add_headers(self, img: Image.Image, w: int) -> Image.Image:
+        # ── Append color-coded legend strip ────────────────────────────────
+        legend = self._build_legend(w * 3)
+        final = Image.new("RGB", (w * 3, out.height + legend.height), (10, 10, 10))
+        final.paste(out, (0, 0))
+        final.paste(legend, (0, out.height))
+        return final
+
+    def _build_legend(self, total_width: int) -> Image.Image:
+        """Return a horizontal legend strip explaining the box colors."""
+        legend_h = 36
+        img = Image.new("RGB", (total_width, legend_h), (15, 15, 15))
         draw = ImageDraw.Draw(img)
-        header_h = 40
+        font = self._get_small_font(11)
+
+        entries = [
+            ((220, 50,  50),  "◼ Removed text (left panel)"),
+            ((50,  200, 80),  "◼ Added text"),
+            ((255, 140, 0),   "◼ Bold changed"),
+            ((255, 210, 0),   "◼ Font size changed"),
+            ((80,  160, 255), "◼ Alignment shifted"),
+            ((180, 60,  220), "◼ Signature / footer"),
+        ]
+
+        x = 10
+        y = 10
+        gap = total_width // len(entries)
+        for i, (color, label) in enumerate(entries):
+            draw.text((x + i * gap, y), label, fill=color, font=font)
+
+        return img
+
+    def _add_headers(
+        self,
+        img: Image.Image,
+        w: int,
+        diff_label: str = "DIFF (HIGHLIGHTED)",
+        diff_header_color: tuple = (240, 240, 240),
+        diff_counts: Optional[Dict[str, int]] = None,
+    ) -> Image.Image:
+        font = self._get_small_font(12)
+        draw = ImageDraw.Draw(img)
+        header_h = 46
         draw.rectangle([0, 0, w * 3, header_h], fill=(20, 20, 20))
 
-        labels = ["EXPECTED", "ACTUAL", "DIFF (HIGHLIGHTED)"]
-        for idx, text in enumerate(labels):
-            x = idx * w + 12
-            y = 10
-            draw.text((x, y), text, fill=(240, 240, 240))
+        # Build count summary for the diff panel header
+        if diff_counts and any(diff_counts.values()):
+            parts = []
+            if diff_counts.get("added"):
+                parts.append(f"+{diff_counts['added']} added")
+            if diff_counts.get("removed"):
+                parts.append(f"-{diff_counts['removed']} removed")
+            if diff_counts.get("bold"):
+                parts.append(f"{diff_counts['bold']} bold")
+            if diff_counts.get("size"):
+                parts.append(f"{diff_counts['size']} size")
+            if diff_counts.get("align"):
+                parts.append(f"{diff_counts['align']} align")
+            count_str = "  |  " + "  ·  ".join(parts) if parts else ""
+        else:
+            count_str = ""
+
+        labels = [
+            ("EXPECTED (BASELINE)", (200, 200, 200), ""),
+            ("ACTUAL (CURRENT)",    (200, 200, 200), ""),
+            (f"DIFF — {diff_label}", diff_header_color, count_str),
+        ]
+        for idx, (text, color, suffix) in enumerate(labels):
+            draw.text((idx * w + 12, 8),  text,   fill=color,        font=font)
+            if suffix:
+                draw.text((idx * w + 12, 26), suffix, fill=(180, 180, 180), font=font)
+        return img
+
+    def render_pages(
+        self,
+        pdf_path: str,
+        result_id: Optional[str] = None,
+        dpi: int = 150,
+    ) -> List[Dict[str, Any]]:
+        """Render each page of a single PDF as a single-panel PNG snapshot.
+
+        Used in basic mode so the HTML report can show the form page in the
+        Snapshot column even without a comparison partner.
+
+        Returns a list of visual_validation-compatible dicts with:
+        - page, snapshot_path, alignment_op="single",
+          similarity=None, major=False, warn=False
+        """
+        rows: List[Dict[str, Any]] = []
+        try:
+            poppler = _poppler_path()
+            pages = convert_from_path(pdf_path, dpi=dpi, fmt="png", poppler_path=poppler)
+            base_name = Path(pdf_path).stem
+            if result_id:
+                base_name = f"{result_id}_{base_name}"
+
+            for idx, page_img in enumerate(pages, start=1):
+                img = page_img.convert("RGB")
+                out_path = self.output_dir / f"{base_name}_basic_page{idx}.png"
+                img.save(out_path, "PNG")
+                rows.append({
+                    "page": idx,
+                    "expected_page_num": idx,
+                    "actual_page_num": idx,
+                    "alignment_op": "single",
+                    "similarity": None,
+                    "major": False,
+                    "warn": False,
+                    "note": "",
+                    "snapshot_path": f"visual_diffs/{out_path.name}",
+                    "diff_bbox": None,
+                    "diff_pixels_pct": 0.0,
+                    "diff_area_pct": 0.0,
+                    "signature_candidate": False,
+                    "signature_label": None,
+                    "signature_reason": "",
+                    "signature_confidence": "none",
+                })
+        except Exception as e:
+            logger.warning("render_pages failed for %s: %s", pdf_path, e)
+        return rows
+
+    def render_pages_for_llm(
+        self,
+        pdf_path: str,
+        dpi: int = 60,
+        max_pages: int = 8,
+        jpeg_quality: int = 65,
+        page_numbers: Optional[List[int]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Render PDF pages as base64 JPEG for multimodal LLM consumption.
+
+        Args:
+            page_numbers: 1-indexed list of page numbers to render. When given,
+                          only those pages are rendered and returned, which keeps
+                          prompt size small. None = render all pages up to max_pages.
+
+        At 60 DPI a letter page is ~510×660 px ≈ 30 KB JPEG ≈ 42 KB base64.
+
+        Returns:
+            [{"page": 1, "b64": "<base64 string>", "mime": "image/jpeg"}, ...]
+        """
+        import base64
+        import io
+
+        results: List[Dict[str, Any]] = []
+        try:
+            poppler = _poppler_path()
+
+            if page_numbers:
+                # Render only the requested pages (pdf2image first_page/last_page are 1-indexed)
+                wanted = sorted(set(page_numbers))
+                for pg in wanted:
+                    try:
+                        imgs = convert_from_path(
+                            pdf_path, dpi=dpi, fmt="jpeg",
+                            poppler_path=poppler,
+                            first_page=pg, last_page=pg,
+                        )
+                        if imgs:
+                            buf = io.BytesIO()
+                            imgs[0].convert("RGB").save(buf, format="JPEG",
+                                                        quality=jpeg_quality, optimize=True)
+                            b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+                            results.append({"page": pg, "b64": b64, "mime": "image/jpeg"})
+                    except Exception as _pe:
+                        logger.warning("render_pages_for_llm page %d failed: %s", pg, _pe)
+            else:
+                pages = convert_from_path(pdf_path, dpi=dpi, fmt="jpeg",
+                                          poppler_path=poppler, last_page=max_pages)
+                for idx, page_img in enumerate(pages, start=1):
+                    buf = io.BytesIO()
+                    page_img.convert("RGB").save(buf, format="JPEG",
+                                                 quality=jpeg_quality, optimize=True)
+                    b64 = base64.standard_b64encode(buf.getvalue()).decode("ascii")
+                    results.append({"page": idx, "b64": b64, "mime": "image/jpeg"})
+        except Exception as exc:
+            logger.warning("render_pages_for_llm failed for %s: %s", pdf_path, exc)
+        return results
+
+    def annotate_snapshots_with_findings(
+        self,
+        pdf_path: str,
+        result_json: Dict[str, Any],
+        visual_entries: List[Dict[str, Any]],
+    ) -> None:
+        """Draw colored highlight boxes on page snapshots at the exact location
+        of each LLM finding.  Modifies the PNG files in-place.
+
+        Color coding matches legend:
+          critical → red   high → orange   medium → yellow   low → blue
+        """
+        _SEVERITY_FILL = {
+            "critical": (220, 30,  30,  110),
+            "high":     (230, 110, 20,  100),
+            "medium":   (230, 190, 0,   90),
+            "low":      (70,  140, 230, 80),
+        }
+        _SEVERITY_OUTLINE = {
+            "critical": (200, 0,   0),
+            "high":     (200, 80,  0),
+            "medium":   (180, 150, 0),
+            "low":      (40,  100, 200),
+        }
+
+        # Build page → findings map from all finding buckets
+        finding_buckets = [
+            "spelling_errors", "format_issues", "value_mismatches",
+            "missing_content", "extra_content", "layout_anomalies",
+            "typography_issues", "structural_changes", "visual_mismatches",
+            "compliance_issues", "accessibility_issues",
+        ]
+        findings_by_page: Dict[int, List[Dict[str, Any]]] = {}
+        for bucket in finding_buckets:
+            for item in (result_json.get(bucket) or []):
+                if not isinstance(item, dict):
+                    continue
+                p = item.get("page")
+                try:
+                    p = int(str(p).strip()) if p not in (None, "") else None
+                except Exception:
+                    p = None
+                if p is not None:
+                    findings_by_page.setdefault(p, []).append(item)
+
+        if not findings_by_page:
+            return
+
+        # Build page → snapshot path map from visual entries
+        snap_map: Dict[int, str] = {}
+        for ve in visual_entries:
+            if not isinstance(ve, dict):
+                continue
+            p = ve.get("page")
+            sp = ve.get("snapshot_path", "")
+            if p and sp:
+                # snapshot_path is relative like "visual_diffs/foo.png"
+                abs_snap = self.output_dir / Path(sp).name
+                snap_map[int(p)] = str(abs_snap)
+
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for page_num, findings in findings_by_page.items():
+                    snap_abs = snap_map.get(page_num)
+                    if not snap_abs or not os.path.exists(snap_abs):
+                        continue
+                    if page_num < 1 or page_num > len(pdf.pages):
+                        continue
+
+                    try:
+                        page = pdf.pages[page_num - 1]
+                        page_w = float(page.width)
+                        page_h = float(page.height)
+                        words = page.extract_words(
+                            keep_blank_chars=False, x_tolerance=3, y_tolerance=3
+                        )
+
+                        img = Image.open(snap_abs).convert("RGBA")
+                        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                        draw = ImageDraw.Draw(overlay)
+                        font = self._get_small_font(9)
+
+                        x_scale = img.width / page_w
+                        y_scale = img.height / page_h
+
+                        annotated = False
+                        for idx, finding in enumerate(findings[:12], 1):
+                            # Try to find the problem text on the page
+                            search = (
+                                finding.get("text")
+                                or finding.get("snippet")
+                                or finding.get("field_name")
+                                or ""
+                            ).strip()
+
+                            bbox = self._find_text_bbox(words, search) if search and len(search) >= 3 else None
+
+                            sev = str(finding.get("severity") or "low").lower()
+                            fill = _SEVERITY_FILL.get(sev, _SEVERITY_FILL["low"])
+                            outline = _SEVERITY_OUTLINE.get(sev, _SEVERITY_OUTLINE["low"])
+
+                            if bbox:
+                                x0, y0, x1, y1 = bbox
+                                ix0 = max(0, int(x0 * x_scale) - 4)
+                                iy0 = max(0, int(y0 * y_scale) - 4)
+                                ix1 = min(img.width - 1, int(x1 * x_scale) + 4)
+                                iy1 = min(img.height - 1, int(y1 * y_scale) + 4)
+                                draw.rectangle([ix0, iy0, ix1, iy1], fill=fill, outline=outline + (220,), width=2)
+                                # Finding number badge
+                                bx, by = ix0, max(0, iy0 - 14)
+                                draw.rectangle([bx, by, bx + 16, by + 13], fill=outline + (230,))
+                                draw.text((bx + 3, by + 2), str(idx), fill=(255, 255, 255), font=font)
+                                annotated = True
+
+                        if annotated:
+                            composite = Image.alpha_composite(img, overlay).convert("RGB")
+                            composite.save(snap_abs, "PNG")
+                    except Exception as _pe:
+                        logger.debug("Annotation failed for page %d: %s", page_num, _pe)
+
+        except Exception as e:
+            logger.warning("annotate_snapshots_with_findings failed: %s", e)
+
+    def _find_text_bbox(
+        self,
+        words: List[Dict[str, Any]],
+        search_text: str,
+    ) -> Optional[Tuple[float, float, float, float]]:
+        """Locate search_text in a pdfplumber word list and return its bounding box."""
+        if not words or not search_text:
+            return None
+        search_lower = search_text.lower().strip()
+        tokens = search_lower.split()
+        if not tokens:
+            return None
+        word_texts = [str(w.get("text", "")).lower() for w in words]
+
+        # Exact token-sequence match (sliding window)
+        n = len(tokens)
+        for i in range(len(word_texts) - n + 1):
+            if word_texts[i:i + n] == tokens:
+                matched = words[i:i + n]
+                return (
+                    min(float(w["x0"]) for w in matched),
+                    min(float(w["top"]) for w in matched),
+                    max(float(w["x1"]) for w in matched),
+                    max(float(w["bottom"]) for w in matched),
+                )
+
+        # Fallback: find any word that contains the longest token
+        longest = max(tokens, key=len)
+        if len(longest) >= 5:
+            for i, wt in enumerate(word_texts):
+                if longest in wt:
+                    w = words[i]
+                    return float(w["x0"]), float(w["top"]), float(w["x1"]), float(w["bottom"])
+
+        return None
+
+    # ---------------------------------------------------
+    # Document-level comparison helpers
+    # ---------------------------------------------------
+
+    def compare_documents_metadata(self, expected_path: str, actual_path: str) -> Dict[str, Any]:
+        """Compare PDF document-level metadata (title, author, subject, keywords, producer)."""
+        result: Dict[str, Any] = {"changed": {}, "has_metadata_changes": False, "summary": ""}
+        try:
+            exp_meta: Dict[str, str] = {}
+            act_meta: Dict[str, str] = {}
+            with pdfplumber.open(expected_path) as pdf:
+                exp_meta = {k: str(v or "") for k, v in (pdf.metadata or {}).items()}
+            with pdfplumber.open(actual_path) as pdf:
+                act_meta = {k: str(v or "") for k, v in (pdf.metadata or {}).items()}
+
+            all_keys = set(exp_meta) | set(act_meta)
+            for k in sorted(all_keys):
+                ev = exp_meta.get(k, "")
+                av = act_meta.get(k, "")
+                if ev != av:
+                    result["changed"][k] = {"expected": ev, "actual": av}
+
+            result["has_metadata_changes"] = bool(result["changed"])
+            if result["changed"]:
+                parts = [f"{k}: '{v['expected']}' → '{v['actual']}'" for k, v in result["changed"].items()]
+                result["summary"] = "Metadata changed: " + "; ".join(parts[:5])
+        except Exception as e:
+            logger.debug("Metadata comparison failed: %s", e)
+        return result
+
+    def compare_form_field_structure(self, expected_path: str, actual_path: str) -> Dict[str, Any]:
+        """Compare AcroForm field names and types between two PDFs.
+
+        Returns added_fields, removed_fields, changed_fields lists so the LLM
+        can report structural field additions/removals without relying on visual
+        pixel comparison alone.
+        """
+        result: Dict[str, Any] = {
+            "added_fields": [],
+            "removed_fields": [],
+            "changed_fields": [],
+            "has_structural_changes": False,
+            "summary": "",
+        }
+        try:
+            def _extract_fields(path: str) -> Dict[str, str]:
+                fields: Dict[str, str] = {}
+                with pdfplumber.open(path) as pdf:
+                    for page in pdf.pages:
+                        for annot in (page.annots or []):
+                            data = annot.get("data") or {}
+                            fname = data.get("T") or data.get("TU")
+                            ftype = data.get("FT")
+                            if fname:
+                                fields[str(fname)] = str(ftype or "unknown")
+                return fields
+
+            exp_f = _extract_fields(expected_path)
+            act_f = _extract_fields(actual_path)
+            exp_names = set(exp_f)
+            act_names = set(act_f)
+
+            result["removed_fields"] = sorted(exp_names - act_names)
+            result["added_fields"] = sorted(act_names - exp_names)
+            for name in sorted(exp_names & act_names):
+                if exp_f[name] != act_f[name]:
+                    result["changed_fields"].append({
+                        "name": name,
+                        "expected_type": exp_f[name],
+                        "actual_type": act_f[name],
+                    })
+
+            result["has_structural_changes"] = bool(
+                result["added_fields"] or result["removed_fields"] or result["changed_fields"]
+            )
+            if result["has_structural_changes"]:
+                parts = []
+                if result["removed_fields"]:
+                    parts.append(f"Removed fields: {', '.join(result['removed_fields'][:5])}")
+                if result["added_fields"]:
+                    parts.append(f"Added fields: {', '.join(result['added_fields'][:5])}")
+                if result["changed_fields"]:
+                    parts.append(f"Type changes: {len(result['changed_fields'])} field(s)")
+                result["summary"] = "; ".join(parts)
+        except Exception as e:
+            logger.debug("Form field structure comparison failed: %s", e)
+        return result
 
         return img

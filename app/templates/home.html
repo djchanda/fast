@@ -9,10 +9,12 @@
     <h1 class="db-title">Project Dashboard</h1>
     <p class="db-sub">Welcome back, {{ user }}. Build evidence, not slides.</p>
   </div>
+  {% if session.get('role') == 'admin' %}
   <a class="btn-new-project" href="{{ url_for('web.create_project') }}">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     New Project
   </a>
+  {% endif %}
 </div>
 
 <!-- KPI row -->
@@ -108,11 +110,15 @@
   {% else %}
   <div class="db-empty">
     <p class="db-empty-title">No projects yet</p>
+    {% if session.get('role') == 'admin' %}
     <p class="db-empty-sub">Create your first project to get started.</p>
     <a class="btn-new-project" href="{{ url_for('web.create_project') }}" style="margin-top:16px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Project
     </a>
+    {% else %}
+    <p class="db-empty-sub">No projects have been assigned to your account yet. Contact an administrator.</p>
+    {% endif %}
   </div>
   {% endif %}
 </div>

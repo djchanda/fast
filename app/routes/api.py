@@ -23,6 +23,16 @@ from app.extensions import db
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 
 
+def _safe_result_json(raw: str) -> dict:
+    """Parse result_json text safely — returns empty dict on corrupt data."""
+    if not raw:
+        return {}
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"error": "result_json could not be parsed"}
+
+
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
@@ -130,17 +140,26 @@ def validate_pdf(api_key):
     if mode not in ("basic", "specific", "benchmark"):
         return jsonify({"error": "mode must be basic, specific, or benchmark"}), 400
 
-    prompt = request.form.get("prompt") or ""
+    prompt = (request.form.get("prompt") or "")[:10_000]
     provider = request.form.get("provider") or None
 
-    pdf_bytes = f.read()
+    MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MB
+    pdf_bytes = f.read(MAX_PDF_BYTES + 1)
+    if len(pdf_bytes) > MAX_PDF_BYTES:
+        return jsonify({"error": "PDF file too large. Maximum size is 50 MB."}), 413
+    if not pdf_bytes.startswith(b"%PDF"):
+        return jsonify({"error": "File does not appear to be a valid PDF."}), 400
 
     benchmark_bytes = None
     if mode == "benchmark":
         if "benchmark_file" not in request.files:
             return jsonify({"error": "benchmark_file is required for benchmark mode"}), 400
         bf = request.files["benchmark_file"]
-        benchmark_bytes = bf.read()
+        benchmark_bytes = bf.read(MAX_PDF_BYTES + 1)
+        if len(benchmark_bytes) > MAX_PDF_BYTES:
+            return jsonify({"error": "Benchmark PDF too large. Maximum size is 50 MB."}), 413
+        if not benchmark_bytes.startswith(b"%PDF"):
+            return jsonify({"error": "Benchmark file does not appear to be a valid PDF."}), 400
 
     try:
         from engine.extractor import extract_all
@@ -213,7 +232,7 @@ def get_run(project_id, run_id, api_key):
             "errors": rr.errors,
             "warnings": rr.warnings,
             "passed": rr.passed,
-            "findings": json.loads(rr.result_json) if rr.result_json else {},
+            "findings": _safe_result_json(rr.result_json),
         } for rr in results],
     })
 

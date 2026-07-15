@@ -1,8 +1,11 @@
 # app/routes/web.py
 import io
+import logging
 import os
 import json
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import Optional
 
 from flask import (
@@ -38,6 +41,7 @@ from app.models.false_positive import FalsePositive
 from app.models.field_inventory import FieldInventory
 from app.models.api_key import ApiKey
 from app.models.jira_config import JiraConfig
+from app.models.project_member import ProjectMember
 from app.services.runner import run_testcase
 from app.services.audit import log_action
 from app.services import jira_client
@@ -78,24 +82,55 @@ def is_logged_in() -> bool:
     return bool(session.get("user"))
 
 
+@web_bp.before_request
+def _enforce_project_access():
+    """Block non-admin users from accessing projects they are not assigned to."""
+    role = session.get("role")
+    if role == "admin" or role is None:
+        return None
+    if not request.view_args:
+        return None
+    project_id = request.view_args.get("project_id")
+    if project_id is None:
+        return None
+    if not is_logged_in():
+        return None
+    assigned = ProjectMember.query.filter_by(
+        project_id=project_id,
+        user_id=session.get("user_id"),
+    ).first()
+    if not assigned:
+        flash("Access denied: you are not assigned to this project.", "error")
+        return redirect(url_for("web.home"))
+
+
 def require_login() -> Optional[object]:
     if not is_logged_in():
-        return redirect(url_for("web.landing"))
+        return redirect(url_for("web.login"))
     return None
 
 
 # -----------------------
 # Auth / Landing
 # -----------------------
-@web_bp.route("/", methods=["GET", "POST"])
-def landing():
+@web_bp.route("/")
+def marketing():
+    return render_template(
+        "marketing.html",
+        page_title="FAST | AI-Powered Forms Testing",
+        logged_in=is_logged_in(),
+    )
+
+
+@web_bp.route("/login", methods=["GET", "POST"])
+def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = (request.form.get("password") or "").strip()
 
         if not username or not password:
             flash("Please enter username and password.", "error")
-            return redirect(url_for("web.landing"))
+            return redirect(url_for("web.login"))
 
         # Real authentication against users table
         user = User.query.filter_by(username=username, is_active=True).first()
@@ -111,7 +146,7 @@ def landing():
         else:
             flash("Invalid username or password.", "error")
             log_action("auth.login_failed", detail={"username": username})
-            return redirect(url_for("web.landing"))
+            return redirect(url_for("web.login"))
 
     if is_logged_in():
         return redirect(url_for("web.home"))
@@ -124,7 +159,7 @@ def logout():
     log_action("auth.logout")
     session.clear()
     flash("Logged out.", "info")
-    return redirect(url_for("web.landing"))
+    return redirect(url_for("web.login"))
 
 
 def require_role(min_role: str):
@@ -156,6 +191,143 @@ def serve_visual_diff_file(project_id: int, filename: str):
         abort(404)
 
     return send_from_directory(vdir, safe_name)
+
+
+@web_bp.route("/projects/<int:project_id>/visual_diffs_focused/<path:filename>", methods=["GET"])
+def serve_visual_diff_focused(project_id: int, filename: str):
+    """Serve a vertically-cropped 3-panel diff snapshot with observation caption header.
+
+    Query params:
+      y0, y1   — pixel row bounds in single-panel coordinates for vertical crop
+      caption  — observation text (URL-encoded) to render as caption strip
+      conf     — confidence level: certain|likely|possible
+    Falls back to full image when crop would cover >80% of page height.
+    """
+    gate = require_login()
+    if gate:
+        return gate
+
+    safe_name = os.path.basename(filename)
+    vdir = visual_diffs_dir()
+    p = vdir / safe_name
+    if not p.exists():
+        abort(404)
+
+    try:
+        y0 = int(request.args.get("y0", 0))
+        y1 = int(request.args.get("y1", 0))
+    except (ValueError, TypeError):
+        y0 = y1 = 0
+
+    caption_text = (request.args.get("caption") or "").strip()
+    conf = (request.args.get("conf") or "possible").lower()
+
+    if y0 == 0 and y1 == 0 and not caption_text:
+        return send_from_directory(vdir, safe_name)
+
+    try:
+        from PIL import Image as _PImage, ImageDraw as _IDraw, ImageFont as _IFont
+        import textwrap as _tw
+
+        img = _PImage.open(p).convert("RGB")
+        iw, ih = img.size
+
+        # Vertical crop to diff region
+        if y0 > 0 or y1 > 0:
+            pad = 60
+            cy0 = max(0, y0 - pad)
+            cy1 = min(ih, y1 + pad)
+            if (cy1 - cy0) < ih * 0.80:
+                img = img.crop((0, cy0, iw, cy1))
+
+        iw, ih = img.size
+        panel_w = iw // 3
+
+        # --- Load fonts ---
+        _FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        _FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        try:
+            font_label = _IFont.truetype(_FONT_BOLD, 13)
+            font_cap   = _IFont.truetype(_FONT_PATH, 13)
+            font_conf  = _IFont.truetype(_FONT_BOLD, 12)
+        except Exception:
+            font_label = font_cap = font_conf = _IFont.load_default()
+
+        # --- Panel label strip (30px) ---
+        LABEL_H = 30
+        LABEL_BG = (15, 23, 42)       # dark navy
+        LABEL_FG = (148, 163, 184)    # muted slate
+        panel_labels = ["BASELINE  (EXPECTED)", "CURRENT  (ACTUAL)", "DIFF  OVERLAY"]
+
+        label_strip = _PImage.new("RGB", (iw, LABEL_H), LABEL_BG)
+        ld = _IDraw.Draw(label_strip)
+        for i, lbl in enumerate(panel_labels):
+            cx = i * panel_w + panel_w // 2
+            try:
+                bbox = font_label.getbbox(lbl)
+                tw = bbox[2] - bbox[0]
+            except Exception:
+                tw = len(lbl) * 7
+            ld.text((cx - tw // 2, 8), lbl, font=font_label, fill=LABEL_FG)
+        # dividers between panels
+        for xi in (panel_w, panel_w * 2):
+            ld.line([(xi, 0), (xi, LABEL_H)], fill=(30, 41, 59), width=1)
+
+        # --- Caption strip (observation text + confidence) ---
+        CONF_COLORS = {
+            "certain": ((22, 163, 74),  (74, 222, 128),  "CERTAIN"),
+            "likely":  ((180, 83, 9),   (251, 191, 36),  "LIKELY"),
+        }
+        cap_bg_dark, cap_text_color, conf_label = CONF_COLORS.get(
+            conf, ((30, 58, 138), (147, 197, 253), "POSSIBLE")
+        )
+
+        CAP_PAD = 12
+        CAP_H_MIN = 50
+        max_chars = max(40, (iw - CAP_PAD * 4 - 90) // 8)
+        wrapped = _tw.wrap(caption_text or "Observation", width=max_chars) if caption_text else []
+        cap_h = max(CAP_H_MIN, len(wrapped) * 18 + CAP_PAD * 2)
+
+        cap_strip = _PImage.new("RGB", (iw, cap_h), cap_bg_dark)
+        cd = _IDraw.Draw(cap_strip)
+
+        # Confidence chip (right-aligned)
+        chip_text = conf_label
+        try:
+            cb = font_conf.getbbox(chip_text)
+            chip_w = cb[2] - cb[0] + 16
+        except Exception:
+            chip_w = len(chip_text) * 8 + 16
+        chip_x = iw - chip_w - CAP_PAD
+        chip_y = (cap_h - 20) // 2
+        cd.rounded_rectangle([chip_x, chip_y, chip_x + chip_w, chip_y + 20],
+                              radius=4, fill=cap_bg_dark, outline=cap_text_color, width=1)
+        cd.text((chip_x + 8, chip_y + 4), chip_text, font=font_conf, fill=cap_text_color)
+
+        # Observation text (left side)
+        text_area_w = chip_x - CAP_PAD * 2
+        y_pos = CAP_PAD
+        for line in wrapped:
+            cd.text((CAP_PAD, y_pos), line, font=font_cap, fill=(226, 232, 240))
+            y_pos += 18
+        if not wrapped:
+            cd.text((CAP_PAD, CAP_PAD), "(no observation text)", font=font_cap, fill=(100, 116, 139))
+
+        # --- Compose final image: labels + caption + cropped diff ---
+        total_h = LABEL_H + cap_h + ih
+        out = _PImage.new("RGB", (iw, total_h), LABEL_BG)
+        out.paste(label_strip, (0, 0))
+        out.paste(cap_strip,   (0, LABEL_H))
+        out.paste(img,         (0, LABEL_H + cap_h))
+
+        buf = io.BytesIO()
+        out.save(buf, "PNG", optimize=True)
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
+
+    except Exception as _ce:
+        logger.warning("Diff focused render failed (%s): %s", safe_name, _ce)
+        return send_from_directory(vdir, safe_name)
 
 
 @web_bp.route("/projects/<int:project_id>/reports/<path:filename>", methods=["GET"])
@@ -190,7 +362,14 @@ def home():
     from datetime import datetime, timedelta
     from sqlalchemy import func
 
-    projects = Project.query.order_by(Project.created_at.desc()).all()
+    if session.get("role") != "admin":
+        member_pids = [
+            m.project_id for m in
+            ProjectMember.query.filter_by(user_id=session.get("user_id")).all()
+        ]
+        projects = Project.query.filter(Project.id.in_(member_pids)).order_by(Project.created_at.desc()).all()
+    else:
+        projects = Project.query.order_by(Project.created_at.desc()).all()
 
     # KPI: runs this week
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -233,7 +412,7 @@ def home():
 
 @web_bp.route("/projects/create", methods=["GET", "POST"])
 def create_project():
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -307,6 +486,97 @@ def project_overview(project_id: int):
     total_passed = sum(r.passed or 0 for r in all_runs)
     pass_rate = round((total_passed / total_checks) * 100) if total_checks > 0 else 0
 
+    # Per-test-case summary — batched to avoid N+1 queries
+    from sqlalchemy import func as _func
+    test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
+
+    # 1) Latest RunResult id per test case
+    _latest_subq = (
+        db.session.query(_func.max(RunResult.id).label("max_id"))
+        .filter(RunResult.project_id == project_id)
+        .group_by(RunResult.test_case_id)
+        .subquery()
+    )
+    latest_rrs = RunResult.query.filter(RunResult.id.in_(_latest_subq)).all()
+    latest_rr_by_tc = {rr.test_case_id: rr for rr in latest_rrs}
+    latest_rr_ids = [rr.id for rr in latest_rrs]
+
+    # 2) FindingReview status counts for all latest RunResults
+    _review_rows = (
+        db.session.query(
+            FindingReview.run_result_id,
+            FindingReview.status,
+            _func.count(FindingReview.id).label("cnt"),
+        )
+        .filter(FindingReview.run_result_id.in_(latest_rr_ids))
+        .group_by(FindingReview.run_result_id, FindingReview.status)
+        .all()
+    ) if latest_rr_ids else []
+    review_stats: dict = {}
+    for row in _review_rows:
+        review_stats.setdefault(row.run_result_id, {})[row.status] = row.cnt
+
+    # 3) All RunResult ids for this project (for Jira key lookup across reruns)
+    all_project_rrs = RunResult.query.filter_by(project_id=project_id).with_entities(
+        RunResult.id, RunResult.test_case_id
+    ).all()
+    rr_to_tc = {r.id: r.test_case_id for r in all_project_rrs}
+    all_project_rr_ids = list(rr_to_tc.keys())
+
+    # 4) Jira keys grouped by test case
+    jira_by_tc: dict = {}
+    if all_project_rr_ids:
+        _jira_rows = FindingReview.query.filter(
+            FindingReview.run_result_id.in_(all_project_rr_ids),
+            FindingReview.jira_issue_key.isnot(None),
+        ).with_entities(FindingReview.run_result_id, FindingReview.jira_issue_key).all()
+        for row in _jira_rows:
+            tc_id = rr_to_tc.get(row.run_result_id)
+            if tc_id and row.jira_issue_key:
+                jira_by_tc.setdefault(tc_id, set()).add(row.jira_issue_key)
+
+    tc_summaries = []
+    for tc in test_cases:
+        latest_rr = latest_rr_by_tc.get(tc.id)
+        stats = review_stats.get(latest_rr.id, {}) if latest_rr else {}
+        pass_f   = stats.get("false_positive", 0)
+        defect_f = stats.get("resolved", 0)
+        open_f   = (latest_rr.errors or 0) + (latest_rr.warnings or 0) if latest_rr else 0
+        total_obs = open_f + pass_f + defect_f
+        jira_keys = sorted(jira_by_tc.get(tc.id, set()))
+        tc_summaries.append({"tc": tc, "rr": latest_rr, "total_obs": total_obs,
+                             "pass_f": pass_f, "defect_f": defect_f, "pending_f": open_f,
+                             "jira_keys": jira_keys})
+
+    # Aggregate dashboard metrics derived from tc_summaries
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc)
+
+    def _time_ago(dt):
+        if not dt:
+            return "Never"
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        diff = int((now_utc - dt).total_seconds())
+        if diff < 60:
+            return "just now"
+        if diff < 3600:
+            return f"{diff // 60}m ago"
+        if diff < 86400:
+            return f"{diff // 3600}h ago"
+        return f"{diff // 86400}d ago"
+
+    for s in tc_summaries:
+        s["time_ago"] = _time_ago(s["rr"].created_at if s["rr"] else None)
+
+    total_open_defects = sum(s["defect_f"] for s in tc_summaries)
+    total_pending      = sum(s["pending_f"] for s in tc_summaries)
+    tests_passing   = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "passed")
+    tests_failing   = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "failed")
+    tests_in_review = sum(1 for s in tc_summaries if s["rr"] and s["rr"].status == "in_review")
+
+    jira_config_active = bool(JiraConfig.query.filter_by(project_id=project_id, is_active=True).first())
+
     return render_template(
         "project_overview.html",
         page_title=f"FAST | {project.name}",
@@ -318,6 +588,13 @@ def project_overview(project_id: int):
         test_case_count=test_case_count,
         total_run_count=total_run_count,
         pass_rate=pass_rate,
+        tc_summaries=tc_summaries,
+        total_open_defects=total_open_defects,
+        total_pending=total_pending,
+        tests_passing=tests_passing,
+        tests_failing=tests_failing,
+        tests_in_review=tests_in_review,
+        jira_config_active=jira_config_active,
         user=session.get("user"),
     )
 
@@ -345,11 +622,19 @@ def project_forms(project_id: int):
     project = Project.query.get_or_404(project_id)
     forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
 
+    # Map form_id → list of test case names that depend on it (for delete UX)
+    all_tcs = TestCase.query.filter_by(project_id=project_id).all()
+    tc_by_form_id: dict = {}
+    for tc in all_tcs:
+        if tc.form_id:
+            tc_by_form_id.setdefault(tc.form_id, []).append(tc.name)
+
     return render_template(
         "forms.html",
         page_title="FAST | Forms",
         project=project,
         forms=forms,
+        tc_by_form_id=tc_by_form_id,
         max_allowed=MAX_FORMS_PER_PROJECT,
         user=session.get("user"),
         active="forms",
@@ -358,7 +643,7 @@ def project_forms(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/forms/upload", methods=["POST"])
 def upload_project_forms(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -446,12 +731,46 @@ def delete_form(project_id: int, form_id: int):
 
 @web_bp.route("/projects/<int:project_id>/forms/<int:form_id>/delete_project_form", methods=["POST"])
 def delete_project_form(project_id: int, form_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
     Project.query.get_or_404(project_id)
     form = Form.query.filter_by(id=form_id, project_id=project_id).first_or_404()
+
+    blocking_tcs = TestCase.query.filter_by(form_id=form_id).all()
+    force = request.form.get("force") == "1"
+
+    if blocking_tcs and not force:
+        names = ", ".join(f"'{tc.name}'" for tc in blocking_tcs[:3])
+        extra = f" and {len(blocking_tcs) - 3} more" if len(blocking_tcs) > 3 else ""
+        flash(
+            f"Cannot delete — form is used by test case(s): {names}{extra}. "
+            "Use Force Delete to remove the form along with those test cases.",
+            "error",
+        )
+        return redirect(url_for("web.project_forms", project_id=project_id))
+
+    if blocking_tcs and force:
+        # Cascade-delete each blocking test case and its run data
+        from app.models.finding_review import FindingReview as _FR
+        from app.models.finding_comment import FindingComment as _FC
+        for tc in blocking_tcs:
+            rrs = RunResult.query.filter_by(test_case_id=tc.id).all()
+            for rr in rrs:
+                _FC.query.filter(
+                    _FC.finding_review_id.in_(
+                        db.session.query(_FR.id).filter_by(run_result_id=rr.id)
+                    )
+                ).delete(synchronize_session=False)
+                _FR.query.filter_by(run_result_id=rr.id).delete(synchronize_session=False)
+                db.session.delete(rr)
+            db.session.delete(tc)
+        flash(f"Form and {len(blocking_tcs)} test case(s) deleted.", "success")
+
+    # Detach from any benchmark references
+    for tc in TestCase.query.filter_by(benchmark_form_id=form_id).all():
+        tc.benchmark_form_id = None
 
     store_dir = project_forms_dir(project_id)
     if form.stored_filename:
@@ -461,7 +780,8 @@ def delete_project_form(project_id: int, form_id: int):
 
     db.session.delete(form)
     db.session.commit()
-    flash("Form deleted.", "success")
+    if not blocking_tcs:
+        flash("Form deleted.", "success")
     return redirect(url_for("web.project_forms", project_id=project_id))
 
 
@@ -526,7 +846,7 @@ def new_testcase(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/testcases/create", methods=["POST"])
 def create_testcase(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -576,7 +896,7 @@ def create_testcase(project_id: int):
 
 @web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>/delete", methods=["POST"])
 def delete_testcase(project_id: int, testcase_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("admin")
     if gate:
         return gate
 
@@ -587,6 +907,74 @@ def delete_testcase(project_id: int, testcase_id: int):
     db.session.commit()
     flash("Test case deleted.", "success")
     return redirect(url_for("web.project_testcases", project_id=project_id))
+
+
+@web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>", methods=["GET"])
+def testcase_view(project_id: int, testcase_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    tc = TestCase.query.filter_by(id=testcase_id, project_id=project_id).first_or_404()
+    forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
+    form_map = {f.id: f for f in forms}
+
+    return render_template(
+        "test_case_view.html",
+        page_title=f"FAST | {tc.name}",
+        project=project,
+        tc=tc,
+        form_map=form_map,
+        active="testcases",
+        user=session.get("user"),
+    )
+
+
+@web_bp.route("/projects/<int:project_id>/testcases/<int:testcase_id>/edit", methods=["GET", "POST"])
+def edit_testcase(project_id: int, testcase_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    tc = TestCase.query.filter_by(id=testcase_id, project_id=project_id).first_or_404()
+    forms = Form.query.filter_by(project_id=project_id).order_by(Form.uploaded_at.desc()).all()
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        mode = (request.form.get("mode") or "").strip().lower()
+        form_id = request.form.get("form_id") or None
+        benchmark_form_id = request.form.get("benchmark_form_id") or None
+        prompt_text = (request.form.get("prompt_text") or "").strip()
+
+        if not name:
+            flash("Test case name is required.", "error")
+        elif mode not in {"basic", "specific", "benchmark"}:
+            flash("Invalid mode selected.", "error")
+        elif mode == "benchmark" and not benchmark_form_id:
+            flash("Benchmark (golden copy) is required for Benchmark mode.", "error")
+        elif mode == "benchmark" and not prompt_text:
+            flash("Prompt/Test steps are required for Benchmark.", "error")
+        else:
+            tc.name = name
+            tc.mode = mode
+            tc.form_id = int(form_id) if form_id else None
+            tc.benchmark_form_id = int(benchmark_form_id) if benchmark_form_id else None
+            tc.prompt_text = prompt_text if prompt_text else None
+            db.session.commit()
+            flash("Test case updated.", "success")
+            return redirect(url_for("web.project_testcases", project_id=project_id))
+
+    return render_template(
+        "test_case_edit.html",
+        page_title=f"FAST | Edit {tc.name}",
+        project=project,
+        tc=tc,
+        forms=forms,
+        active="testcases",
+        user=session.get("user"),
+    )
 
 
 # -----------------------
@@ -611,13 +999,32 @@ def project_execute(project_id: int):
     )
 
 
+def _cleanup_stuck_runs(project_id: int) -> None:
+    """Mark RunResults stuck in 'running' for >15 min as failed."""
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(minutes=15)
+    stuck = RunResult.query.filter(
+        RunResult.project_id == project_id,
+        RunResult.status == "running",
+        RunResult.created_at < cutoff,
+    ).all()
+    for rr in stuck:
+        rr.status = "failed"
+        if hasattr(rr, "error_message"):
+            rr.error_message = "Run timed out — exceeded 15 minutes without completing."
+    if stuck:
+        db.session.commit()
+
+
 @web_bp.route("/projects/<int:project_id>/execute/run", methods=["POST"])
 def execute_run(project_id: int):
-    gate = require_login()
+    gate = require_login() or require_role("reviewer")
     if gate:
         return gate
 
     Project.query.get_or_404(project_id)
+
+    _cleanup_stuck_runs(project_id)
 
     tc_ids = request.form.getlist("testcase_ids")
     if not tc_ids:
@@ -658,15 +1065,26 @@ def execute_run(project_id: int):
             rr.result_json = json.dumps(out.get("result_json") or {}, ensure_ascii=False, indent=2)
             rr.summary_text = out.get("summary_text") or ""
 
-            result_obj = out.get("result_json") or {}
-            if isinstance(result_obj, dict) and result_obj.get("error"):
-                rr.status = "failed"
-            else:
-                rr.status = "completed"
-
             rr.errors = int(out.get("errors") or 0) if hasattr(rr, "errors") else 0
             rr.warnings = int(out.get("warnings") or 0) if hasattr(rr, "warnings") else 0
             rr.passed = int(out.get("passed") or 0) if hasattr(rr, "passed") else 0
+
+            result_obj = out.get("result_json") or {}
+            has_findings = (rr.errors or 0) > 0 or (rr.warnings or 0) > 0
+            llm_errored = bool(isinstance(result_obj, dict) and result_obj.get("error"))
+            if has_findings:
+                # Findings present (even via deterministic fallback after LLM error)
+                # — human review required before a verdict can be issued.
+                rr.status = "in_review"
+                rr.passed = 0
+            elif llm_errored:
+                # LLM failed and no findings at all — complete run failure.
+                rr.status = "failed"
+                rr.passed = 0
+            else:
+                # No findings → automatically passed.
+                rr.status = "passed"
+                rr.passed = 1
 
             write_fn = out.get("write_report_fn")
             if callable(write_fn):
@@ -679,6 +1097,7 @@ def execute_run(project_id: int):
                     llm_summary=out.get("summary_text") or "",
                     main_form=out.get("main_form"),
                     bench_form=out.get("bench_form"),
+                    instance_path=current_app.instance_path,
                 )
                 rr.report_html_path = report_filename  # filename only
 
@@ -723,6 +1142,66 @@ def execute_run(project_id: int):
 # -----------------------
 # Results
 # -----------------------
+_REVIEW_CATS = [
+    "spelling_errors", "format_issues", "value_mismatches",
+    "missing_content", "extra_content", "layout_anomalies",
+    "compliance_issues", "visual_mismatches",
+]
+
+
+def _compute_run_review_stats(results):
+    """Return finding-level review stats across all RunResults in a run.
+
+    Returns a dict with keys: total, pending, defects, no_issue.
+    These match the counts shown in the Finding Review Workflow so the
+    Results page KPIs stay in sync with the reviewer's view.
+    """
+    rs = {"total": 0, "pending": 0, "defects": 0, "no_issue": 0}
+    if not results:
+        return rs
+    rr_ids = [rr.id for rr in results]
+    raw_reviews = FindingReview.query.filter(
+        FindingReview.run_result_id.in_(rr_ids)
+    ).all()
+    rv_map = {(rv.run_result_id, rv.finding_index): rv for rv in raw_reviews}
+    for rr in results:
+        if not rr.result_json:
+            continue
+        try:
+            robj = json.loads(rr.result_json)
+        except Exception:
+            continue
+        idx = 0
+        for cat in _REVIEW_CATS:
+            for _ in robj.get(cat, []) or []:
+                rs["total"] += 1
+                rv = rv_map.get((rr.id, idx))
+                st = rv.status if rv else "open"
+                if st == "resolved":
+                    rs["defects"] += 1
+                elif st == "false_positive":
+                    rs["no_issue"] += 1
+                else:
+                    rs["pending"] += 1
+                idx += 1
+        # Vision-mode benchmark: observations follow classic categories in index order
+        for obs in robj.get("observations", []) or []:
+            if not isinstance(obs, dict):
+                idx += 1
+                continue
+            rs["total"] += 1
+            rv = rv_map.get((rr.id, idx))
+            st = rv.status if rv else "open"
+            if st == "resolved":
+                rs["defects"] += 1
+            elif st == "false_positive":
+                rs["no_issue"] += 1
+            else:
+                rs["pending"] += 1
+            idx += 1
+    return rs
+
+
 @web_bp.route("/projects/<int:project_id>/results", methods=["GET"])
 def project_results(project_id: int):
     gate = require_login()
@@ -760,9 +1239,116 @@ def project_results(project_id: int):
         selected_run=selected_run,
         results=results,
         tc_map=tc_map,
+        rs=_compute_run_review_stats(results),
         active="results",
         user=session.get("user"),
     )
+
+
+@web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/rerun_failures", methods=["POST"])
+def rerun_failures(project_id: int, run_id: int):
+    """Create a new run with only the failed/error test cases from a previous run."""
+    gate = require_login() or require_role("reviewer")
+    if gate:
+        return gate
+
+    run = Run.query.filter_by(id=run_id, project_id=project_id).first_or_404()
+    failed_rrs = RunResult.query.filter_by(run_id=run_id).filter(
+        RunResult.status.in_(["failed", "error"])
+    ).all()
+
+    if not failed_rrs:
+        flash("No failed test cases to rerun.", "info")
+        return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
+
+    tc_ids = [rr.test_case_id for rr in failed_rrs if rr.test_case_id]
+    test_cases = TestCase.query.filter(
+        TestCase.project_id == project_id,
+        TestCase.id.in_(tc_ids),
+    ).all()
+
+    if not test_cases:
+        flash("Test cases for failed runs could not be found.", "error")
+        return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
+
+    new_run = Run(
+        project_id=project_id,
+        triggered_by=f"{session.get('user')} (rerun of #{run_id})",
+        status="running",
+        total=len(test_cases),
+    )
+    db.session.add(new_run)
+    db.session.commit()
+
+    import threading
+    from app.services.runner import run_testcase as _run_tc
+
+    def _execute():
+        import json as _json
+        from app import create_app
+        app = create_app()
+        with app.app_context():
+            for tc in test_cases:
+                rr = RunResult(
+                    run_id=new_run.id,
+                    project_id=project_id,
+                    test_case_id=tc.id,
+                    form_id=tc.form_id,
+                    mode=tc.mode,
+                    status="running",
+                )
+                db.session.add(rr)
+                db.session.commit()
+                try:
+                    out = _run_tc(project_id=project_id, tc=tc, run_id=new_run.id, rr_id=rr.id)
+                    rr.result_json = _json.dumps(out.get("result_json") or {}, ensure_ascii=False)
+                    rr.summary_text = out.get("summary_text") or ""
+                    rr.errors = int(out.get("errors") or 0)
+                    rr.warnings = int(out.get("warnings") or 0)
+                    rr.passed = int(out.get("passed") or 0)
+                    rr.status = "completed"
+                except Exception as exc:
+                    rr.status = "failed"
+                    rr.error_message = str(exc)
+                    rr.errors = 1
+                db.session.add(rr)
+                db.session.commit()
+            new_run.status = "completed"
+            db.session.commit()
+
+    threading.Thread(target=_execute, daemon=True).start()
+
+    flash(f"Re-running {len(test_cases)} failed test case(s) as Run #{new_run.id}.", "success")
+    return redirect(url_for("web.project_results", project_id=project_id, run_id=new_run.id))
+
+
+@web_bp.route("/projects/<int:project_id>/runs/<int:run_id>/delete", methods=["POST"])
+def delete_run(project_id: int, run_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    run = Run.query.filter_by(id=run_id, project_id=project_id).first_or_404()
+
+    # Cascade: delete FindingComments → FindingReviews → RunResults → ApprovalGate → Run
+    from app.models.finding_review import FindingReview as _FR
+    from app.models.finding_comment import FindingComment as _FC
+    from app.models.approval_gate import ApprovalGate as _AG
+    rrs = RunResult.query.filter_by(run_id=run_id).all()
+    for rr in rrs:
+        _FC.query.filter(
+            _FC.finding_review_id.in_(
+                db.session.query(_FR.id).filter_by(run_result_id=rr.id)
+            )
+        ).delete(synchronize_session=False)
+        _FR.query.filter_by(run_result_id=rr.id).delete(synchronize_session=False)
+        db.session.delete(rr)
+    _AG.query.filter_by(run_id=run_id).delete(synchronize_session=False)
+    db.session.delete(run)
+    db.session.commit()
+
+    flash(f"Run #{run_id} deleted.", "success")
+    return redirect(url_for("web.project_results", project_id=project_id))
 
 
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>", methods=["GET"])
@@ -779,6 +1365,20 @@ def result_detail(project_id: int, result_id: int):
     if getattr(rr, "report_html_path", None):
         report_url = url_for("web.serve_report", project_id=project_id, filename=rr.report_html_path)
 
+    # Determine failure cause so the banner shows the right message.
+    has_confirmed_defects = False
+    llm_failed_msg = None
+    if rr.status == "failed":
+        has_confirmed_defects = FindingReview.query.filter_by(
+            run_result_id=rr.id, status="resolved"
+        ).first() is not None
+        if not has_confirmed_defects and rr.result_json:
+            try:
+                _robj = json.loads(rr.result_json)
+                llm_failed_msg = _robj.get("error") or None
+            except Exception:
+                pass
+
     return render_template(
         "result_detail.html",
         page_title="FAST | Result Detail",
@@ -786,6 +1386,8 @@ def result_detail(project_id: int, result_id: int):
         rr=rr,
         tc=tc,
         report_url=report_url,
+        has_confirmed_defects=has_confirmed_defects,
+        llm_failed_msg=llm_failed_msg,
         active="results",
         user=session.get("user"),
     )
@@ -796,16 +1398,7 @@ def result_detail(project_id: int, result_id: int):
 # -----------------------
 @web_bp.route("/contact")
 def contact():
-    gate = require_login()
-    if gate:
-        return gate
-
-    return render_template(
-        "contact.html",
-        page_title="FAST | Contact Us",
-        user=session.get("user"),
-        active="contact",
-    )
+    return redirect(url_for("web.marketing"))
 
 
 # ===========================================================================
@@ -822,24 +1415,47 @@ def project_trends(project_id: int):
         return gate
 
     project = Project.query.get_or_404(project_id)
-    runs = Run.query.filter_by(project_id=project_id).order_by(Run.created_at.asc()).limit(50).all()
+    test_cases = TestCase.query.filter_by(project_id=project_id).order_by(TestCase.id.asc()).all()
 
-    trend_data = [{
-        "run_id": r.id,
-        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M"),
-        "errors": r.errors or 0,
-        "warnings": r.warnings or 0,
-        "passed": r.passed or 0,
-        "total": r.total or 0,
-        "status": r.status,
-    } for r in runs]
+    # Build per-test-case trend datasets (last 30 runs each)
+    tc_trend = {}
+    recent_results = []
+    for tc in test_cases:
+        rrs = (
+            RunResult.query
+            .filter_by(project_id=project_id, test_case_id=tc.id)
+            .order_by(RunResult.created_at.asc())
+            .limit(30).all()
+        )
+        points = []
+        for rr in rrs:
+            obs = (rr.errors or 0) + (rr.warnings or 0)
+            pts = {
+                "rr_id": rr.id,
+                "ts": rr.created_at.strftime("%Y-%m-%d %H:%M") if rr.created_at else "",
+                "status": rr.status or "unknown",
+                "obs": obs,
+                "errors": rr.errors or 0,
+                "warnings": rr.warnings or 0,
+            }
+            points.append(pts)
+            recent_results.append({
+                "rr_id": rr.id, "tc_name": tc.name, "tc_mode": tc.mode or "basic",
+                "ts": rr.created_at, "status": rr.status or "unknown",
+                "obs": obs, "errors": rr.errors or 0, "warnings": rr.warnings or 0,
+                "project_id": project_id,
+            })
+        tc_trend[str(tc.id)] = {"name": tc.name, "mode": tc.mode or "basic", "data": points}
+
+    recent_results.sort(key=lambda x: x["ts"] or __import__("datetime").datetime.min, reverse=True)
 
     return render_template(
         "trends.html",
         page_title=f"FAST | Trends — {project.name}",
         project=project,
-        trend_data_json=json.dumps(trend_data),
-        runs=runs,
+        test_cases=test_cases,
+        tc_trend_json=json.dumps(tc_trend),
+        recent_results=recent_results[:60],
         active="trends",
         user=session.get("user"),
     )
@@ -886,6 +1502,35 @@ def result_reviews(project_id: int, result_id: int):
             })
             idx += 1
 
+    # Vision-mode benchmark: observations are the primary findings
+    _conf_sev = {"certain": "high", "likely": "medium", "possible": "low"}
+    for obs in result_obj.get("observations", []):
+        if not isinstance(obs, dict):
+            idx += 1
+            continue
+        conf = str(obs.get("confidence") or "possible").lower()
+        current_page_val = str(obs.get("current_page") or "")
+        page_num = None
+        try:
+            page_num = int(current_page_val.strip()) if current_page_val.strip() else None
+        except (ValueError, TypeError):
+            pass
+        review = FindingReview.query.filter_by(
+            run_result_id=result_id, finding_index=idx
+        ).first()
+        findings.append({
+            "index": idx,
+            "category": "observations",
+            "item": {
+                "description": obs.get("observation") or "",
+                "severity": _conf_sev.get(conf, "medium"),
+                "page": page_num,
+                "field_name": current_page_val or None,
+            },
+            "review": review,
+        })
+        idx += 1
+
     # Available reviewers
     reviewers = User.query.filter(User.role.in_(["admin", "reviewer"]), User.is_active == True).all()
     compliance_standards = ComplianceStandard.query.all()
@@ -899,6 +1544,15 @@ def result_reviews(project_id: int, result_id: int):
 
     jira_config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
 
+    # Build page→snapshot mapping from visual_validation entries so finding cards
+    # can show a "View Diff" link when a visual diff image exists for that page.
+    snapshot_by_page = {}
+    for entry in result_obj.get("visual_validation") or []:
+        snap = entry.get("snapshot_path")
+        page = entry.get("page") or entry.get("actual_page_num")
+        if snap and page is not None:
+            snapshot_by_page[str(page)] = snap
+
     return render_template(
         "finding_reviews.html",
         page_title=f"FAST | Review Findings",
@@ -909,6 +1563,7 @@ def result_reviews(project_id: int, result_id: int):
         reviewers=reviewers,
         compliance_standards=compliance_standards,
         jira_config=jira_config,
+        snapshot_by_page=snapshot_by_page,
         prev_result_id=prev_result_id,
         next_result_id=next_result_id,
         current_pos=current_pos + 1,
@@ -964,6 +1619,139 @@ def assign_finding(project_id: int, result_id: int):
     return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
 
 
+def _recompute_result_metrics(result_id: int) -> None:
+    """Recompute errors/warnings/passed for a RunResult after a finding review action.
+
+    Findings that have been resolved or marked false_positive are excluded from
+    the error/warning count, updating the run dashboard immediately.
+    """
+    try:
+        rr = RunResult.query.get(result_id)
+        if not rr or not rr.result_json:
+            return
+
+        result_obj = json.loads(rr.result_json)
+
+        # Same ordering used by result_reviews to build finding_index values.
+        REVIEW_CATEGORIES = [
+            "spelling_errors", "format_issues", "value_mismatches",
+            "missing_content", "extra_content", "layout_anomalies",
+            "compliance_issues", "visual_mismatches",
+        ]
+
+        reviews = FindingReview.query.filter_by(run_result_id=result_id).all()
+        rv_map = {r.finding_index: r for r in reviews}
+
+        global_idx = 0
+        new_errors = 0   # confirmed defects (status="resolved")
+        new_warnings = 0  # pending / unreviewed findings
+        for cat in REVIEW_CATEGORIES:
+            for _item in result_obj.get(cat, []) or []:
+                rv = rv_map.get(global_idx)
+                st = rv.status if rv else "open"
+                if st == "resolved":
+                    new_errors += 1
+                elif st != "false_positive":  # open / in_review = still pending
+                    new_warnings += 1
+                global_idx += 1
+
+        # Vision-mode benchmark: observations follow classic categories in index order
+        for obs in result_obj.get("observations", []) or []:
+            if not isinstance(obs, dict):
+                global_idx += 1
+                continue
+            rv = rv_map.get(global_idx)
+            st = rv.status if rv else "open"
+            if st == "resolved":
+                new_errors += 1
+            elif st != "false_positive":
+                new_warnings += 1
+            global_idx += 1
+
+        rr.errors = new_errors      # confirmed defects
+        rr.warnings = new_warnings  # pending / unreviewed
+
+        # Determine the human-reviewed verdict.
+        # new_warnings == pending count; new_errors == confirmed defects.
+        if new_warnings > 0:
+            rr.status = "in_review"
+            rr.passed = 0
+        elif new_errors > 0:
+            rr.status = "failed"
+            rr.passed = 0
+        else:
+            # All findings cleared as false positives, or no findings.
+            rr.status = "passed"
+            rr.passed = 1
+
+        # Propagate to the parent Run aggregate so dashboard KPIs update too.
+        from app.models.run import Run
+        run = Run.query.get(rr.run_id) if rr.run_id else None
+        if run:
+            all_rrs = RunResult.query.filter_by(run_id=rr.run_id).all()
+            run.errors = sum(r.errors or 0 for r in all_rrs)
+            run.warnings = sum(r.warnings or 0 for r in all_rrs)
+            run.passed = sum(r.passed or 0 for r in all_rrs)
+
+        db.session.commit()
+
+        # Regenerate the full HTML report on final verdict so the chip, summary
+        # and finding table all reflect the reviewed state correctly.
+        if rr.status in ("passed", "failed"):
+            try:
+                from app.reporting.html_report import write_cli_style_report
+                from app.models.test_case import TestCase as _TC
+                from app.models.form import Form as _Form
+                _tc = _TC.query.get(rr.test_case_id)
+                _main_form = _Form.query.get(rr.form_id) if rr.form_id else None
+                _bench_form = _Form.query.get(_tc.benchmark_form_id) if _tc and _tc.benchmark_form_id else None
+                new_filename = write_cli_style_report(
+                    project_id=rr.project_id,
+                    run_id=rr.run_id,
+                    rr_id=rr.id,
+                    tc=_tc,
+                    result_json=json.loads(rr.result_json) if rr.result_json else {},
+                    llm_summary=rr.summary_text or "",
+                    main_form=_main_form,
+                    bench_form=_bench_form,
+                    instance_path=current_app.instance_path,
+                )
+                rr.report_html_path = new_filename
+                db.session.commit()
+            except Exception as _regen_err:
+                logger.warning("Report regen failed: %s", _regen_err)
+                # Fall back: patch verdict chip in existing report
+                if rr.report_html_path:
+                    try:
+                        from app.reporting.html_report import _reports_dir
+                        import re as _re
+                        report_path = _reports_dir() / rr.report_html_path
+                        if report_path.exists():
+                            html = report_path.read_text(encoding="utf-8")
+                            new_chip = "<span class='chip chip-ok'>PASS</span>" if rr.status == "passed" else "<span class='chip chip-bad'>FAIL</span>"
+                            html = _re.sub(
+                                r"<span class='chip chip-(?:ok|bad|warn)'>(?:PASS|FAIL|REVIEW|IN REVIEW)</span>",
+                                new_chip, html, count=1,
+                            )
+                            report_path.write_text(html, encoding="utf-8")
+                    except Exception as _chip_err:
+                        logger.warning("Report chip fallback failed: %s", _chip_err)
+    except Exception as _e:
+        logger.warning("_recompute_result_metrics failed for result %d: %s", result_id, _e)
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/recompute", methods=["POST"])
+def recompute_result_status(project_id: int, result_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    RunResult.query.get_or_404(result_id)
+    _recompute_result_metrics(result_id)
+    rr = RunResult.query.get(result_id)
+    flash(f"Status updated to {rr.status}.", "success")
+    return redirect(url_for("web.result_reviews", project_id=project_id, result_id=result_id))
+
+
 @web_bp.route("/projects/<int:project_id>/results/<int:result_id>/reviews/resolve", methods=["POST"])
 def resolve_finding(project_id: int, result_id: int):
     gate = require_login()
@@ -1000,6 +1788,10 @@ def resolve_finding(project_id: int, result_id: int):
     review.resolved_at = datetime.utcnow()
     review.resolution_note = resolution_note
     db.session.commit()
+
+    # Recompute RunResult errors/warnings/passed after every review action
+    # so the results dashboard reflects the dismissed findings immediately.
+    _recompute_result_metrics(result_id)
 
     # Auto-learn from false positives
     if new_status == "false_positive":
@@ -1332,26 +2124,15 @@ def download_evidence_bundle(project_id: int, run_id: int):
         return redirect(url_for("web.project_results", project_id=project_id, run_id=run_id))
 
 
-# -----------------------
-# Annotated PDF Download
-# -----------------------
-@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/annotated_pdf")
-def download_annotated_pdf(project_id: int, result_id: int):
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/diffs/download")
+def download_result_diffs(project_id: int, result_id: int):
+    """ZIP all diff snapshot PNGs for a result and return as a download."""
     gate = require_login()
     if gate:
         return gate
 
     rr = RunResult.query.get_or_404(result_id)
-    tc = TestCase.query.filter_by(id=rr.test_case_id, project_id=project_id).first_or_404()
-    form = Form.query.get(tc.form_id) if tc.form_id else None
-
-    if not form or not form.file_path or not os.path.exists(form.file_path):
-        flash("Original PDF not found.", "error")
-        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
-
-    with open(form.file_path, "rb") as f:
-        pdf_bytes = f.read()
-
     result_obj = {}
     if rr.result_json:
         try:
@@ -1359,19 +2140,65 @@ def download_annotated_pdf(project_id: int, result_id: int):
         except Exception:
             pass
 
+    vdir = visual_diffs_dir()
+    snapshots = []
+    for v in result_obj.get("visual_validation", []) or []:
+        if isinstance(v, dict):
+            sp = v.get("snapshot_path", "")
+            if sp:
+                fname = os.path.basename(sp)
+                fpath = vdir / fname
+                if fpath.exists():
+                    snapshots.append((fname, fpath))
+
+    if not snapshots:
+        flash("No diff snapshots available for this result.", "warning")
+        return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
+
+    import zipfile as _zf
+    buf = io.BytesIO()
+    with _zf.ZipFile(buf, "w", _zf.ZIP_DEFLATED) as zf:
+        for fname, fpath in snapshots:
+            zf.write(fpath, fname)
+    buf.seek(0)
+    log_action("result.diffs_downloaded", resource_type="run_result", resource_id=result_id,
+               project_id=project_id)
+    return send_file(buf, mimetype="application/zip", as_attachment=True,
+                     download_name=f"diffs_result_{result_id}.zip")
+
+
+@web_bp.route("/projects/<int:project_id>/results/<int:result_id>/export/pdf")
+def export_result_pdf(project_id: int, result_id: int):
+    """Generate and download a structured PDF report for a result."""
+    gate = require_login()
+    if gate:
+        return gate
+
+    rr = RunResult.query.get_or_404(result_id)
+    tc = TestCase.query.filter_by(id=rr.test_case_id, project_id=project_id).first()
+    project = Project.query.get_or_404(project_id)
+    main_form = Form.query.get(rr.form_id) if rr.form_id else None
+    bench_form = Form.query.get(tc.benchmark_form_id) if tc and tc.benchmark_form_id else None
+
     try:
-        from engine.pdf_annotator import annotate_pdf
-        annotated = annotate_pdf(pdf_bytes, result_obj)
-        log_action("pdf.annotated_download", resource_type="run_result", resource_id=result_id,
-                   project_id=project_id)
-        return send_file(
-            io.BytesIO(annotated),
-            mimetype="application/pdf",
-            as_attachment=True,
-            download_name=f"annotated_result_{result_id}.pdf",
+        from app.services.pdf_report import generate_pdf_report
+        pdf_bytes = generate_pdf_report(
+            rr=rr,
+            project=project,
+            tc=tc,
+            main_form=main_form,
+            bench_form=bench_form,
+            instance_path=current_app.instance_path,
         )
+        import re as _re
+        tc_slug = _re.sub(r"[^a-zA-Z0-9]+", "_", (getattr(tc, "name", "") or "result")).strip("_")[:40]
+        log_action("result.pdf_exported", resource_type="run_result", resource_id=result_id,
+                   project_id=project_id)
+        return send_file(io.BytesIO(pdf_bytes), mimetype="application/pdf",
+                         as_attachment=True, download_name=f"report_{tc_slug}_{result_id}.pdf")
     except Exception as e:
-        flash(f"Annotated PDF generation failed: {e}", "error")
+        logger.error("PDF export failed for result %d: %s", result_id, e, exc_info=True)
+        flash(f"PDF export failed: {e}", "error")
         return redirect(url_for("web.result_detail", project_id=project_id, result_id=result_id))
 
 
@@ -1591,6 +2418,30 @@ def project_jira_settings(project_id: int):
         user=session.get("user"),
         user_role=session.get("role", "viewer"),
     )
+
+
+@web_bp.route("/projects/<int:project_id>/jira/status", methods=["GET"])
+def jira_issue_status(project_id: int):
+    """Return live Jira status for a comma-separated list of issue keys.
+
+    Query param: ?keys=KAN-1,KAN-2
+    Returns JSON: {"KAN-1": {"name": "Done", "category": "done"}, ...}
+    """
+    gate = require_login()
+    if gate:
+        return gate
+
+    config = JiraConfig.query.filter_by(project_id=project_id, is_active=True).first()
+    if not config:
+        return jsonify({}), 200
+
+    raw_keys = request.args.get("keys", "")
+    keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+    if not keys:
+        return jsonify({}), 200
+
+    statuses = jira_client.fetch_issue_statuses(config, keys)
+    return jsonify(statuses)
 
 
 @web_bp.route("/projects/<int:project_id>/jira/test", methods=["POST"])
@@ -1865,6 +2716,14 @@ def admin_panel():
     total_projects = Project.query.count()
     total_runs = Run.query.count()
     total_forms = Form.query.count()
+    all_projects = Project.query.order_by(Project.name).all()
+    all_members = ProjectMember.query.all()
+    # {project_id: [User, ...]}
+    members_by_project = {}
+    member_user_ids = {m.user_id for m in all_members}
+    member_users = {u.id: u for u in User.query.filter(User.id.in_(member_user_ids)).all()} if member_user_ids else {}
+    for m in all_members:
+        members_by_project.setdefault(m.project_id, []).append(member_users.get(m.user_id))
 
     return render_template(
         "admin_panel.html",
@@ -1875,6 +2734,8 @@ def admin_panel():
         total_projects=total_projects,
         total_runs=total_runs,
         total_forms=total_forms,
+        all_projects=all_projects,
+        members_by_project=members_by_project,
         active="admin",
         user=session.get("user"),
         user_role=session.get("role", "viewer"),
@@ -1986,6 +2847,185 @@ def admin_revoke_api_key(key_id: int):
     db.session.commit()
     flash(f"API key '{ak.name}' revoked.", "success")
     return redirect(url_for("web.admin_panel"))
+
+
+@web_bp.route("/admin/projects/<int:project_id>/members/add", methods=["POST"])
+def admin_add_project_member(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("admin")
+    if role_check:
+        return role_check
+
+    user_id = request.form.get("user_id", type=int)
+    if not user_id:
+        flash("No user selected.", "error")
+        return redirect(url_for("web.admin_panel"))
+    project = Project.query.get_or_404(project_id)
+    user = User.query.get_or_404(user_id)
+    existing = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+    if not existing:
+        db.session.add(ProjectMember(project_id=project_id, user_id=user_id))
+        db.session.commit()
+        flash(f"Added {user.username} to {project.name}.", "success")
+    else:
+        flash(f"{user.username} is already a member of {project.name}.", "info")
+    return redirect(url_for("web.admin_panel"))
+
+
+@web_bp.route("/admin/projects/<int:project_id>/members/<int:user_id>/remove", methods=["POST"])
+def admin_remove_project_member(project_id: int, user_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+    role_check = require_role("admin")
+    if role_check:
+        return role_check
+
+    pm = ProjectMember.query.filter_by(project_id=project_id, user_id=user_id).first()
+    if pm:
+        db.session.delete(pm)
+        db.session.commit()
+        flash("Member removed.", "success")
+    return redirect(url_for("web.admin_panel"))
+
+
+# -----------------------
+# Rebrand
+# -----------------------
+@web_bp.route("/projects/<int:project_id>/rebrand", methods=["GET"])
+def project_rebrand(project_id: int):
+    gate = require_login()
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+    from app.models.form import Form as _Form
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    forms = _Form.query.filter_by(project_id=project_id).order_by(_Form.uploaded_at.desc()).all()
+
+    # Check if a fresh ZIP is available in the session
+    zip_ready = session.pop("rebrand_zip_ready", False)
+    zip_filename = session.pop("rebrand_zip_filename", None)
+    rebranded_count = session.pop("rebrand_count", 0)
+
+    return render_template(
+        "rebrand.html",
+        page_title=f"FAST | Rebrand — {project.name}",
+        project=project,
+        profile=profile,
+        forms=forms,
+        zip_ready=zip_ready,
+        zip_filename=zip_filename,
+        rebranded_count=rebranded_count,
+        active="rebrand",
+        user=session.get("user"),
+    )
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/save", methods=["POST"])
+def save_branding_profile(project_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    if not profile:
+        profile = BrandingProfile(project_id=project_id)
+        db.session.add(profile)
+
+    from datetime import datetime as _dt
+    profile.company_name  = (request.form.get("company_name") or "").strip() or None
+    profile.tagline       = (request.form.get("tagline") or "").strip() or None
+    profile.primary_color = (request.form.get("primary_color") or "#003087").strip()
+    profile.header_height = int(request.form.get("header_height") or 60)
+    profile.footer_text   = (request.form.get("footer_text") or "").strip() or None
+    profile.updated_at    = _dt.utcnow()
+
+    # Logo upload
+    logo_file = request.files.get("logo")
+    if logo_file and logo_file.filename:
+        from werkzeug.utils import secure_filename as _sf
+        ext = os.path.splitext(_sf(logo_file.filename))[1].lower()
+        if ext in {".png", ".jpg", ".jpeg", ".svg"}:
+            logo_dir = os.path.join(current_app.instance_path, "uploads", f"project_{project_id}", "branding")
+            os.makedirs(logo_dir, exist_ok=True)
+            logo_abs = os.path.join(logo_dir, f"logo{ext}")
+            logo_file.save(logo_abs)
+            profile.logo_path = logo_abs
+        else:
+            flash("Logo must be a PNG, JPG, or SVG file.", "error")
+
+    db.session.commit()
+    flash("Branding profile saved.", "success")
+    return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/apply", methods=["POST"])
+def apply_rebrand(project_id: int):
+    gate = require_login() or require_role("admin")
+    if gate:
+        return gate
+
+    project = Project.query.get_or_404(project_id)
+    from app.models.branding_profile import BrandingProfile
+    from app.services.rebrand import bulk_rebrand
+
+    profile = BrandingProfile.query.filter_by(project_id=project_id).first()
+    if not profile:
+        flash("No branding profile configured. Please save a profile first.", "error")
+        return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+    form_ids = [int(fid) for fid in request.form.getlist("form_ids") if fid.isdigit()]
+    if not form_ids:
+        flash("No forms selected.", "error")
+        return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+    result = bulk_rebrand(form_ids, profile, project_id, current_app.instance_path)
+
+    # Persist ZIP to disk so the download route can serve it
+    from datetime import datetime as _dt2
+    rebrand_dir = os.path.join(current_app.instance_path, "rebrands", f"project_{project_id}")
+    os.makedirs(rebrand_dir, exist_ok=True)
+    ts = _dt2.utcnow().strftime("%Y%m%d%H%M%S")
+    zip_filename = f"rebranded_{ts}.zip"
+    zip_path = os.path.join(rebrand_dir, zip_filename)
+    with open(zip_path, "wb") as fp:
+        fp.write(result["zip_bytes"])
+
+    n = len(result["saved_form_ids"])
+    session["rebrand_zip_ready"] = True
+    session["rebrand_zip_filename"] = zip_filename
+    session["rebrand_count"] = n
+
+    if result["errors"]:
+        for err in result["errors"]:
+            flash(f"Warning: {err}", "warning")
+
+    if n > 0:
+        flash(f"{n} form(s) rebranded. New forms saved to project. Download ZIP below.", "success")
+    else:
+        flash("No forms were rebranded. Check warnings above.", "error")
+
+    return redirect(url_for("web.project_rebrand", project_id=project_id))
+
+
+@web_bp.route("/projects/<int:project_id>/rebrand/download/<filename>", methods=["GET"])
+def download_rebrand_zip(project_id: int, filename: str):
+    gate = require_login()
+    if gate:
+        return gate
+
+    from werkzeug.utils import secure_filename as _sf
+    safe = _sf(filename)
+    rebrand_dir = os.path.join(current_app.instance_path, "rebrands", f"project_{project_id}")
+    return send_from_directory(rebrand_dir, safe, as_attachment=True, download_name="rebranded_forms.zip")
 
 
 # -----------------------

@@ -46,18 +46,26 @@ def suppress_false_positives(
 
     from app.extensions import db
     suppressed_total = 0
+    suppressed_log = []
 
     result = dict(findings)
     for cat in categories:
         items = result.get(cat, [])
         filtered = []
         for item in items:
-            desc = str(item.get("description", "")) + " " + str(item.get("text", ""))
-            matched = False
+            # Tightened: include field_name so identical descriptions in different
+            # field contexts are not over-suppressed.
+            desc = " ".join(filter(None, [
+                str(item.get("description", "") or ""),
+                str(item.get("text", "") or ""),
+                str(item.get("field_name", "") or ""),
+            ]))
+            matched_fp = None
             for fp in patterns:
                 if fp.category and fp.category != cat:
                     continue
                 pattern = fp.pattern or ""
+                matched = False
                 if fp.match_mode == "exact":
                     matched = pattern.lower() == desc.lower()
                 elif fp.match_mode == "regex":
@@ -71,9 +79,18 @@ def suppress_false_positives(
                 if matched:
                     fp.suppressed_count = (fp.suppressed_count or 0) + 1
                     suppressed_total += 1
+                    matched_fp = fp
                     break
 
-            if not matched:
+            if matched_fp:
+                suppressed_log.append({
+                    "category": cat,
+                    "description": str(item.get("description", ""))[:120],
+                    "pattern_id": matched_fp.id,
+                    "pattern": (matched_fp.pattern or "")[:80],
+                    "match_mode": matched_fp.match_mode,
+                })
+            else:
                 filtered.append(item)
 
         result[cat] = filtered
@@ -81,6 +98,21 @@ def suppress_false_positives(
     if suppressed_total:
         try:
             db.session.commit()
+        except Exception:
+            pass
+
+        try:
+            from app.services.audit import log_action
+            log_action(
+                "finding.auto_suppressed",
+                resource_type="false_positive",
+                project_id=project_id,
+                detail={
+                    "suppressed_count": suppressed_total,
+                    "form_id": form_id,
+                    "items": suppressed_log,
+                },
+            )
         except Exception:
             pass
 

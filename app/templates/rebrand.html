@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% set dark_page = True %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<!-- Page header -->
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Download banner (shown after a successful apply) -->
+{% if zip_ready and zip_filename %}
+<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:10px;margin-bottom:18px;">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span style="font-size:13px;font-weight:600;color:#22c55e;">{{ rebranded_count }} form(s) rebranded successfully.</span>
+  <a href="{{ url_for('web.download_rebrand_zip', project_id=project.id, filename=zip_filename) }}"
+     class="btn btn-outline" style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:6px;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download ZIP
+  </a>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;">
+
+  <!-- LEFT: Branding Profile Card -->
+  <div class="card" style="position:sticky;top:80px;">
+    <div class="card-header">
+      <span>Branding Profile</span>
+      {% if profile %}
+        <span class="badge badge-secondary" title="Last updated {{ profile.updated_at.strftime('%Y-%m-%d') if profile.updated_at else '' }}">Configured</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('web.save_branding_profile', project_id=project.id) }}"
+            enctype="multipart/form-data">
+
+        <!-- Logo upload -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label-clean">Logo (PNG / JPG / SVG)</label>
+          {% if profile and profile.logo_path %}
+            <div style="margin-bottom:8px;padding:8px;background:var(--card2);border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text-muted);">
+              ✓ Logo uploaded
+            </div>
+          {% endif %}
+          <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg"
+                 class="input" style="padding:7px 10px;font-size:13px;">
+          <p class="field-hint">Replaces existing logo. Recommended: PNG with transparent background.</p>
+        </div>
+
+        <!-- Company name -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label-clean">Company Name</label>
+          <input class="input" type="text" name="company_name"
+                 value="{{ profile.company_name or '' if profile else '' }}"
+                 placeholder="e.g. Liberty Mutual">
+        </div>
+
+        <!-- Tagline -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label-clean">Tagline <span class="text-muted" style="font-weight:400;">(optional)</span></label>
+          <input class="input" type="text" name="tagline"
+                 value="{{ profile.tagline or '' if profile else '' }}"
+                 placeholder="e.g. Helping People Live Safer, More Secure Lives">
+        </div>
+
+        <!-- Primary colour -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label-clean">Brand Colour</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="color" name="primary_color"
+                   value="{{ profile.primary_color if profile else '#003087' }}"
+                   id="colorPicker"
+                   style="width:44px;height:38px;padding:2px;border-radius:8px;border:1px solid var(--border);background:var(--card2);cursor:pointer;">
+            <input type="text" id="colorHex" class="input" style="width:110px;font-family:monospace;"
+                   value="{{ profile.primary_color if profile else '#003087' }}"
+                   maxlength="7" placeholder="#003087">
+            <div id="colorPreview" style="flex:1;height:38px;border-radius:8px;border:1px solid var(--border);
+                 background:{{ profile.primary_color if profile else '#003087' }};
+                 display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:11px;font-weight:600;color:#fff;letter-spacing:.05em;">HEADER PREVIEW</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Header height -->
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label-clean">Header Height (points)
+            <span class="text-muted" style="font-weight:400;font-size:11px;">1 pt ≈ 0.35 mm</span>
+          </label>
+          <input class="input" type="number" name="header_height" min="30" max="150"
+                 value="{{ profile.header_height if profile else 60 }}"
+                 placeholder="60">
+          <p class="field-hint">How much of the top of each page to cover (40–80 is typical).</p>
+        </div>
+
+        <!-- Footer text -->
+        <div class="form-group" style="margin-bottom:20px;">
+          <label class="form-label-clean">Footer Text <span class="text-muted" style="font-weight:400;">(optional)</span></label>
+          <input class="input" type="text" name="footer_text"
+                 value="{{ profile.footer_text or '' if profile else '' }}"
+                 placeholder="e.g. © Liberty Mutual Insurance 2025  |  libertymutualbusiness.com">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Branding Profile
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- RIGHT: Form selection + Apply -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <span>Select Forms to Rebrand</span>
+        <span class="badge badge-secondary">{{ forms|length }}</span>
+      </div>
+
+      {% if not profile %}
+      <div class="card-body">
+        <div class="upload-empty" style="padding:32px 0;">
+          <div class="upload-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <p class="upload-empty-title">No branding profile yet</p>
+          <p class="upload-empty-sub">Save a branding profile on the left first.</p>
+        </div>
+      </div>
+
+      {% elif not forms %}
+      <div class="card-body">
+        <div class="upload-empty" style="padding:32px 0;">
+          <div class="upload-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <p class="upload-empty-title">No forms uploaded</p>
+          <p class="upload-empty-sub">Upload forms first via the Forms page.</p>
+        </div>
+      </div>
+
+      {% else %}
+      <form method="POST" action="{{ url_for('web.apply_rebrand', project_id=project.id) }}" id="rebrand-form">
+        <div class="card-body p0">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+            <input type="checkbox" id="selectAll" style="width:15px;height:15px;cursor:pointer;">
+            <label for="selectAll" style="font-size:13px;font-weight:500;cursor:pointer;margin:0;">Select All</label>
+            <span style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="selectedCount">0 selected</span>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:36px;"></th>
+                <th>Form Name</th>
+                <th>Version</th>
+                <th>Size</th>
+                <th>Uploaded</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in forms %}
+              <tr>
+                <td>
+                  <input type="checkbox" name="form_ids" value="{{ f.id }}"
+                         class="form-checkbox" style="width:15px;height:15px;cursor:pointer;"
+                         {% if f.version == 'rebranded' %}disabled title="Already a rebranded copy"{% endif %}>
+                </td>
+                <td class="font-semibold">
+                  {{ f.original_filename or f.name }}
+                  {% if f.version == 'rebranded' %}
+                    <span class="mode-badge mode-benchmark" style="font-size:10px;margin-left:6px;">Rebranded</span>
+                  {% endif %}
+                </td>
+                <td class="text-muted">{{ f.version or 'v1' }}</td>
+                <td class="text-muted">
+                  {% if f.size_bytes %}
+                    {% if f.size_bytes > 1048576 %}
+                      {{ (f.size_bytes / 1048576) | round(1) }} MB
+                    {% else %}
+                      {{ (f.size_bytes / 1024) | round(0) | int }} KB
+                    {% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="text-muted">{{ f.uploaded_at.strftime("%Y-%m-%d") if f.uploaded_at else "—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding:16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+          <button type="submit" class="btn btn-primary" id="applyBtn" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Apply Rebrand to Selected
+          </button>
+          <span style="font-size:12px;color:var(--text-muted);">
+            This creates new PDF copies — originals are unchanged.
+          </span>
+        </div>
+      </form>
+      {% endif %}
+
+    </div>
+
+    <!-- Info box -->
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header">How It Works</div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(227,24,55,.12);border:1px solid rgba(227,24,55,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#e31837;">1</div>
+            <div><strong style="font-size:13px;">Covers old header</strong><br><span style="font-size:12px;color:var(--text-muted);">A white rectangle is painted over the top of every page, hiding the old logo and branding.</span></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(227,24,55,.12);border:1px solid rgba(227,24,55,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#e31837;">2</div>
+            <div><strong style="font-size:13px;">Stamps new branding</strong><br><span style="font-size:12px;color:var(--text-muted);">New colour bar, logo, and company name are stamped in the header. Footer text is added at the bottom.</span></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(227,24,55,.12);border:1px solid rgba(227,24,55,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#e31837;">3</div>
+            <div><strong style="font-size:13px;">Saves and downloads</strong><br><span style="font-size:12px;color:var(--text-muted);">Rebranded PDFs are saved as new forms in this project and bundled into a ZIP for download.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  /* Colour picker ↔ hex input sync */
+  var picker  = document.getElementById('colorPicker');
+  var hexIn   = document.getElementById('colorHex');
+  var preview = document.getElementById('colorPreview');
+
+  function syncColor(hex) {
+    if (preview) preview.style.background = hex;
+    if (picker)  picker.value = hex;
+    if (hexIn)   hexIn.value  = hex;
+  }
+
+  if (picker) picker.addEventListener('input', function () { syncColor(this.value); });
+  if (hexIn)  hexIn.addEventListener('input', function () {
+    var v = this.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) syncColor(v);
+  });
+
+  /* Select-all + checkbox counting */
+  var selectAll  = document.getElementById('selectAll');
+  var checkboxes = document.querySelectorAll('.form-checkbox:not([disabled])');
+  var countEl    = document.getElementById('selectedCount');
+  var applyBtn   = document.getElementById('applyBtn');
+
+  function updateCount() {
+    var n = document.querySelectorAll('.form-checkbox:checked').length;
+    if (countEl)  countEl.textContent = n + ' selected';
+    if (applyBtn) applyBtn.disabled = n === 0;
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      checkboxes.forEach(function (cb) { cb.checked = selectAll.checked; });
+      updateCount();
+    });
+  }
+
+  checkboxes.forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      if (!this.checked && selectAll) selectAll.checked = false;
+      updateCount();
+    });
+  });
+
+  updateCount();
+})();
+</script>
+
+{% endblock %}

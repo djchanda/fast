@@ -116,3 +116,29 @@ def fetch_issue_types(config) -> list:
     except Exception:
         pass
     return []
+
+
+def fetch_issue_statuses(config, keys: list[str]) -> dict:
+    """Return status info for a list of Jira issue keys.
+
+    Returns: {key: {"name": str, "category": str}} where category is one of
+    "done", "inprogress", "new" (maps to Jira's statusCategory keys).
+    Keys that fail or don't exist are omitted from the result.
+    """
+    result = {}
+    for key in keys:
+        try:
+            resp = requests.get(
+                f"{config.jira_url.rstrip('/')}/rest/api/3/issue/{key}?fields=status",
+                headers=_headers(config),
+                timeout=8,
+            )
+            if resp.status_code == 200:
+                status = resp.json().get("fields", {}).get("status", {})
+                result[key] = {
+                    "name": status.get("name", ""),
+                    "category": (status.get("statusCategory") or {}).get("key", "new"),
+                }
+        except Exception:
+            pass
+    return result

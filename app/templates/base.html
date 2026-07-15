@@ -6,17 +6,21 @@
   <title>{{ page_title or "FAST" }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/fast.css') }}" />
+  <script>
+    /* Apply saved theme before first paint to avoid flash */
+    (function(){var t=localStorage.getItem('fast-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
+  </script>
 </head>
-<body class="{% if request.endpoint == 'web.landing' %}landing-body{% endif %}{% if dark_page is defined and dark_page %} dark-page{% endif %}">
+<body class="{% if request.endpoint in ('web.login', 'web.marketing') %}landing-body{% endif %}{% if dark_page is defined and dark_page %} dark-page{% endif %}">
 
   <div class="watermark"></div>
 
   <!-- TOP BAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <a href="{{ url_for('web.home') }}" class="brand-link">
+      <a href="{{ url_for('web.marketing') }}" class="brand-link">
         <img class="logo" src="{{ url_for('static', filename='assets/cgi_logo.png') }}" alt="CGI" />
         <div class="brand-divider"></div>
         <div>
@@ -38,11 +42,12 @@
           <a class="topbar-icon-btn" href="{{ url_for('web.admin_panel') }}" title="Admin Panel">⚙</a>
         {% endif %}
 
-        <a class="topbar-icon-btn" href="{{ url_for('web.contact') }}" title="Contact">✉</a>
         <a class="topbar-logout" href="{{ url_for('web.logout') }}">Sign out</a>
-      {% else %}
-        <a class="topbar-icon-btn" href="{{ url_for('web.contact') }}" title="Contact">✉</a>
       {% endif %}
+      <button id="theme-toggle-btn" class="topbar-icon-btn" title="Toggle light/dark mode" style="border:none;cursor:pointer;background:none;padding:0;">
+        <svg id="tb-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="tb-icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
     </div>
   </header>
 
@@ -85,6 +90,7 @@
             <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Trends
           </a>
 
+          {% if session.get('role') != 'reviewer' %}
           <div class="sidebar-section-label">Settings</div>
           <a class="nav-item {% if active == 'webhooks' %}active{% endif %}"
              href="{{ url_for('web.project_webhooks', project_id=project.id) }}">
@@ -106,15 +112,19 @@
              href="{{ url_for('web.project_audit_log', project_id=project.id) }}">
             <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Audit Log
           </a>
+
+          <div class="sidebar-section-label">Rebranding</div>
+          <a class="nav-item {% if active == 'rebrand' %}active{% endif %}"
+             href="{{ url_for('web.project_rebrand', project_id=project.id) }}">
+            <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></span> Rebrand Forms
+          </a>
+          {% endif %}
         </nav>
 
       {% else %}
         <nav class="nav">
           <a class="nav-item" href="{{ url_for('web.home') }}">
             <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> Home
-          </a>
-          <a class="nav-item" href="{{ url_for('web.contact') }}">
-            <span class="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg></span> Contact
           </a>
         </nav>
       {% endif %}
@@ -141,5 +151,59 @@
     <span>Powered by CGI</span>
   </footer>
 
+  <script>
+  (function () {
+    var HTML = document.documentElement;
+    var BTN  = document.getElementById('theme-toggle-btn');
+    var MOON = document.getElementById('tb-icon-moon');
+    var SUN  = document.getElementById('tb-icon-sun');
+
+    function applyTheme(theme) {
+      HTML.setAttribute('data-theme', theme);
+      if (theme === 'light') {
+        MOON.style.display = 'block';
+        SUN.style.display  = 'none';
+      } else {
+        MOON.style.display = 'none';
+        SUN.style.display  = 'block';
+      }
+    }
+
+    applyTheme(localStorage.getItem('fast-theme') || 'dark');
+
+    BTN.addEventListener('click', function () {
+      var next = HTML.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      localStorage.setItem('fast-theme', next);
+    });
+  })();
+
+  /* KPI counter animation — runs on every page */
+  (function () {
+    function animateCount(el) {
+      var raw = el.textContent.trim();
+      var target = parseInt(raw, 10);
+      if (isNaN(target) || target < 2) return;
+      var start = performance.now();
+      var duration = Math.min(300 + target * 3, 900);
+      el.textContent = '0';
+      (function step(now) {
+        var p = Math.min((now - start) / duration, 1);
+        var ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(ease * target);
+        if (p < 1) requestAnimationFrame(step);
+        else el.textContent = target;
+      })(start);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      var sel = '.kpi-num,.ov-kpi-num,.db-kpi-num,.results-kpi-num,.stat-num,.dash-kv-num';
+      document.querySelectorAll(sel).forEach(function (el) {
+        requestAnimationFrame(function () { animateCount(el); });
+      });
+    });
+  })();
+  </script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>

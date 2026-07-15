@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set dark_page = True %}
+{% set show_sidebar = True %}
+{% block content %}
+
+<div class="ov-header">
+  <div class="ov-title-block">
+    <h1 class="ov-project-name">{{ project.name }}</h1>
+    <div class="ov-meta">
+      {% if project.account %}<span class="ov-tag">{{ project.account }}</span>{% endif %}
+      {% if project.area %}<span class="ov-tag">{{ project.area }}</span>{% endif %}
+      {% if project.environment %}<span class="ov-tag ov-tag-env">{{ project.environment }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="ov-actions">
+    <a class="btn btn-outline" href="{{ url_for('web.testcase_view', project_id=project.id, testcase_id=tc.id) }}">Cancel</a>
+    <button form="tc-edit-form" type="submit" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Save Changes
+    </button>
+  </div>
+</div>
+
+<div class="card tc-form-card">
+  <div class="card-header">Edit Test Case</div>
+  <div class="card-body">
+    <form id="tc-edit-form" method="POST"
+          action="{{ url_for('web.edit_testcase', project_id=project.id, testcase_id=tc.id) }}">
+
+      <!-- Name -->
+      <div class="form-group">
+        <label class="form-label-clean">Test Case Name <span class="required">*</span></label>
+        <input class="input" type="text" name="name" value="{{ tc.name }}" required>
+      </div>
+
+      <!-- Mode selector -->
+      <div class="form-group">
+        <label class="form-label-clean">Mode <span class="required">*</span></label>
+        <div class="mode-cards" id="modeCards">
+          <label class="mode-card {% if tc.mode == 'basic' %}mode-card-active{% endif %}" data-mode="basic">
+            <input type="radio" name="mode" value="basic" {% if tc.mode == 'basic' %}checked{% endif %} hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Basic</strong>
+              <span>Built-in structural checks, no prompt required</span>
+            </div>
+          </label>
+          <label class="mode-card {% if tc.mode == 'specific' %}mode-card-active{% endif %}" data-mode="specific">
+            <input type="radio" name="mode" value="specific" {% if tc.mode == 'specific' %}checked{% endif %} hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Specific</strong>
+              <span>Prompt-driven — define exactly what to check</span>
+            </div>
+          </label>
+          <label class="mode-card {% if tc.mode == 'benchmark' %}mode-card-active{% endif %}" data-mode="benchmark">
+            <input type="radio" name="mode" value="benchmark" {% if tc.mode == 'benchmark' %}checked{% endif %} hidden>
+            <div class="mode-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="mode-card-text">
+              <strong>Benchmark</strong>
+              <span>Compare against a golden copy with custom rules</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Form under test -->
+      <div class="form-group">
+        <label class="form-label-clean">Form Under Test <span class="required">*</span></label>
+        <select class="input" name="form_id">
+          <option value="">Select a form…</option>
+          {% for f in forms %}
+            <option value="{{ f.id }}" {% if tc.form_id == f.id %}selected{% endif %}>{{ f.original_filename }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Benchmark golden copy (conditional) -->
+      <div class="form-group" id="benchmarkRow" style="display: {% if tc.mode == 'benchmark' %}block{% else %}none{% endif %};">
+        <label class="form-label-clean">Golden Copy (Benchmark) <span class="required">*</span></label>
+        <select class="input" name="benchmark_form_id">
+          <option value="">Select the reference form…</option>
+          {% for f in forms %}
+            <option value="{{ f.id }}" {% if tc.benchmark_form_id == f.id %}selected{% endif %}>{{ f.original_filename }}</option>
+          {% endfor %}
+        </select>
+        <p class="field-hint">The approved reference version to compare against.</p>
+      </div>
+
+      <!-- Prompt / test steps (conditional) -->
+      <div class="form-group" id="promptRow" style="display: {% if tc.mode != 'basic' %}block{% else %}none{% endif %};">
+        <label class="form-label-clean">Test Steps / Prompt <span class="required" id="promptRequired">*</span></label>
+        <textarea class="input tc-textarea" name="prompt_text" id="promptText"
+          placeholder="1) Verify customer name matches 'Jana Montgomery'&#10;2) Validate signature blocks up to Account holder #3&#10;3) Check for spelling errors in section headers">{{ tc.prompt_text or '' }}</textarea>
+        <p class="field-hint">Be specific — one test case should cover one intent.</p>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const cards    = document.querySelectorAll('.mode-card');
+  const bRow     = document.getElementById('benchmarkRow');
+  const pRow     = document.getElementById('promptRow');
+  const pText    = document.getElementById('promptText');
+
+  const placeholders = {
+    specific:  "1) Verify customer name matches 'Jana Montgomery'\n2) Validate signature blocks up to Account holder #3\n3) Check for spelling errors in section headers",
+    benchmark: "1) Compare field labels against the golden copy\n2) Flag any new or removed fields\n3) Check for layout shifts between versions"
+  };
+
+  function refresh(mode) {
+    cards.forEach(c => c.classList.toggle('mode-card-active', c.dataset.mode === mode));
+    bRow.style.display  = mode === 'benchmark' ? 'block' : 'none';
+    pRow.style.display  = mode !== 'basic'     ? 'block' : 'none';
+    if (placeholders[mode] && !pText.value) pText.placeholder = placeholders[mode];
+  }
+
+  cards.forEach(card => {
+    card.addEventListener('click', () => {
+      const mode = card.dataset.mode;
+      card.querySelector('input[type=radio]').checked = true;
+      refresh(mode);
+    });
+  });
+
+  /* initialise with current saved mode */
+  const current = document.querySelector('.mode-card-active');
+  if (current) refresh(current.dataset.mode);
+})();
+</script>
+
+{% endblock %}

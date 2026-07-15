@@ -2,70 +2,250 @@
 {% set dark_page = True %}
 {% set show_sidebar = true %}
 {% block content %}
-<div class="page-header">
-  <h1>Trend Dashboard</h1>
-  <p class="subtitle">Error, warning and pass trends across all runs for <strong>{{ project.name }}</strong></p>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="ov-header" style="padding-bottom:16px;">
+  <div>
+    <h1 style="font-size:20px;font-weight:700;margin:0;">Trend Analysis</h1>
+    <p style="font-size:13px;color:var(--text-muted);margin:4px 0 0;">Per-test-case run history for <strong>{{ project.name }}</strong></p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-1px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    Execute
+  </a>
 </div>
 
-{% if runs %}
-<div class="card mb-4">
-  <div class="card-header">Quality Trend Over Time</div>
-  <div class="card-body">
-    <canvas id="trendChart" style="max-height:340px;"></canvas>
+{% if test_cases %}
+
+<!-- ── Filter bar ─────────────────────────────────────────── -->
+<div class="tr-filter-bar">
+  <!-- Test-case selector -->
+  <div class="tr-filter-group">
+    <label class="tr-filter-label">Test Case</label>
+    <select id="tcFilter" class="tr-select">
+      <option value="all">All test cases</option>
+      {% for tc in test_cases %}
+      <option value="{{ tc.id }}">{{ tc.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Status filter pills -->
+  <div class="tr-filter-group">
+    <label class="tr-filter-label">Status</label>
+    <div class="tr-pill-row">
+      <button class="tr-pill tr-pill-active" data-status="all">All</button>
+      <button class="tr-pill" data-status="passed">
+        <span class="dash-dot dash-dot-green dash-dot-sm" style="margin-right:4px;"></span>Passed
+      </button>
+      <button class="tr-pill" data-status="failed">
+        <span class="dash-dot dash-dot-red dash-dot-sm" style="margin-right:4px;"></span>Failed
+      </button>
+      <button class="tr-pill" data-status="in_review">
+        <span class="dash-dot dash-dot-amber dash-dot-sm" style="margin-right:4px;"></span>In Review
+      </button>
+    </div>
   </div>
 </div>
 
+<!-- ── Chart ─────────────────────────────────────────────── -->
+<div class="card" style="margin-bottom:14px;">
+  <div class="card-header">
+    <span>Observations Over Time <span id="chartSubtitle" style="font-size:11px;font-weight:400;color:var(--text-muted);"></span></span>
+    <div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text-muted);">
+      <span class="dash-dot dash-dot-green" style="width:8px;height:8px;"></span>passed
+      <span class="dash-dot dash-dot-red" style="width:8px;height:8px;margin-left:6px;"></span>failed
+      <span class="dash-dot dash-dot-amber" style="width:8px;height:8px;margin-left:6px;"></span>in review
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="trendChart" style="max-height:320px;"></canvas>
+  </div>
+</div>
+
+<!-- ── Run history table ──────────────────────────────────── -->
 <div class="card">
-  <div class="card-header">Run History</div>
+  <div class="card-header">
+    <span>Run History <span id="tableCount" style="font-size:11px;font-weight:400;color:var(--text-muted);"></span></span>
+  </div>
   <div class="card-body p0">
-    <table class="table">
+    <table class="table" id="historyTable">
       <thead>
-        <tr><th>#</th><th>Date</th><th>Status</th><th>Errors</th><th>Warnings</th><th>Passed</th><th>Total</th></tr>
-      </thead>
-      <tbody>
-        {% for r in runs | reverse %}
         <tr>
-          <td><a href="{{ url_for('web.project_results', project_id=project.id, run_id=r.id) }}">#{{ r.id }}</a></td>
-          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-          <td><span class="badge badge-{{ 'success' if r.status == 'completed' else 'danger' }}">{{ r.status }}</span></td>
-          <td class="text-danger"><strong>{{ r.errors or 0 }}</strong></td>
-          <td class="text-warning">{{ r.warnings or 0 }}</td>
-          <td class="text-success">{{ r.passed or 0 }}</td>
-          <td>{{ r.total or 0 }}</td>
+          <th>#</th>
+          <th>Test Case</th>
+          <th>Mode</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th style="text-align:center;">Observations</th>
+          <th style="text-align:center;">Errors</th>
+          <th style="text-align:center;">Warnings</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="historyBody">
+        {% for r in recent_results %}
+        <tr data-status="{{ r.status }}" data-tc="{{ r.tc_name }}">
+          <td><span class="run-badge">#{{ r.rr_id }}</span></td>
+          <td style="font-weight:500;">{{ r.tc_name }}</td>
+          <td><span class="dash-mode-badge dash-mode-{{ r.tc_mode }}">{{ r.tc_mode | upper }}</span></td>
+          <td class="text-muted" style="font-size:12px;">{{ r.ts.strftime('%b %d, %H:%M') if r.ts else '—' }}</td>
+          <td>
+            {% if r.status == 'passed' %}
+              <span class="stat-pill stat-pill-green">PASSED</span>
+            {% elif r.status == 'failed' %}
+              <span class="stat-pill stat-pill-red">FAILED</span>
+            {% elif r.status == 'in_review' %}
+              <span class="stat-pill stat-pill-amber">IN REVIEW</span>
+            {% elif r.status == 'running' %}
+              <span class="stat-pill stat-pill-amber">RUNNING</span>
+            {% else %}
+              <span class="stat-pill stat-pill-neutral">{{ r.status | upper }}</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;">
+            {% if r.obs %}<span class="stat-pill stat-pill-neutral">{{ r.obs }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td style="text-align:center;">
+            {% if r.errors %}<span class="stat-pill stat-pill-red">{{ r.errors }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td style="text-align:center;">
+            {% if r.warnings %}<span class="stat-pill stat-pill-amber">{{ r.warnings }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="right">
+            <a class="btn btn-outline btn-sm" href="{{ url_for('web.result_detail', project_id=r.project_id, result_id=r.rr_id) }}">Report →</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    {% if not recent_results %}
+    <div class="card-body">
+      <div class="empty-state"><p class="empty-title">No runs yet.</p></div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
-const data = {{ trend_data_json | safe }};
-const labels = data.map(d => d.created_at);
+const TC_DATA  = {{ tc_trend_json | safe }};
+const TC_COLORS = [
+  '#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6',
+  '#06b6d4','#ec4899','#14b8a6','#f97316','#a3e635',
+];
+const STATUS_DOT = { passed:'#22c55e', failed:'#ef4444', in_review:'#f59e0b', running:'#f59e0b' };
+
+// Build one Chart.js dataset per test case
+const tcIds   = Object.keys(TC_DATA);
+const datasets = tcIds.map((id, i) => {
+  const tc    = TC_DATA[id];
+  const color = TC_COLORS[i % TC_COLORS.length];
+  return {
+    label: tc.name,
+    tcId:  id,
+    data: tc.data.map(p => ({ x: p.ts, y: p.obs, status: p.status, rr_id: p.rr_id })),
+    borderColor: color,
+    backgroundColor: color + '22',
+    pointBackgroundColor: tc.data.map(p => STATUS_DOT[p.status] || '#94a3b8'),
+    pointRadius: 5,
+    pointHoverRadius: 7,
+    tension: 0.3,
+    fill: false,
+  };
+});
+
 const ctx = document.getElementById('trendChart').getContext('2d');
-new Chart(ctx, {
+const chart = new Chart(ctx, {
   type: 'line',
-  data: {
-    labels: labels,
-    datasets: [
-      { label: 'Errors', data: data.map(d => d.errors), borderColor: '#e63946', backgroundColor: 'rgba(230,57,70,0.1)', tension: 0.3 },
-      { label: 'Warnings', data: data.map(d => d.warnings), borderColor: '#f4a261', backgroundColor: 'rgba(244,162,97,0.1)', tension: 0.3 },
-      { label: 'Passed', data: data.map(d => d.passed), borderColor: '#2a9d8f', backgroundColor: 'rgba(42,157,143,0.1)', tension: 0.3 },
-    ]
-  },
+  data: { datasets },
   options: {
     responsive: true,
-    plugins: { legend: { position: 'top' } },
-    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top', labels: { color: '#94a3b8', boxWidth: 12, padding: 16 } },
+      tooltip: {
+        callbacks: {
+          label(ctx) {
+            const p = ctx.raw;
+            return `${ctx.dataset.label}: ${p.y} obs (${p.status})`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { type: 'category', ticks: { color: '#94a3b8', maxRotation: 30, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
   }
 });
+
+// ── Filter logic ──────────────────────────────────────────────
+let activeTC     = 'all';
+let activeStatus = 'all';
+
+function applyFilters() {
+  // Chart: hide/show datasets
+  chart.data.datasets.forEach(ds => {
+    const tcMatch = activeTC === 'all' || ds.tcId === activeTC;
+    if (!tcMatch) { ds.hidden = true; return; }
+    if (activeStatus === 'all') {
+      ds.hidden = false;
+      ds.pointRadius = ds.data.map(() => 5);
+      ds.pointBackgroundColor = ds.data.map(p => STATUS_DOT[p.status] || '#94a3b8');
+    } else {
+      ds.hidden = false;
+      ds.pointRadius = ds.data.map(p => p.status === activeStatus ? 7 : 0);
+      ds.pointBackgroundColor = ds.data.map(p =>
+        p.status === activeStatus ? STATUS_DOT[p.status] : 'transparent'
+      );
+    }
+  });
+  chart.update();
+
+  // Table: show/hide rows
+  let visible = 0;
+  document.querySelectorAll('#historyBody tr').forEach(row => {
+    const rowStatus = row.dataset.status;
+    const rowTc     = row.dataset.tc;
+    const tcOk  = activeTC === 'all' || tcIds.find(id => TC_DATA[id].name === rowTc) === activeTC;
+    const stOk  = activeStatus === 'all' || rowStatus === activeStatus;
+    row.style.display = (tcOk && stOk) ? '' : 'none';
+    if (tcOk && stOk) visible++;
+  });
+  document.getElementById('tableCount').textContent = `— ${visible} runs`;
+
+  // Chart subtitle
+  const tcLabel = activeTC === 'all' ? 'all test cases' : TC_DATA[activeTC]?.name;
+  const stLabel = activeStatus === 'all' ? '' : ` · ${activeStatus} only`;
+  document.getElementById('chartSubtitle').textContent = `— ${tcLabel}${stLabel}`;
+}
+
+// TC dropdown
+document.getElementById('tcFilter').addEventListener('change', e => {
+  activeTC = e.target.value;
+  applyFilters();
+});
+
+// Status pills
+document.querySelectorAll('.tr-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tr-pill').forEach(b => b.classList.remove('tr-pill-active'));
+    btn.classList.add('tr-pill-active');
+    activeStatus = btn.dataset.status;
+    applyFilters();
+  });
+});
+
+applyFilters(); // init
 </script>
 
 {% else %}
-<div class="empty-state">
-  <p>No runs yet. Execute your first test to see trends.</p>
+<div class="empty-state" style="margin-top:40px;">
+  <p class="empty-title">No test cases yet.</p>
+  <p class="empty-text">Create test cases and execute them to see trends here.</p>
   <a class="btn btn-primary" href="{{ url_for('web.project_execute', project_id=project.id) }}">Go to Execute</a>
 </div>
 {% endif %}
+
 {% endblock %}

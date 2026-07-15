@@ -108,6 +108,7 @@ def _check_due_schedules(app):
                         rr.passed = int(out.get("passed") or 0)
                         rr.status = "completed"
                     except Exception as e:
+                        logger.error("Scheduled run %s: test case %s failed: %s", schedule.id, tc.id, e)
                         rr.status = "failed"
                         rr.error_message = str(e)
                         rr.errors = 1
@@ -115,7 +116,12 @@ def _check_due_schedules(app):
                     db.session.add(rr)
                     db.session.commit()
 
-                run.status = "completed"
+                # Mark run failed if every result failed, otherwise completed
+                all_rrs = RunResult.query.filter_by(run_id=run.id).all()
+                run.status = "failed" if all_rrs and all(r.status == "failed" for r in all_rrs) else "completed"
+                run.errors = sum(r.errors or 0 for r in all_rrs)
+                run.warnings = sum(r.warnings or 0 for r in all_rrs)
+                run.passed = sum(r.passed or 0 for r in all_rrs)
                 db.session.commit()
 
                 # Update schedule
