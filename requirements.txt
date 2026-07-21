@@ -11,6 +11,7 @@ pdf2image>=1.16.3
 # Multi-model LLM support (optional — configure in .env which to use)
 openai>=1.30.0
 anthropic>=0.25.0
+boto3>=1.34.0
 
 # REST API evidence bundle + webhook delivery
 requests>=2.31.0

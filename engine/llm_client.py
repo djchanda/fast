@@ -60,6 +60,9 @@ def _is_retryable(exc: Exception) -> bool:
         # Gemini streaming infrastructure errors
         "stream cancelled", "stream canceled", "rpc", "cancelled",
         "prefill", "decode servable", "failed to close",
+        # Bedrock transient errors
+        "throttlingexception", "throttled", "serviceunavailableexception",
+        "modeltimeoutexception", "internalserverexception",
     )
     return any(s in msg for s in retryable_signals)
 
@@ -256,15 +259,81 @@ def _run_claude(messages: List[Dict]) -> Dict[str, Any]:
     return _safe_json_loads(raw)
 
 
+def _run_bedrock(messages: List[Dict]) -> Dict[str, Any]:
+    import boto3
+    import json as _json
+
+    region   = os.getenv("AWS_REGION", "us-east-1")
+    model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
+
+    # boto3 uses IAM role / instance profile — no API key required
+    client = boto3.client("bedrock-runtime", region_name=region)
+
+    system_msg = ""
+    user_messages = []
+    for msg in messages:
+        role    = msg.get("role", "user")
+        content = msg.get("content", "")
+
+        if role == "system":
+            system_msg += (_content_to_text(content) if isinstance(content, list) else content) + "\n"
+            continue
+
+        if isinstance(content, list):
+            bedrock_content = []
+            for block in content:
+                if block.get("type") == "text":
+                    bedrock_content.append({"type": "text", "text": block["text"]})
+                elif block.get("type") == "image":
+                    label = block.get("label", "")
+                    if label:
+                        bedrock_content.append({"type": "text", "text": f"[{label}]"})
+                    bedrock_content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": block.get("mime", "image/jpeg"),
+                            "data": block["b64"],
+                        },
+                    })
+            user_messages.append({"role": role, "content": bedrock_content})
+        else:
+            user_messages.append({"role": role, "content": content})
+
+    if not user_messages:
+        user_messages = [{"role": "user", "content": system_msg}]
+        system_msg = ""
+
+    request_body: Dict[str, Any] = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 8096,
+        "temperature": 0.0,
+        "messages": user_messages,
+    }
+    if system_msg.strip():
+        request_body["system"] = system_msg.strip()
+
+    response = client.invoke_model(
+        modelId=model_id,
+        body=_json.dumps(request_body),
+        contentType="application/json",
+        accept="application/json",
+    )
+    response_body = _json.loads(response["body"].read())
+    raw = response_body["content"][0]["text"] if response_body.get("content") else ""
+    return _safe_json_loads(raw)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 PROVIDERS = {
-    "gemini": _run_gemini,
-    "openai": _run_openai,
-    "claude": _run_claude,
+    "gemini":    _run_gemini,
+    "openai":    _run_openai,
+    "claude":    _run_claude,
     "anthropic": _run_claude,
+    "bedrock":   _run_bedrock,
 }
 
 
@@ -307,7 +376,7 @@ def run_validation(messages: List[Dict], provider: str = None) -> Dict[str, Any]
 
 
 def get_available_providers() -> List[str]:
-    """Return list of providers that have API keys configured."""
+    """Return list of providers that have API keys / credentials configured."""
     available = []
     if os.getenv("GEMINI_API_KEY"):
         available.append("gemini")
@@ -315,4 +384,11 @@ def get_available_providers() -> List[str]:
         available.append("openai")
     if os.getenv("ANTHROPIC_API_KEY"):
         available.append("claude")
+    # Bedrock uses IAM role — available whenever boto3 is importable and a model ID is set
+    try:
+        import boto3  # noqa: F401
+        if os.getenv("BEDROCK_MODEL_ID") or os.getenv("LLM_PROVIDER", "").lower() == "bedrock":
+            available.append("bedrock")
+    except ImportError:
+        pass
     return available or ["gemini"]
